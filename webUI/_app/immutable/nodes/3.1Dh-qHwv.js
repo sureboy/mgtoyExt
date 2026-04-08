@@ -1,0 +1,1 @@
+import{f as e,a as m}from"../chunks/LrJ4rqs7.js";import"../chunks/MOHCGsE3.js";import{I as n,J as i,K as t}from"../chunks/DRwKI5Yn.js";import{M as l}from"../chunks/gUYMgQFy.js";var p=e('<main class="svelte-yzhnh5"><h1 class="svelte-yzhnh5">音乐播放器</h1> <!></main>');function d(s){var a=p(),o=n(i(a),2);l(o,{sendmsg:r=>{console.log(r)}}),t(a),m(s,a)}export{d as component};
