@@ -14,7 +14,7 @@ export function activate(context: vscode.ExtensionContext) {
 		stopServer();
 	});  
 	const start = vscode.commands.registerCommand('mgtoy.start', () => {  
-		startServer({port:3000,rootPath:vscode.Uri.joinPath(context.extensionUri,"webUI").fsPath});
+		startServer(context );
 		vscode.window.showInformationMessage('Hello World from mgtoy!');
 	}); 
 	context.subscriptions.push(start,stop);

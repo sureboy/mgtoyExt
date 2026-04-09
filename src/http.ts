@@ -6,9 +6,11 @@ import * as fs from "fs";
 import {addrMap,nameMap} from './cache'; 
 export type HttpConfigType = {
     //src:string, 
+    //udpPort:number,
     port:number,
+    //http.Server
     rootPath:string,
-    callBack?:(obj:any)=>any
+    callBack:(obj:any)=>any
     //srcPath:string,
     //serverIP:string[]
     //includeImport:{ [key: string]: string }
@@ -32,9 +34,9 @@ export type SerConfig = {
 }
 export const defaultSerConfig:
 {ser?:SerConfig|undefined,
-    close:()=>void,
-} = 
-{close:function(){
+    dispose:()=>void } = 
+{ 
+    dispose:function(){
     const server = this.ser?.Server;
     if (!server){
         return;
@@ -53,9 +55,7 @@ export const defaultSerConfig:
         server.closeAllConnections();
         this.ser=undefined;
         //process.exit(1);
-    }, 10000);
- 
-
+    }, 10000); 
 }};
 const contentType:{ [key: string]: string } = {
     '.html': 'text/html',
@@ -107,25 +107,16 @@ const readBinaryFile = (filePaths:string,contentType:string,res:http.ServerRespo
           res.end('Internal Server Error');
         }
       });
-         });
-         /*
-        const db = fs.readFileSync(filePaths,{encoding:'binary'});
-        res.setHeader('Content-Length', stats.size);
-        res.writeHead(200, { 'Content-Type': contentType || 'text/plain' });
-        res.end(db); */
+         }); 
     }catch(e){
         console.error(e);
         res.writeHead(404);
         res.end();
     }
 };
-const createHttpServer = (conf: HttpConfigType   )=>{   
-    return http.createServer((req, res) => {
-        //
-        //const pathList =u.pathname.split("/")||[];
-        //const tag = u.searchParams.get("tag")||"run"; 
+function createHttpServer   (conf: HttpConfigType   ) {   
+    return http.createServer((req, res) => { 
         if (req.url==="/"){
-          
             res.setHeader("Access-Control-Allow-Origin","*");
             res.writeHead(200, { 'Content-Type': 'text/html' });
             let indexHtml = "";
@@ -165,14 +156,11 @@ const createHttpServer = (conf: HttpConfigType   )=>{
                 };
                 
                 switch (req.url){
-                    case "/find":
-                        //console.log("find",nameMap);
+                    case "/find": 
                         res.writeHead(200, { 'Content-Type': 'application/json' });  
                         res.end(JSON.stringify(Object.fromEntries(nameMap)));
                         return;
-                    case "/api":
-                        
-                        //return;
+                    case "/api": 
                         getBody(obj =>{
                             res.writeHead(200, { 'Content-Type': 'application/json' });  
                             
@@ -181,23 +169,7 @@ const createHttpServer = (conf: HttpConfigType   )=>{
                                 db = conf.callBack(obj);
                             }
                             console.log("api req",db);
-                            res.end(JSON.stringify({db}));
-                            
-                            
-                            
-                            /*
-                            const msgObj = (obj as {name:string,msg:string})
-                            const db = nameMap.get(msgObj.name);
-                            
-                            if (db){
-                                udpserver.send([db.Num,Number(msgObj.msg)],db?.DB.RemotePort,db.DB.RemoteIP,err=>{
-                                    if (err){
-                                        console.error(err);
-                                    }
-                                });
-                                
-                            }*/
-                            
+                            res.end(JSON.stringify({db})); 
                         });
                        
                         return;
@@ -212,14 +184,17 @@ const createHttpServer = (conf: HttpConfigType   )=>{
     });
 };
 export const RunHttpServer = (
-    conf: HttpConfigType, backServ:(ser:SerConfig)=>void,errNumber = 10  )=>{
+    conf: HttpConfigType & {callBack:(obj:any)=>any}, 
+    backServ:(ser:SerConfig)=>void,
+    errNumber = 10 
+      )=>{
     console.log(conf);
     if (defaultSerConfig.ser && defaultSerConfig.ser.Server){
         Object.assign(defaultSerConfig.ser.conf,conf);
         backServ(defaultSerConfig.ser);
         return;
     }
-    const serv = createHttpServer(conf);
+    const serv = createHttpServer(conf );
     let p = conf.port;
     //const runHttp = ()=>{  
     //    serv.listen(p);  
