@@ -1,5 +1,6 @@
 //import {Bonjour} from "bonjour-service";
 import mdns from 'multicast-dns';
+import type {ResponseOutgoingPacket} from 'multicast-dns'
 import bonjour from 'bonjour-hap';
 import dgram  from 'dgram';
 import dnsPacket from 'dns-packet';
@@ -24,8 +25,8 @@ export const initUDPServer = (SERVICE_PORT:number,LOCAL_IP:string,host:string)=>
         }
     });
     server.on("error",e=>{
-        console.error(e)
-    })
+        console.error(e);
+    });
     
     server.on('listening', () => {
         const address = server.address();
@@ -41,6 +42,55 @@ export const initUDPServer = (SERVICE_PORT:number,LOCAL_IP:string,host:string)=>
         server.close();
     }};
 };
+const respondA = (HOSTNAME:string ,LOCAL_IP:string):mdns.ResponseOutgoingPacket=>{
+     const FULL_HOST = `${HOSTNAME}.local`;  
+    return {        
+        answers: [
+            {
+                name: FULL_HOST,
+                type: 'A',
+                ttl: 120,
+                class:"IN",
+                flush: true,
+                data:  LOCAL_IP
+            },
+            {
+                name: `${LOCAL_IP.split(".").reverse().join(".")}.in-addr.arpa`,
+                type: 'PTR',
+                ttl: 120,
+                class:"IN",
+                flush: true,
+                data:  FULL_HOST
+            }
+        ],
+        
+    } ;
+};
+const respond  = (HOSTNAME:string,LOCAL_IP:string,SERVICE_PORT:number,SERVICE_TYPE = '_http._tcp.local'):mdns.ResponseOutgoingPacket=>{
+    const FULL_HOST = `${HOSTNAME}.local`;
+    //const SERVICE_TYPE = '_ws._tcp.local';
+    const SERVICE_NAME = `${HOSTNAME}.${SERVICE_TYPE}`;
+    const DISCOVERY = '_services._dns-sd._udp.local';
+    return {
+        
+        answers: [
+            {name:DISCOVERY,type:'PTR',ttl:4500,class:"IN",data:SERVICE_TYPE,flush:false},
+            {name:SERVICE_TYPE,type:'PTR',ttl:4500,class:"IN",data:SERVICE_NAME,flush:false},
+            {name:SERVICE_NAME,type:'SRV',ttl:4500,class:"IN",data:{priority:0,weight:0,port:SERVICE_PORT,target:FULL_HOST},flush:true},
+            {name:SERVICE_NAME,type:'TXT',ttl:4500,class:"IN",flush:true,data:[]},
+        ],
+        additionals: [
+            {
+                name: FULL_HOST,
+                type: 'A',
+                ttl: 120,
+                class:"IN",
+                flush: true,
+                data:  LOCAL_IP
+            }
+        ]
+    } ;
+}
 
 export const initMulMDNS = (SERVICE_PORT:number,LOCAL_IP:string,host:string)=>{
     const HOSTNAME = 'mgtoy'; // 最终访问 mynode.local
@@ -48,64 +98,40 @@ export const initMulMDNS = (SERVICE_PORT:number,LOCAL_IP:string,host:string)=>{
     //const PORT =SERVICE_PORT;         // 你的Web服务端口
     // ----------------------------------
     
-    const FULL_HOST = `${HOSTNAME}.local`;
-    //const SERVICE_TYPE = '_http._tcp.local';
-    //const SERVICE_NAME = `${HOSTNAME}.${SERVICE_TYPE}`;
-    //const DISCOVERY = '_services._dns-sd._udp.local';
-    const mDnsServer = mdns({
-  multicast: true,
-  interface: '224.0.0.251',  // 监听所有接口
-  port: 5353,           // 标准 mDNS 端口
-  ttl: 255,             // 合适的 TTL
-  loopback: true,
-  reuseAddr: true
-});
+ 
+    const DISCOVERY = '_services._dns-sd._udp.local';
+    const mDnsServer = mdns({});
     mDnsServer.on('response', (response, rinfo) => {
         console.log('收到响应:', response,rinfo);
     }); 
+    const run = function (){
+        mDnsServer.respond( respondA(HOSTNAME,LOCAL_IP) );
+        setTimeout(()=>{
+           mDnsServer.respond(  respond(HOSTNAME,LOCAL_IP,SERVICE_PORT, '_ws._tcp.local') );
+          mDnsServer.respond(   respond(HOSTNAME,LOCAL_IP,SERVICE_PORT) );
+            setTimeout(run,5000);
+        },1000);
+    };
+    //run();
+        
+ 
     mDnsServer.on('query', (query, rinfo) => {
  
         if (!query.questions) return;
         for (let q of query.questions) {
             if (
-            q.name === FULL_HOST  
+            q.name.includes(HOSTNAME)   ||
+            q.name === DISCOVERY
             ) {
-                console.log(q.name,rinfo);
+                console.log(query.questions,rinfo);
             //sendResponse();
             mDnsServer.respond(
-                Object.assign(query,{
+                 respondA(HOSTNAME,LOCAL_IP)
                  
-                    answers: [
-                        { name: FULL_HOST, type: 'A', ttl: 120, data: LOCAL_IP,flush: true },
-                    {
-                        name: `_http._tcp.${FULL_HOST}`,
-                        type: 'SRV',
-                        ttl: 120,
-                        data: {
-                            priority: 10,
-                            weight: 0,
-                            port: SERVICE_PORT,
-                            target: FULL_HOST
-                        }
-                    },
-                    {
-                        name: `_http._top.${FULL_HOST}`,
-                        type: 'TXT',
-                        ttl: 120,
-                        data: ['txtvers=1', 'note=Node.js mDNS']
-                    }
-                    ],
-                    additionals: [
-                        {
-                            name: FULL_HOST,
-                            type: 'TXT',
-                            ttl: 120,
-                            flush: true,
-                            data: ['txtvers=1', 'note=test']
-                        }
-                    ]
-                })
             );
+            //mDnsServer.respond(
+            //respond(HOSTNAME,LOCAL_IP,SERVICE_PORT)
+            //);
             //mDnsServer.query(FULL_HOST, 'A'); 
             break;
             }
@@ -114,24 +140,7 @@ export const initMulMDNS = (SERVICE_PORT:number,LOCAL_IP:string,host:string)=>{
       
     });
     return mDnsServer;
-    /*
-    const HOSTNAME = 'my-node-server.local';
-    const IP_ADDRESS = '192.168.1.100'; // ⚠️ 请替换为你的 Linux 服务器实际局域网 IP
-
-    mDnsServer.on('query', (query) => {
-        query.questions.forEach(question => {
-            if (question.name === HOSTNAME && question.type === 'A') {
-                mDnsServer.respond({
-                    answers: [{
-                        name: HOSTNAME,
-                        type: 'A',
-                        data: IP_ADDRESS,
-                        ttl: 120, // 设置一个合适的 TTL 值
-                    }]
-                });
-            }
-        });
-    });*/
+ 
 };
  
 export const initMDNS = (port:number,LOCAL_IP:string,host:string)=>{

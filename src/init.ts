@@ -5,7 +5,8 @@ import {getLocalIp} from './util';
 import {initWebSocket} from './webSocket';
 import {initUDPServer} from './udp';
 import {nameMap} from './cache';
-import {initMulMDNS,initUDPServer as initMDNS} from './mdns';
+//import { initWebRtcClient } from './webrtc';
+//import {initMulMDNS,initUDPServer as initMDNS} from './mdns';
 import {initBar} from './Bar'; 
 import type {Socket} from 'dgram';
 export const workspaceConfig = vscode.workspace.getConfiguration("mgtoy"); 
@@ -42,12 +43,13 @@ const initConfCallBack = (udpServer: Socket)=>{
 };
 const initRun = (ser:SerConfig)=>{
     //console.log(ser); 
+    //initWebRtcClient()
     const localIP = getLocalIp();
-    const bon = initMDNS(ser.httpPort,localIP,"mgtoy.local"); 
+    //const bon = initMDNS(ser.httpPort,localIP,"mgtoy.local"); 
     const Bar = initBar(ser.httpPort,localIP);  
     const wss = initWebSocket({server:ser.Server,callBack:ser.conf.callBack});
     serverList.push(Bar,{dispose:()=>{
-        bon.destroy(); 
+        //bon.destroy(); 
         //Bar.hide();
         //Bar.dispose();
         wss.close(err=>{

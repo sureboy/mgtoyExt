@@ -1,6 +1,7 @@
 import * as http from 'http'; 
 import * as path from 'path'; 
- 
+import { initWebRtcClient,addRemoteAnswer } from './webrtc';
+import type {signalingStruct} from './webrtc';
 import * as fs from "fs";
 
 import {addrMap,nameMap} from './cache'; 
@@ -115,6 +116,7 @@ const readBinaryFile = (filePaths:string,contentType:string,res:http.ServerRespo
     }
 };
 function createHttpServer   (conf: HttpConfigType   ) {   
+    
     return http.createServer((req, res) => { 
         if (req.url==="/"){
             res.setHeader("Access-Control-Allow-Origin","*");
@@ -128,34 +130,59 @@ function createHttpServer   (conf: HttpConfigType   ) {
             }
             //indexHtml = insertScriptAtBodyStart(indexHtml,`window.serverIP=[${conf.serverIP.map((c)=> `"${c}"`).join(",")}];`);
             res.end(indexHtml);
-            console.log("http ok");
+            //console.log("http ok");
             return;   
         }else {
+            console.log(req.method,req.url);
             if (req.method ==="GET"){
-            const u =req.url||"";// new URL(req.url!,`http://${req.headers.host}`); 
-            //const filepath =path.join( ...pathList) ;
-            //const p = path.join(conf.rootPath,filepath);
-            
-                const ext = path.extname(u);
-                if (!ext){
-                    res.writeHead(404);
-                    res.end();
-                    return ;
+                if (req.url==="/offer"){                  
+                    initWebRtcClient().then(({signaling,pc,dataChannel})=>{
+                        //dataChannel.id
+                        //webrtcChannelMap.set(dataChannel.id,pc);
+                        res.writeHead(200, { 'Content-Type': 'application/json' });  
+                        res.end(JSON.stringify(signaling));
+                    });
+                    return;
+                   
+                }else{
+                    const u =path.join(...(req.url||"").split("/"));
+                    const ext = path.extname(u);
+                    if (ext){
+                        res.setHeader("Access-Control-Allow-Origin","*");
+                        readBinaryFile(path.join(conf.rootPath,u),contentType[ext]|| 'text/plain',res);
+                        
+                        return ;
+                    }
                 }
-                res.setHeader("Access-Control-Allow-Origin","*");
-                readBinaryFile(path.join(conf.rootPath,u),contentType[ext]|| 'text/plain',res);
+                res.writeHead(404);
+                res.end();
             }else{
                 function getBody  (hand:(obj:any)=>void) {
                     let body = "";
                     req.addListener("data",(db)=>{ 
                         body += db.toString(); 
+                        //console.log(body);
                     });                    
                     req.addListener("end",()=>{ 
                         hand(JSON.parse(body));
                     });
+                    req.addListener("error",(e)=>{
+                        console.error(e);
+                    });
                 };
-                
                 switch (req.url){
+                     case "/answer":
+                        //console.log("post answer");
+                        getBody(obj =>{
+                            //console.log(obj);
+                            res.writeHead(200, { 'Content-Type': 'application/json' });  
+                            res.end(JSON.stringify({}));
+                            //webrtcChannelMap.get((obj as signalingStruct).id)
+                            addRemoteAnswer(obj).then(val=>{
+                                console.log(val); 
+                            });
+                        });
+                        return;
                     case "/find": 
                         res.writeHead(200, { 'Content-Type': 'application/json' });  
                         res.end(JSON.stringify(Object.fromEntries(nameMap)));
