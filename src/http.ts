@@ -1,10 +1,13 @@
 import * as http from 'http'; 
 import * as path from 'path'; 
+//import {RTCDataChannel} from 'werift';
+//import * as   WebSocket  from 'ws' ;
 import { initWebRtcClient,addRemoteAnswer } from './webrtc';
-import type {signalingStruct} from './webrtc';
+//import type {signalingStruct} from './webrtc';
 import * as fs from "fs";
 
 import {addrMap,nameMap} from './cache'; 
+//import { buffer } from 'stream/consumers';
 export type HttpConfigType = {
     //src:string, 
     //udpPort:number,
@@ -20,6 +23,7 @@ export type SerConfig = {
     //clientwsMap:Set< WS.WebSocket >,
     //PostMessageSet:PostMessageSetType,
     //name:string,
+    //wss?: WebSocket.Server
     httpPort:number,
     //isConn:()=>boolean,
     Server?: http.Server
@@ -116,7 +120,7 @@ const readBinaryFile = (filePaths:string,contentType:string,res:http.ServerRespo
     }
 };
 function createHttpServer   (conf: HttpConfigType   ) {   
-    
+    //let dataChannel: RTCDataChannel|undefined = undefined;
     return http.createServer((req, res) => { 
         if (req.url==="/"){
             res.setHeader("Access-Control-Allow-Origin","*");
@@ -136,9 +140,38 @@ function createHttpServer   (conf: HttpConfigType   ) {
             console.log(req.method,req.url);
             if (req.method ==="GET"){
                 if (req.url==="/offer"){                  
-                    initWebRtcClient().then(({signaling,pc,dataChannel})=>{
+                    initWebRtcClient().then(({signaling,dataChannel})=>{
                         //dataChannel.id
-                        //webrtcChannelMap.set(dataChannel.id,pc);
+ /*
+                        pc.ontrack = event => {
+                            if (event.track.kind === 'video') {
+                            // 监听 RTP 包事件
+                            //event.streams
+                             const receiver = event.receiver;
+                            //event.streams[0].tracks
+                            console.log(event);
+                            receiver.on ('packet', (rtpPacket) => {
+                                console.log(rtpPacket);
+                                // 将 RTP 包序列化为 Buffer 或 JSON
+                                // 方式一：直接发送原始 RTP 包二进制（推荐，节省带宽）
+                                const packetBuffer = rtpPacket.serialize(); 
+                                defaultSerConfig.ser?.wss?.clients.forEach(ws=>{
+                                //if (ws.readyState === WebSocket.OPEN){
+                                    try{
+                                        ws.send(packetBuffer);
+                                    }catch(e){
+                                        console.error(e);
+                                    }                                        
+                                    //}
+                                }); 
+                            });
+                        };*/
+                        dataChannel.onmessage = (e)=>{
+                            console.log("dc msg",e.data)
+                            conf.callBack(JSON.parse(e.data as string));
+                        };
+                        //conf.callBack(obj)
+                        
                         res.writeHead(200, { 'Content-Type': 'application/json' });  
                         res.end(JSON.stringify(signaling));
                     });
@@ -174,12 +207,12 @@ function createHttpServer   (conf: HttpConfigType   ) {
                      case "/answer":
                         //console.log("post answer");
                         getBody(obj =>{
-                            //console.log(obj);
+                            console.log(obj);
                             res.writeHead(200, { 'Content-Type': 'application/json' });  
                             res.end(JSON.stringify({}));
                             //webrtcChannelMap.get((obj as signalingStruct).id)
                             addRemoteAnswer(obj).then(val=>{
-                                console.log(val); 
+                                //console.log(val); 
                             });
                         });
                         return;
@@ -187,6 +220,7 @@ function createHttpServer   (conf: HttpConfigType   ) {
                         res.writeHead(200, { 'Content-Type': 'application/json' });  
                         res.end(JSON.stringify(Object.fromEntries(nameMap)));
                         return;
+                        
                     case "/api": 
                         getBody(obj =>{
                             res.writeHead(200, { 'Content-Type': 'application/json' });  
@@ -199,7 +233,7 @@ function createHttpServer   (conf: HttpConfigType   ) {
                             res.end(JSON.stringify({db})); 
                         });
                        
-                        return;
+                        return; 
                     default:
                         res.writeHead(404);
                         res.end();
@@ -211,7 +245,7 @@ function createHttpServer   (conf: HttpConfigType   ) {
     });
 };
 export const RunHttpServer = (
-    conf: HttpConfigType & {callBack:(obj:any)=>any}, 
+    conf: HttpConfigType  , 
     backServ:(ser:SerConfig)=>void,
     errNumber = 10 
       )=>{

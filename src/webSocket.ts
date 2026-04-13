@@ -14,16 +14,20 @@ export const initWebSocket = (conf:{ port?: number,server?:http.Server,callBack:
             //console.log('✅ A new client connected.');
 
             // 向新连接的客户端发送欢迎消息
-            ws.send(JSON.stringify({ type: 'system', message: 'Welcome!' }));
+            //ws.send(JSON.stringify({ type: 'system', message: 'Welcome!' }));
 
             // 监听来自客户端的消息
             ws.on('message', (data) => {
                  
                 const messageObj =JSON.parse(data.toString()) as {name:string,msg:string};
                 console.log(`Received: ${messageObj.name}`);
-                ws.send(JSON.stringify(  conf.callBack(messageObj)),err=>{
-                    if (err){console.error(err);}
-                });
+                const db = conf.callBack(messageObj);
+                if (db){
+                    ws.send(JSON.stringify( db),err=>{
+                        if (err){console.error(err);}
+                    });
+                }
+                
                  /*
                 wss.clients.forEach((client) => {
                     if (client !== ws && client.readyState === WebSocket.OPEN) {

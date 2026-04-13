@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import {RunHttpServer,defaultSerConfig} from './http';
 import type { HttpConfigType, SerConfig } from './http';
 import {getLocalIp} from './util';
-import {initWebSocket} from './webSocket';
+//import {initWebSocket} from './webSocket';
 import {initUDPServer} from './udp';
 import {nameMap} from './cache';
 //import { initWebRtcClient } from './webrtc';
@@ -38,7 +38,7 @@ const initConfCallBack = (udpServer: Socket)=>{
             
             
         }
-        return db;
+        return undefined;
     };    
 };
 const initRun = (ser:SerConfig)=>{
@@ -47,17 +47,8 @@ const initRun = (ser:SerConfig)=>{
     const localIP = getLocalIp();
     //const bon = initMDNS(ser.httpPort,localIP,"mgtoy.local"); 
     const Bar = initBar(ser.httpPort,localIP);  
-    const wss = initWebSocket({server:ser.Server,callBack:ser.conf.callBack});
-    serverList.push(Bar,{dispose:()=>{
-        //bon.destroy(); 
-        //Bar.hide();
-        //Bar.dispose();
-        wss.close(err=>{
-            if (err){
-                console.error(err);
-            }
-        });
-    }});
+    //const wss = initWebSocket({server:ser.Server,callBack:ser.conf.callBack});
+    serverList.push(Bar );
 };
 export const startServer = (context: vscode.ExtensionContext)=>{
     console.log(context);

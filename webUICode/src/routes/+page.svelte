@@ -7,7 +7,7 @@ import { getRecording, musicRecording, clearRecording} from "$lib/RecordingActio
 //import type {RecordingType} from "$lib/RecordingActions"
 let tab_header:HTMLElement
 let carname:HTMLInputElement
-let socket:WebSocket = null;
+//let socket:WebSocket = null;
 
 let inputKey:number
 
@@ -87,6 +87,7 @@ const handleChangeDB = (dbs:handleDB[],e: HTMLAreaElement)=>{
         if (isStatusOnline){isStatusOnline( v.timeOut)} 
     })
 }
+/*
 const sendWebSocket = (msgString:string,func?:()=>void)=>{
     if (socket && socket.readyState === socket.OPEN ){
         //console.log(socket.CONNECTING)
@@ -102,7 +103,7 @@ const sendWebSocket = (msgString:string,func?:()=>void)=>{
         return false
         //console.log(socket.readyState,socket.OPEN,socket.CONNECTING)
     }
-}
+}*/
 const buttonClickHandle = (e:HTMLAreaElement,callback?:(e?:HTMLAreaElement)=>void)=>{
     //console.log(e.href)
     //console.log(window.location.hash)
@@ -113,12 +114,12 @@ const buttonClickHandle = (e:HTMLAreaElement,callback?:(e?:HTMLAreaElement)=>voi
             name:e.href.split("#").pop() ,
             msg: e.dataset.msg
         })
-
+/*
     if ( sendWebSocket(msgString,()=>{
         NowCallback = {e,callback}
     })){
         return
-    }
+    }*/
     /*
     //if (socket)console.log("->",socket.readyState)
     if (socket && socket.readyState === socket.OPEN ){
@@ -255,6 +256,7 @@ const initButtonList = (btn:Node)=>{
         }
     }
 } 
+/*
 const initWebSocket = ()=>{
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
     const port  = config.ws?config.ws:`:${window.location.port}`
@@ -278,11 +280,8 @@ const initWebSocket = ()=>{
                 handleChangeDB( data.dbs,NowCallback.e)
             }
             NowCallback=null
-        }
-        
-
-    });
-    
+        } 
+    }); 
     // 连接关闭时
     socket.addEventListener('close', (event) => {
         console.log('WebSocket 连接已关闭', event);
@@ -291,7 +290,7 @@ const initWebSocket = ()=>{
         socket = null
     });
 }
-
+*/
 const carInputRun = (firstBtn: Node)=>{
     if (carname.value.startsWith("#")){
         //console.log(carname.value.slice(1))
@@ -315,6 +314,7 @@ const carInputRun = (firstBtn: Node)=>{
         carname.value="" 
     } 
 }
+
 onMount(()=>{
     fetch("/ClientConfig.json").then(data=>{
         data.json().then(db=>{
@@ -355,11 +355,12 @@ onMount(()=>{
         })
     })
     //window.addEventListener("")
+    /*
     return () => {
         socket.close();
         socket=null
         //isConnWebSocket=false
-    };
+    };*/
 })
 
 </script>
