@@ -19,7 +19,8 @@
 		"svelte": "^5.45.6",
 		"svelte-check": "^4.3.4",
 		"typescript": "^5.9.3",
-		"vite": "^7.2.6"
+		"vite": "^7.2.6",
+		"dotenv": "^17.4.2"
 	},
 	"dependencies": {
 		"@sveltejs/adapter-static": "^3.0.10",
