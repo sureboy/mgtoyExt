@@ -23,6 +23,13 @@ export const stopServer = ()=>{
 };
 const initConfCallBack = (udpServer: Socket)=>{
     return (msgObj:{name:string,msg:string})=>{
+        if (msgObj.name==="local"){
+            const list = [];
+            for (const v of nameMap.entries()){
+                list.push(v[1]);
+            }
+            return list;
+        }
         const db = nameMap.get(msgObj.name);  
         if (db){
             console.log("api get",db,msgObj);
@@ -36,9 +43,9 @@ const initConfCallBack = (udpServer: Socket)=>{
                 console.error(e);
             }
             
-            
+            //return db;
         }
-        return undefined;
+        return db;
     };    
 };
 const initRun = (ser:SerConfig)=>{

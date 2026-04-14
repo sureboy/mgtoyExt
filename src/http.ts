@@ -165,10 +165,30 @@ function createHttpServer   (conf: HttpConfigType   ) {
                                     //}
                                 }); 
                             });
+                        };
+                        dataChannel.onopen = ()=>{
+                            const dbs = conf.callBack({name:"local"});
+                            console.log("open",dbs);
+                            if (dbs && Array.isArray(dbs)){
+                                dbs.forEach(v=>{
+                                    dataChannel.send(JSON.stringify(v));
+                                });
+                                
+                            }
                         };*/
                         dataChannel.onmessage = (e)=>{
-                            console.log("dc msg",e.data)
-                            conf.callBack(JSON.parse(e.data as string));
+                            console.log("dc msg",e.data);
+                            const db = conf.callBack(JSON.parse(e.data as string));
+                            if (db){
+                                if ( Array.isArray(db)){
+                                    db.forEach(v=>{
+                                        dataChannel.send(JSON.stringify(v));
+                                    });
+                                    
+                                }else{
+                                    dataChannel.send(JSON.stringify(db));
+                                }                                
+                            }
                         };
                         //conf.callBack(obj)
                         

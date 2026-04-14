@@ -36,12 +36,12 @@ const getOffer =()=> {
         }).catch(reject);
     });
 };
-async function handleOffer(
+export async function handleOffer(
     sign:signalingStruct,
     peerConnection: RTCPeerConnection,
     Answer:(Answer:signalingStruct)=>void,
-    back:(dataChannel: RTCDataChannel)=>void,
-    track:(track:RTCTrackEvent)=>void
+    backDatachannel:(dataChannel: RTCDataChannel)=>void,
+    track?:(track:RTCTrackEvent)=>void
 ) { 
     await peerConnection.setRemoteDescription(new RTCSessionDescription({sdp:sign.offer,type:"offer"}));
  
@@ -69,11 +69,12 @@ async function handleOffer(
     peerConnection.ondatachannel = (event) => {
         const dataChannel = event.channel; 
         console.log("webrtc conn ok");
-        back(dataChannel);
+        backDatachannel(dataChannel);
         //receiveChannel.onmessage = msg;
     };
     //return peerConnection;
 }
+ 
 export const connWebRTC =(track:(track:RTCTrackEvent)=>void)=>{
     return new Promise<RTCDataChannel>((resolve,reject)=>{
         getOffer().then(signaling=>{
