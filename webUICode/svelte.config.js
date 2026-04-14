@@ -1,7 +1,7 @@
 import adapterAuto from '@sveltejs/adapter-auto';
 import adapter from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
-const isStatic = process.env.NODE_ENV === 'development'; 
+const isStatic = process.env.STATIC_BUILD === 'true';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
