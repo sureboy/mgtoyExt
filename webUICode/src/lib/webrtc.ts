@@ -1,13 +1,8 @@
-const configuration = {
+import type {signalingStruct} from '$lib/utils/util';
+export const configuration = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
-type  signalingStruct = {
-  ICEList:RTCIceCandidateInit[],
-  offer?:string,
-  answer?:string,
-  backUrl?:string,
-  id:number
-}
+ 
 const pushAnswer = (answer:signalingStruct)=>{
     return new Promise<void>((resolve,reject)=>{
         fetch("/answer",{
@@ -41,7 +36,7 @@ export async function handleOffer(
     peerConnection: RTCPeerConnection,
     Answer:(Answer:signalingStruct)=>void,
     backDatachannel:(dataChannel: RTCDataChannel)=>void,
-    track?:(track:RTCTrackEvent)=>void
+    //track?:(track:RTCTrackEvent)=>void
 ) { 
     await peerConnection.setRemoteDescription(new RTCSessionDescription({sdp:sign.offer,type:"offer"}));
  
@@ -53,7 +48,7 @@ export async function handleOffer(
     console.log('本地 Answer 已创建');
 
     // 通过信令服务器发送 Answer
-    const msgAnswer:signalingStruct = {   answer: peerConnection.localDescription?.sdp,ICEList:[] ,id:sign.id}
+    const msgAnswer:signalingStruct = {   answer: answer.sdp,ICEList:[] ,id:sign.id};
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
             msgAnswer.ICEList.push (event.candidate);
@@ -63,7 +58,7 @@ export async function handleOffer(
             return;
         }
     };
-    peerConnection.ontrack =track;
+    //peerConnection.ontrack =track;
 
     // 监听 Data Channel，接收消息
     peerConnection.ondatachannel = (event) => {
@@ -75,8 +70,8 @@ export async function handleOffer(
     //return peerConnection;
 }
  
-export const connWebRTC =(track:(track:RTCTrackEvent)=>void)=>{
-    return new Promise<RTCDataChannel>((resolve,reject)=>{
+export const connWebRTC =()=>{
+    return new Promise<{dataChannel:RTCDataChannel,peerConnection:RTCPeerConnection}>((resolve,reject)=>{
         getOffer().then(signaling=>{
             const peerConnection = new RTCPeerConnection(configuration);
             handleOffer(
@@ -84,8 +79,8 @@ export const connWebRTC =(track:(track:RTCTrackEvent)=>void)=>{
                 peerConnection,(answer)=>{
                     pushAnswer(answer).catch(reject);
             },dataChannel=>{
-                resolve(dataChannel);                 
-            },track).catch(reject);
+                resolve({dataChannel,peerConnection});                 
+            }).catch(reject);
         }).catch(reject);
     }); 
 };

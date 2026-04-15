@@ -47,8 +47,8 @@ onMount(()=>{
   }
   fetch("/offer").then(res=>{
     if (res.ok) {
-      //const u = "https://mgtoy.cn#"
-      const u = "http://192.168.1.8:5173/#"
+      const u = "https://mgtoy.cn/video#"
+      //const u = "http://192.168.1.8:5173/video#"
       res.json().then(v=>{ 
         v.backUrl = window.location.href
         const link = document.createElement("a");

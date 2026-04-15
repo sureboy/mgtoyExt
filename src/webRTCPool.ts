@@ -1,5 +1,5 @@
 import { RTCPeerConnection, RTCIceServer,RTCDataChannel } from 'werift';
-import { randomUUID } from 'crypto';
+//import { randomUUID } from 'crypto';
 
 type ConnectionId = string;
 
@@ -23,7 +23,7 @@ export class ConnectionPool {
         pc: RTCPeerConnection 
     } {
         // 如果未指定ID，则自动生成一个UUID
-        const id = connectionId ?? randomUUID();
+        const id = connectionId ?? Date.now().toString(32).slice(3);
         
         // 如果该ID已存在，则先关闭并删除旧连接，避免冲突
         if (this.connections.has(id)) {

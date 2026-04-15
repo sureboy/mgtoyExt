@@ -5,7 +5,7 @@ import type {dialogStruct} from '$lib/components/Dialog.svelte'
 import { onMount } from 'svelte';
 import {handleOffer} from '$lib/webrtc';
 import ShowControl,{initDataChannel} from "$lib/ShowControl.svelte";
-//let dialog:any
+import type {signalingStruct} from '$lib/utils/util';
 const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
@@ -13,15 +13,9 @@ const dialogConfig:dialogStruct = {
     closeOnBackdrop:false,
     closeOnEsc:false,
 } ;
-type  signalingStruct = {
-  ICEList:RTCIceCandidateInit[],
-  offer?:string,
-  answer?:string,
-  backUrl?:string,
-  id:number
-}
+ 
 let localVideo:HTMLVideoElement|undefined = $state(undefined)
-let showControlUI = $state(true)
+let showControlUI = $state(false)
 async function getLocalStream() {
   // 1. 优先尝试获取摄像头
     try {
@@ -29,7 +23,7 @@ async function getLocalStream() {
         console.log('使用摄像头');
         return stream;
     } catch (error) { 
-        return undefined;
+        //return undefined;
         console.log('摄像头不可用，播放默认视频文件', error);
         try{
             localVideo.src = '/test.mp4'; // 替换为你的文件路径
@@ -60,9 +54,10 @@ onMount(() => {
                     localStream.getTracks().forEach(track => { 
                         peerConnection.addTrack(track, localStream);
                     });
-                 
                     showControlUI = false
-                }              
+                }  else{
+                    showControlUI = true
+                }            
                 handleOffer(sign,peerConnection,(answer)=>{
                     const ans = JSON.stringify(answer)
                     //console.log(ans)

@@ -1,12 +1,14 @@
 import * as http from 'http'; 
 import * as path from 'path'; 
-//import {RTCDataChannel} from 'werift';
+import {RTCDataChannel} from 'werift';
 //import * as   WebSocket  from 'ws' ;
-import { initWebRtcClient,addRemoteAnswer } from './webrtc';
+import {initWebRtcClient,addRemoteAnswer } from './webrtc';
 //import type {signalingStruct} from './webrtc';
 import * as fs from "fs";
 
 import {addrMap,nameMap} from './cache'; 
+
+const routerSignaling = new Map<string,{answerDataChannel?:RTCDataChannel,offerDataChannel:RTCDataChannel,msg:any[]}>();
 //import { buffer } from 'stream/consumers';
 export type HttpConfigType = {
     //src:string, 
@@ -139,46 +141,52 @@ function createHttpServer   (conf: HttpConfigType   ) {
         }else {
             console.log(req.method,req.url);
             if (req.method ==="GET"){
-                if (req.url==="/offer"){                  
-                    initWebRtcClient().then(({signaling,dataChannel})=>{
-                        //dataChannel.id
- /*
-                        pc.ontrack = event => {
-                            if (event.track.kind === 'video') {
-                            // 监听 RTP 包事件
-                            //event.streams
-                             const receiver = event.receiver;
-                            //event.streams[0].tracks
-                            console.log(event);
-                            receiver.on ('packet', (rtpPacket) => {
-                                console.log(rtpPacket);
-                                // 将 RTP 包序列化为 Buffer 或 JSON
-                                // 方式一：直接发送原始 RTP 包二进制（推荐，节省带宽）
-                                const packetBuffer = rtpPacket.serialize(); 
-                                defaultSerConfig.ser?.wss?.clients.forEach(ws=>{
-                                //if (ws.readyState === WebSocket.OPEN){
-                                    try{
-                                        ws.send(packetBuffer);
-                                    }catch(e){
-                                        console.error(e);
-                                    }                                        
-                                    //}
-                                }); 
-                            });
-                        };
-                        dataChannel.onopen = ()=>{
-                            const dbs = conf.callBack({name:"local"});
-                            console.log("open",dbs);
-                            if (dbs && Array.isArray(dbs)){
-                                dbs.forEach(v=>{
-                                    dataChannel.send(JSON.stringify(v));
-                                });
-                                
-                            }
-                        };*/
+                if (req.url==="/offer"){    
+                    let isSend = false;            
+                    initWebRtcClient(({signaling})=>{ 
+                        if (signaling.offer && !isSend){
+                            res.writeHead(200, { 'Content-Type': 'application/json' });  
+                            res.end(JSON.stringify(signaling));
+                            isSend=true;
+                        }
+                        
+                    }).then(({signaling,dataChannel})=>{
                         dataChannel.onmessage = (e)=>{
-                            console.log("dc msg",e.data);
-                            const db = conf.callBack(JSON.parse(e.data as string));
+                            const obj = JSON.parse(e.data as string);
+                            if (obj.id){
+                                console.log(obj);
+                                let sig=routerSignaling.get(obj.id);
+                                if (obj.set){
+                                    if (!sig ){
+                                        sig = {offerDataChannel:dataChannel,msg:[obj.msg]};
+                                        routerSignaling.set(obj.id, sig );
+                                    }else{
+                                        if (sig.answerDataChannel){
+                                            sig.answerDataChannel.send(JSON.stringify([obj.msg]));
+                                            
+                                        }else{
+                                            sig.msg.push(obj.msg);
+                                        }
+                                        
+                                    }
+                                }else if (sig){
+                                    if (!sig.answerDataChannel){
+                                        sig.answerDataChannel = dataChannel;
+                                    }
+                                    if (!obj.msg){
+                                        sig.answerDataChannel.send(JSON.stringify(sig.msg));
+                                        sig.msg=[];
+                                    }else {
+                                        sig.offerDataChannel.send(JSON.stringify(obj.msg));
+                                    }
+                                }
+                                
+                                
+                                
+                                return;
+                            }
+                            //console.log("dc msg",e.data);
+                            const db = conf.callBack(obj);
                             if (db){
                                 if ( Array.isArray(db)){
                                     db.forEach(v=>{
@@ -189,14 +197,14 @@ function createHttpServer   (conf: HttpConfigType   ) {
                                     dataChannel.send(JSON.stringify(db));
                                 }                                
                             }
-                        };
-                        //conf.callBack(obj)
-                        
-                        res.writeHead(200, { 'Content-Type': 'application/json' });  
-                        res.end(JSON.stringify(signaling));
-                    });
-                    return;
-                   
+                        }; 
+                        if (signaling.ICEList.length>0 && !isSend ){
+                            res.writeHead(200, { 'Content-Type': 'application/json' });  
+                            res.end(JSON.stringify(signaling));
+                            isSend=true;
+                        }
+                    }); 
+                    return;                   
                 }else{
                     const u =path.join(...(req.url||"").split("/"));
                     const ext = path.extname(u);
