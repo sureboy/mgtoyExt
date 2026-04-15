@@ -43,7 +43,7 @@ onMount(()=>{
                             console.log(event)
                             if (event.streams.length>0){
                                 remoteVideo.srcObject = event.streams[0];
-                                remoteVideo.autoplay = true;
+                                //remoteVideo.autoplay = true;
                             }
                             //remoteVideo.play();
                         }
@@ -71,4 +71,4 @@ onMount(()=>{
 
 <ShowControl></ShowControl>
 
-<video bind:this={remoteVideo}></video>
+<video bind:this={remoteVideo} autoplay muted></video>
