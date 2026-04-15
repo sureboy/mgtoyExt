@@ -1,6 +1,9 @@
 import type {signalingStruct} from '$lib/utils/util';
 export const configuration = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        {urls: 'stun:stun.qq.com:3478'}, 
+    ]
 };
  
 const pushAnswer = (answer:signalingStruct)=>{

@@ -14,35 +14,45 @@ onMount(()=>{
                 const db = JSON.parse(e.data)
                 console.log(db)
                 if (Array.isArray(db)){ 
-                    (async ()=>{
-                        const StreamConnection = new RTCPeerConnection(configuration);
-                        StreamConnection.oniceconnectionstatechange=(e)=>{
-                            console.log(StreamConnection.connectionState)
-                        }
+                    const StreamConnection = new RTCPeerConnection(configuration);
+                       
+                        
                         db.forEach(v=>{
                             if (v.offer){
                                 StreamConnection.setRemoteDescription(new RTCSessionDescription(v.offer))
                             }else if (v.candidate){
-                                StreamConnection.addIceCandidate(v.candidate)
+                                StreamConnection.addIceCandidate(new RTCIceCandidate(v.candidate)).then(()=>{
+                                    console.log(JSON.stringify(v.candidate))
+                                })
                             }
                         });
-                        const answer = await StreamConnection.createAnswer({ iceRestart: true });
-                        await StreamConnection.setLocalDescription(answer);
+                         StreamConnection.oniceconnectionstatechange=(e)=>{
+                            console.log(StreamConnection.connectionState)
+                        }
                         
-                        dataChannel.send(JSON.stringify({id,msg:{answer}}))
+                        
                         StreamConnection.onicecandidate = event => {
                             if (event.candidate) { 
                                 //event.candidate.toJSON()
-                                dataChannel.send(JSON.stringify({id, msg:{    candidate: event.candidate }}));
+                                dataChannel.send(JSON.stringify({id, msg:{    candidate: event.candidate.toJSON() }}));
                             }else{
                                 console.log("ICE end")
                             }
                         };
                         StreamConnection.ontrack =event=>{
                             console.log(event)
-                            remoteVideo.srcObject = event.streams[0];
-                            remoteVideo.play();
+                            if (event.streams.length>0){
+                                remoteVideo.srcObject = event.streams[0];
+                                remoteVideo.autoplay = true;
+                            }
+                            //remoteVideo.play();
                         }
+                    (async ()=>{
+                        
+                        const answer = await StreamConnection.createAnswer({ iceRestart: true });
+                        await StreamConnection.setLocalDescription(answer);
+                        dataChannel.send(JSON.stringify({id,msg:{answer}}))
+                       
                     })();
                     
                     return

@@ -4,6 +4,7 @@ import type {signalingStruct} from '$lib/utils/util'
 import {handleOffer} from '$lib/webrtc';
 import Dialog from '$lib/components/Dialog.svelte'
 import type {dialogStruct} from '$lib/components/Dialog.svelte'
+import {configuration} from '$lib/webrtc'
 const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
@@ -11,9 +12,7 @@ const dialogConfig:dialogStruct = {
     closeOnBackdrop:false,
     closeOnEsc:false,
 } ;
-const configuration = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-};
+ 
 let localVideo:HTMLVideoElement
 async function getLocalStream() { 
     try {
@@ -46,16 +45,16 @@ const startVideoPeerConn =async (localStream: MediaStream,receiveChannel: RTCDat
     const StreamConnection = new RTCPeerConnection(configuration); 
     localStream.getTracks().forEach(track => { 
         console.log(track)
-        if (track.kind==="video"){
-            StreamConnection.addTrack(track );
-        }
+        //if (track.kind==="video"){
+            StreamConnection.addTrack(track, localStream);
+        //}
         
     });  
     StreamConnection.onicecandidate = event => {
         //console.log(event)
         if (event.candidate) { 
             //event.candidate.toJSON()
-            receiveChannel.send(JSON.stringify({id,set:true,msg:{    candidate: event.candidate  }}));
+            receiveChannel.send(JSON.stringify({id,set:true,msg:{    candidate: event.candidate.toJSON()  }}));
         }else{
             console.log("ICE end")
         }
@@ -73,7 +72,9 @@ const startVideoPeerConn =async (localStream: MediaStream,receiveChannel: RTCDat
         if (db.candidate){
             console.log(`get ICE: ${db.candidate}`) 
             //await StreamConnection.setRemoteDescription(new RTCSessionDescription({sdp:sign.offer,type:"offer"}));
-            StreamConnection.addIceCandidate(db.candidate)
+            StreamConnection.addIceCandidate(new RTCIceCandidate(db.candidate)).then(()=>{
+                console.log(JSON.stringify(db.candidate))
+            })
         }else if (db.answer){
             StreamConnection.setRemoteDescription(new RTCSessionDescription(db.answer))
         }
