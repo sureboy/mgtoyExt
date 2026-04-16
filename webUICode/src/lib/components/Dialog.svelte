@@ -1,20 +1,18 @@
 <!-- Dialog.svelte -->
  <script lang="ts" module>
- export type dialogStruct =  {dialogEl?:HTMLDialogElement,title:string,closeOnBackdrop:boolean,closeOnEsc:boolean}
+ export type dialogStruct =  {
+    dialogEl?:HTMLDialogElement,
+    title:string,
+    closeOnBackdrop:boolean,
+    closeOnEsc:boolean,
+    //children?:any
+}
  
  </script>
 <script lang="ts">
   import { onMount } from 'svelte';
   const {dialogConfig,children}:{dialogConfig:dialogStruct,children?:any} = $props()
-  //  export let open = false;           // 控制弹出框显示/隐藏
-  //  export let title = '提示';          // 标题
-  //  export let closeOnBackdrop = true; // 点击遮罩是否关闭
-  //  export let closeOnEsc = true;      // 按 ESC 是否关闭
 
-    //let dialogEl:HTMLDialogElement ;
-
-  
-    // 关闭弹出框
     function closeModal() {
         //config.open = false;
         if (dialogConfig.dialogEl) dialogConfig.dialogEl.close();

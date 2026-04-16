@@ -1,6 +1,20 @@
 <script lang="ts">
-import { onMount } from 'svelte';  
-    onMount(()=>{
+import { onMount } from 'svelte';
+const {handInputText}:{handInputText?:(v:string)=>boolean} = $props()
+//export let handInputText: (v:string)=>void
+const carInputRun = (firstBtn: Node)=>{
+    if (handInputText && 
+        handInputText(carname.value)){
+        return
+    }  
+    if (carname.value.startsWith("#")){
+        console.log(carname.value.slice(1)) 
+    }else if (carname.value.length==6){   
+        initCarName(carname.value,firstBtn)                    
+        carname.value="" 
+    }    
+}  
+onMount(()=>{
     const firstBtn = tab_header.firstChild 
     carname.addEventListener("change",(e)=>{
         carInputRun(firstBtn)
@@ -84,14 +98,10 @@ const updateCarButton = (name:string,btn:HTMLAreaElement)=>{
     btn.onclick =  btnClick 
     return btn
 }
-const carInputRun = (firstBtn: Node)=>{
-    if (carname.value.startsWith("#")){
-        console.log(carname.value.slice(1)) 
-    }else if (carname.value.length==6){   
-        initCarName(carname.value,firstBtn)                    
-        carname.value="" 
-    } 
-}
+//export const handInputText = (func:(v:string)=>void)=>{
+
+//}
+
 const checkCarName = (name:string,firstBtn:Node)=>{ 
     let btn = document.getElementById(name) as HTMLAreaElement
     if (!btn){             

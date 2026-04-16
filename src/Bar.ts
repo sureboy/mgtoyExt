@@ -10,9 +10,9 @@ export const initBar = (port:number,loadIP:string  )=>{
     //}
     //const loadIP = getLocalIp();
     Bar.command="menu";
-    const ipUrl = `http://${loadIP}:${port}`;
+    const ipUrl = `http://${loadIP}:${port}/conn.html`;
     Bar.text = ipUrl;
-    const loadUrl = `http://localhost:${port}`;
+    const loadUrl = `http://localhost:${port}/control.html`;
     const menuList = [ 
         "start",
         "stop", 

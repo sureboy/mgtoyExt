@@ -14,6 +14,26 @@ const dialogConfig:dialogStruct = {
 } ;
  
 let localVideo:HTMLVideoElement
+let wakeLock = null;
+
+// 请求唤醒锁的函数
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('唤醒锁已激活，屏幕将保持常亮');
+      wakeLock.addEventListener('release', () => {
+        console.log('唤醒锁被释放');
+      });
+    } catch (err) {
+      console.error(`无法获取唤醒锁: ${err.name}, ${err.message}`);
+      
+    }
+  }else{
+    alert("您的浏览器不支持唤醒锁");
+  }
+}
+
 async function getLocalStream() { 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -118,6 +138,9 @@ onMount(() => {
                 //const p = document.createElement("p")
                 link.textContent = sign.id
                 link.href="#"
+                link.onclick = ()=>{
+                    requestWakeLock()
+                }
                 //document.getElementById("test")?.replaceChild(p,link)
                 getLocalStream().then(localStream=>{
                     
@@ -134,6 +157,12 @@ onMount(() => {
     
     }catch(e){
         console.error(e)
+    }
+
+    return ()=>{
+        if (wakeLock) {
+            wakeLock.release().then(() => wakeLock = null);
+        }
     }
 })
 </script>

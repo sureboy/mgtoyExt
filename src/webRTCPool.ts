@@ -23,7 +23,7 @@ export class ConnectionPool {
         pc: RTCPeerConnection 
     } {
         // 如果未指定ID，则自动生成一个UUID
-        const id = connectionId ?? Date.now().toString(32).slice(3);
+        const id = connectionId ?? Date.now().toString(32).slice(4);
         
         // 如果该ID已存在，则先关闭并删除旧连接，避免冲突
         if (this.connections.has(id)) {
