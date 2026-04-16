@@ -4,7 +4,7 @@ import type {signalingStruct} from '$lib/utils/util'
 import {handleOffer} from '$lib/webrtc';
 import Dialog from '$lib/components/Dialog.svelte'
 import type {dialogStruct} from '$lib/components/Dialog.svelte'
-import {configuration} from '$lib/webrtc'
+import {configuration} from '$lib/webrtc' 
 const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
@@ -15,7 +15,7 @@ const dialogConfig:dialogStruct = {
  
 let localVideo:HTMLVideoElement
 let wakeLock = null;
-
+let videoWrapper:HTMLDivElement
 // 请求唤醒锁的函数
 async function requestWakeLock() {
   if ('wakeLock' in navigator) {
@@ -34,6 +34,55 @@ async function requestWakeLock() {
   }
 }
 
+function enterFullscreen() {
+    const elem = videoWrapper;
+    const requestMethod = elem.requestFullscreen  
+    if (requestMethod) {
+        requestMethod.call(elem).then(()=>{
+            //requestWakeLock()
+        }).catch(err => {
+            console.warn(`全屏请求失败: ${err.message}`);
+            // 降级体验: 某些移动端可能被拒绝，但提示不影响使用
+            alert("无法全屏，请允许全屏权限或使用现代浏览器");
+        });
+    } else {
+        console.warn("当前浏览器不支持全屏API");
+        alert("您的浏览器不支持全屏功能");
+    }    
+}
+function isElementFullscreen() {
+    // 兼容不同浏览器的全屏元素检测
+    const fullscreenElement = document.fullscreenElement  
+    return fullscreenElement === videoWrapper;
+}
+// 退出全屏模式
+function exitFullscreen() {
+    const exitMethod = document.exitFullscreen  
+    if (exitMethod) {
+        exitMethod.call(document).catch(err => {
+            console.warn(`退出全屏失败: ${err.message}`);
+        });
+    } else {
+        console.warn("浏览器不支持退出全屏");
+    }
+
+}
+
+// 切换全屏/窗口模式 (核心自定义全屏按钮逻辑)
+function toggleFullscreen() {
+    if (isElementFullscreen()) {
+        exitFullscreen();
+         if (wakeLock) {
+            wakeLock.release().then(() => wakeLock = null);
+        }
+         
+        //videoHtml.style.display = 'none'
+    } else {
+        //videoHtml.style.display = "block"
+        enterFullscreen();
+         requestWakeLock()
+    }
+}
 async function getLocalStream() { 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -74,18 +123,31 @@ const startVideoPeerConn =async (localStream: MediaStream,receiveChannel: RTCDat
         //console.log(event)
         if (event.candidate) { 
             //event.candidate.toJSON()
-            receiveChannel.send(JSON.stringify({id,set:true,msg:{    candidate: event.candidate.toJSON()  }}));
+            receiveChannel.send(JSON.stringify({id,set:true,msg:{ id,   candidate: event.candidate.toJSON()  }}));
         }else{
             console.log("ICE end")
         }
     };  
     StreamConnection.oniceconnectionstatechange=(e)=>{
+        if (StreamConnection.connectionState === 'closed' ||
+            StreamConnection.connectionState === 'failed' ||
+            StreamConnection.connectionState==="disconnected"
+        ) {
+            StreamConnection.close();
+            link.textContent="重新连接"
+            link.href=""
+            link.onclick=()=>{
+                startVideoPeerConn(localStream,receiveChannel,id)
+            }
+    
+        }
+        //if (StreamConnection.connectionState === 'closed')
         console.log(StreamConnection.connectionState)
     }
     
     const offer = await StreamConnection.createOffer();
     await StreamConnection.setLocalDescription(offer);
-    receiveChannel.send(JSON.stringify({id,set:true,msg:{  offer }}));
+    receiveChannel.send(JSON.stringify({id,set:true,msg:{ id, offer }}));
     receiveChannel.onmessage = (event) => {
         
         const db = JSON.parse(event.data) as { candidate?:RTCIceCandidateInit,answer?:RTCSessionDescriptionInit}
@@ -98,15 +160,11 @@ const startVideoPeerConn =async (localStream: MediaStream,receiveChannel: RTCDat
         }else if (db.answer){
             StreamConnection.setRemoteDescription(new RTCSessionDescription(db.answer))
         }
-    }; 
-                         
-   
-
-    
-
+    };  
 }
+let link:HTMLAnchorElement=undefined
 onMount(() => {  
-    const link = document.createElement("a")
+    //link = document.createElement("a")
     link.target="_blank"
     link.textContent = "请求连接"
     link.rel = "opener"
@@ -138,9 +196,7 @@ onMount(() => {
                 //const p = document.createElement("p")
                 link.textContent = sign.id
                 link.href="#"
-                link.onclick = ()=>{
-                    requestWakeLock()
-                }
+       
                 //document.getElementById("test")?.replaceChild(p,link)
                 getLocalStream().then(localStream=>{
                     
@@ -167,9 +223,12 @@ onMount(() => {
 })
 </script>
 
- <Dialog {dialogConfig}   >
-    <!-- 自定义内容（带超链接） -->
-     
-     <p id="test"> </p> 
+<Dialog {dialogConfig}   > 
+  <p>  <a bind:this={link} href="/">test </a> </p>
+    <button onclick={()=>{ 
+        toggleFullscreen()
+     }}>全屏</button>
 </Dialog>
+<div class="video-wrapper" id="videoWrapper" bind:this={videoWrapper}>
 <video bind:this={localVideo}></video>
+</div>

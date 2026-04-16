@@ -36,7 +36,7 @@ onMount(()=>{
       }
       //link.href=sign.backUrl+"#"+encodeURIComponent(ans)
       document.getElementById("test")?.appendChild(link)
-      dialogConfig.dialogEl?.showModal()
+      dialogConfig.dialogEl?.show()
       link.click();
       //dialogConfig.dialogEl.showModal()
     }).catch(e=>{
@@ -47,8 +47,8 @@ onMount(()=>{
   }
   fetch("/offer").then(res=>{
     if (res.ok) {
-      //const u = "https://mgtoy.cn/video#"
-      const u = "http://192.168.1.8:5173/video#"
+      const u =document.referrer || "https://mgtoy.cn/video#"
+      //const u = "http://192.168.1.8:5173/video#"
       res.json().then(v=>{ 
         v.backUrl = window.location.href
         const link = document.createElement("a");

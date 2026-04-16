@@ -151,6 +151,7 @@ export const initDataChannel = (dc:RTCDataChannel) =>{
         if (!event.data)return;
         handleMsg(event.data)
     }
+    //return dataChannel.onmessage
 }
 const handleMsg = (data:any)=>{
     try{

@@ -14,10 +14,15 @@ const dialogConfig:dialogStruct = {
 let remoteVideo:HTMLVideoElement
 let rtcChannel: RTCDataChannel= undefined
 let videoWrapper:HTMLDivElement
-let videoHtml:HTMLDivElement
-const createRTCConn = (id:string,dataChannel: RTCDataChannel,db:{offer:any,candidate:any}[])=>{
-    const StreamConnection = new RTCPeerConnection(configuration);      
+
+//let videoHtml:HTMLDivElement
+const createRTCConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,candidate:any}[])=>{
+    const StreamConnection = new RTCPeerConnection(configuration);  
+    let id = ""    
     db.forEach(v=>{
+        if (v.id && !id){
+            id = v.id
+        }
         if (v.offer){
             StreamConnection.setRemoteDescription(new RTCSessionDescription(v.offer))
         }else if (v.candidate){
@@ -27,6 +32,13 @@ const createRTCConn = (id:string,dataChannel: RTCDataChannel,db:{offer:any,candi
         }
     });
     StreamConnection.oniceconnectionstatechange=(e)=>{
+        if (StreamConnection.connectionState === 'closed' ||
+            StreamConnection.connectionState === 'failed' ||
+            StreamConnection.connectionState==="disconnected"
+        ) {
+            StreamConnection.close()
+            exitFullscreen()
+        }
         console.log(StreamConnection.connectionState)
     }
     
@@ -43,39 +55,40 @@ const createRTCConn = (id:string,dataChannel: RTCDataChannel,db:{offer:any,candi
         console.log(event)
         if (event.streams.length>0){
             remoteVideo.srcObject = event.streams[0];
-            dialogConfig.dialogEl?.showModal()
-            //htmlplayer.style.display = "block"
-            //remoteVideo.autoplay = true;
-        }
-        //remoteVideo.play();
+            if (!dialogConfig.dialogEl?.open){
+                dialogConfig.dialogEl?.showModal() 
+            }
+        } 
     }
     (async ()=>{
-        
-        const answer = await StreamConnection.createAnswer({ iceRestart: true });
-        await StreamConnection.setLocalDescription(answer);
-        dataChannel.send(JSON.stringify({id,msg:{answer}}))
-        
+        try{
+            const answer = await StreamConnection.createAnswer({ iceRestart: true });
+            await StreamConnection.setLocalDescription(answer);
+            dataChannel.send(JSON.stringify({id,msg:{answer}}))
+        }catch(e){
+            console.log(e)
+        }
     })();
 }
-const setRemoteRTC = (id:string,dataChannel: RTCDataChannel)=>{
-    const old  = dataChannel.onmessage
+const setRemoteRTC = ( dataChannel: RTCDataChannel)=>{
+    const oldHandleMsg =dataChannel.onmessage
     dataChannel.onmessage = (e)=>{
         const db = JSON.parse(e.data)
         //console.log(db)
         if (Array.isArray(db)){ 
-            createRTCConn(id,dataChannel,db)
+            createRTCConn( dataChannel,db)
             return;
         }
-        old?.call(dataChannel,e)
+        oldHandleMsg?.call(dataChannel,e)
     }
-    dataChannel.send(JSON.stringify({id}))
+    
 }
 const handInputText =(id:string)=>{
     if (id.length!=5 || !rtcChannel){
         return false
     }
-    setRemoteRTC(id,rtcChannel)
-
+    
+    rtcChannel.send(JSON.stringify({id}))
     return true
 }
 function enterFullscreen() {
@@ -116,9 +129,9 @@ function exitFullscreen() {
 function toggleFullscreen() {
     if (isElementFullscreen()) {
         exitFullscreen();
-        videoHtml.style.display = 'none'
+        //videoHtml.style.display = 'none'
     } else {
-        videoHtml.style.display = "block"
+        //videoHtml.style.display = "block"
         enterFullscreen();
     }
 }
@@ -127,7 +140,7 @@ onMount(()=>{
     if (!document.fullscreenElement) {
         // 已退出全屏
         console.log('退出全屏');
-        videoHtml.style.display = 'none'
+        //videoHtml.style.display = 'none'
         // 在这里执行你的自定义逻辑，例如恢复按钮图标、重置UI等
     }
     });
@@ -136,14 +149,20 @@ onMount(()=>{
     //return
     connWebRTC().then(({dataChannel}) =>{
         rtcChannel = dataChannel 
+        
+        
         initDataChannel(dataChannel) 
+        setRemoteRTC( dataChannel)
     })
 })
 </script>
 
 <ShowControl {handInputText}></ShowControl>
 
-<div class="video-player" bind:this={videoHtml} style="display:none" >
+ 
+ <Dialog {dialogConfig}   >
+ 
+<div class="video-player"> 
     <div class="video-wrapper" id="videoWrapper" bind:this={videoWrapper}>
  
         <video bind:this={remoteVideo} autoplay muted>
@@ -153,16 +172,12 @@ onMount(()=>{
         <div class="controls" >
   
             <!-- 自定义全屏按钮 ⛶  (点击全屏/退出全屏) -->
-            <button  class="ctrl-btn fullscreen-btn" id="fullscreenBtn" title="全屏模式">⛶</button>
-        </div>
-    </div>
-</div>
- 
- <Dialog {dialogConfig}   >
-<div id="test">111</div>
-<button onclick={()=>{
+            <button onclick={()=>{
     toggleFullscreen()
 }}  class="ctrl-btn fullscreen-btn" id="fullscreenBtn" title="全屏模式">⛶</button>
+        </div>
+    </div>
+ </div>
 </Dialog>
 <style>
 * {
