@@ -25,6 +25,8 @@ async function requestWakeLock() {
 
 function enterFullscreen() {
     const elem = videoWrapper;
+    videoWrapper.muted=false
+    videoWrapper.play();
     //videoWrapper.style.display= "block"
     const requestMethod = elem.requestFullscreen  
     if (requestMethod) {
@@ -98,4 +100,4 @@ onMount(()=>{
     });
 })     
 </script>
-<video bind:this={videoWrapper}  loop autoplay muted ></video>
+<video bind:this={videoWrapper}  loop autoplay muted playsinline webkit-playsinline></video>

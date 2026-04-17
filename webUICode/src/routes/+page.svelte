@@ -52,6 +52,7 @@ onMount(() => {
                 //console.log("lstream",localStream)
                 //if (localStream){
                 getVideo().srcObject = localStream
+
                 const reloadHandle = ()=>{
                     link.textContent="重新连接"
                     link.href="#"
