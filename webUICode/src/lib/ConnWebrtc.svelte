@@ -43,11 +43,11 @@ import type {signalingStruct} from '$lib/utils/util'
      <h1>  <a bind:this={link}   rel="opener" target="_blank" href="/">请求连接 </a> </h1>
     {#if children}
         {@render children()}
-    {:else}
-       
+  
+    {/if}
         <button onclick={()=>{ 
         toggleFullscreen()
         }}>全屏</button>
-    {/if}
+    
 </Dialog>
 <Fullscreen></Fullscreen>

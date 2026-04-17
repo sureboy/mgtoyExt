@@ -39,7 +39,8 @@ async function getLocalStream() {
  
 //let link:HTMLAnchorElement=undefined
 
-
+//let dataChannel: RTCDataChannel 
+let Camera:HTMLButtonElement
 onMount(() => {   
     if (!window.location.hash ){
         return;
@@ -48,29 +49,26 @@ onMount(() => {
         const sign = JSON.parse(decodeURIComponent(window.location.hash.slice(1))) as signalingStruct
         location.hash = ''; 
         startConn(sign,(receiveChannel,link)=>{
-             getLocalStream().then(localStream=>{
-                //console.log("lstream",localStream)
-                //if (localStream){
-                getVideo().srcObject = localStream
-
-                const reloadHandle = ()=>{
-                    link.textContent="重新连接"
-                    link.href="#"
-                    link.target=""
-                    link.onclick=()=>{
-                        startVideoPeerConn(localStream,receiveChannel,sign.id,reloadHandle)
-                    }                            
-                }
-                startVideoPeerConn(
-                    localStream,receiveChannel,
-                    sign.id,
-                    reloadHandle
-                )
-                        
-                //}  else{
-                
-                //}            
-            })
+            //dataChannel = receiveChannel
+            Camera.onclick = ()=>{
+                getLocalStream().then(localStream=>{ 
+                    getVideo().srcObject = localStream
+                    const reloadHandle = ()=>{
+                        link.textContent="重新连接"
+                        link.href="#"
+                        link.target=""
+                        link.onclick=()=>{
+                            startVideoPeerConn(localStream,receiveChannel,sign.id,reloadHandle)
+                        }                            
+                    }
+                    startVideoPeerConn(
+                        localStream,receiveChannel,
+                        sign.id,
+                        reloadHandle
+                    )          
+                })
+            }
+            
         })
     }catch(e){console.error(e)}
  
@@ -82,5 +80,7 @@ let urltest:HTMLAnchorElement
     urltest.href =  (e.target as HTMLInputElement).value  
 }} />
 <a href="http://192.168.1.8:3000/conn.html"    bind:this={urltest} >test</a>
-<ConnWebrtc></ConnWebrtc>
+<ConnWebrtc>
+    <p><button bind:this={Camera} >Camera</button> </p>
+</ConnWebrtc>
  
