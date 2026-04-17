@@ -4,7 +4,7 @@ import type {signalingStruct} from '$lib/utils/util'
 import {handleOffer} from '$lib/webrtc';
 import Dialog from '$lib/components/Dialog.svelte'
 import type {dialogStruct} from '$lib/components/Dialog.svelte'
-import {configuration} from '$lib/webrtc' 
+import {configuration,startVideoPeerConn} from '$lib/webrtc' 
 const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
@@ -109,60 +109,10 @@ async function getLocalStream() {
         } 
     }
 }
-const startVideoPeerConn =async (localStream: MediaStream,receiveChannel: RTCDataChannel,id:string)=>{
-    
-    const StreamConnection = new RTCPeerConnection(configuration); 
-    localStream.getTracks().forEach(track => { 
-        console.log(track)
-        //if (track.kind==="video"){
-            StreamConnection.addTrack(track, localStream);
-        //}
-        
-    });  
-    StreamConnection.onicecandidate = event => {
-        //console.log(event)
-        if (event.candidate) { 
-            //event.candidate.toJSON()
-            receiveChannel.send(JSON.stringify({id,set:true,msg:{ id,   candidate: event.candidate.toJSON()  }}));
-        }else{
-            console.log("ICE end")
-        }
-    };  
-    StreamConnection.oniceconnectionstatechange=(e)=>{
-        if (StreamConnection.connectionState === 'closed' ||
-            StreamConnection.connectionState === 'failed' ||
-            StreamConnection.connectionState==="disconnected"
-        ) {
-            StreamConnection.close();
-            link.textContent="重新连接"
-            link.href=""
-            link.onclick=()=>{
-                startVideoPeerConn(localStream,receiveChannel,id)
-            }
-    
-        }
-        //if (StreamConnection.connectionState === 'closed')
-        console.log(StreamConnection.connectionState)
-    }
-    
-    const offer = await StreamConnection.createOffer();
-    await StreamConnection.setLocalDescription(offer);
-    receiveChannel.send(JSON.stringify({id,set:true,msg:{ id, offer }}));
-    receiveChannel.onmessage = (event) => {
-        
-        const db = JSON.parse(event.data) as { candidate?:RTCIceCandidateInit,answer?:RTCSessionDescriptionInit}
-        if (db.candidate){
-            console.log(`get ICE: ${db.candidate}`) 
-            //await StreamConnection.setRemoteDescription(new RTCSessionDescription({sdp:sign.offer,type:"offer"}));
-            StreamConnection.addIceCandidate(new RTCIceCandidate(db.candidate)).then(()=>{
-                console.log(JSON.stringify(db.candidate))
-            })
-        }else if (db.answer){
-            StreamConnection.setRemoteDescription(new RTCSessionDescription(db.answer))
-        }
-    };  
-}
+ 
 let link:HTMLAnchorElement=undefined
+
+
 onMount(() => {  
     //link = document.createElement("a")
     link.target="_blank"
@@ -196,13 +146,26 @@ onMount(() => {
                 //const p = document.createElement("p")
                 link.textContent = sign.id
                 link.href="#"
+                link.target=""
        
                 //document.getElementById("test")?.replaceChild(p,link)
                 getLocalStream().then(localStream=>{
                     
                     console.log("lstream",localStream)
                     if (localStream){
-                        startVideoPeerConn(localStream,receiveChannel,sign.id)
+                        const reloadHandle = ()=>{
+                            link.textContent="重新连接"
+                            link.href="#"
+                            link.target=""
+                            link.onclick=()=>{
+                                startVideoPeerConn(localStream,receiveChannel,sign.id,reloadHandle)
+                            }                            
+                        }
+                        startVideoPeerConn(
+                            localStream,receiveChannel,
+                            sign.id,
+                            reloadHandle
+                        )
                          
                     }  else{
                     

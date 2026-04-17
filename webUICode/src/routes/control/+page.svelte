@@ -165,7 +165,7 @@ onMount(()=>{
 <div class="video-player"> 
     <div class="video-wrapper" id="videoWrapper" bind:this={videoWrapper}>
  
-        <video bind:this={remoteVideo} autoplay muted>
+        <video bind:this={remoteVideo} loop autoplay muted >
             您的浏览器不支持 HTML5 视频。
         </video>
  

@@ -41,6 +41,14 @@ export async function handleOffer(
     backDatachannel:(dataChannel: RTCDataChannel)=>void,
     //track?:(track:RTCTrackEvent)=>void
 ) { 
+    peerConnection.onconnectionstatechange = ()=>{
+        if (peerConnection.connectionState === 'closed' 
+           || peerConnection.connectionState === 'failed' 
+            //|| peerConnection.connectionState==="disconnected"
+        ) {
+            peerConnection.close();
+        }
+    };
     await peerConnection.setRemoteDescription(new RTCSessionDescription({sdp:sign.offer,type:"offer"}));
  
     sign.ICEList.forEach(ice=>{
@@ -87,3 +95,61 @@ export const connWebRTC =()=>{
         }).catch(reject);
     }); 
 };
+export const startVideoPeerConn =async (
+    localStream: MediaStream,
+    receiveChannel: RTCDataChannel,
+    id:string,closeHand:()=>void)=>{
+    
+    const StreamConnection = new RTCPeerConnection(configuration); 
+    localStream.getTracks().forEach(track => { 
+        console.log(track);
+        //if (track.kind==="video"){
+            StreamConnection.addTrack(track, localStream);
+        //}
+        
+    });  
+    StreamConnection.onicecandidate = event => {
+        //console.log(event)
+        if (event.candidate) { 
+            //event.candidate.toJSON()
+            receiveChannel.send(JSON.stringify({id,set:true,msg:{ id,   candidate: event.candidate.toJSON()  }}));
+        }else{
+            console.log("ICE end");
+        }
+    };  
+    StreamConnection.oniceconnectionstatechange=(e)=>{
+        if (StreamConnection.connectionState === 'closed' ||
+            StreamConnection.connectionState === 'failed' ||
+            StreamConnection.connectionState==="disconnected"
+        ) {
+            StreamConnection.close();
+            closeHand();/*
+            link.textContent="重新连接"
+            link.href="#"
+            link.target=""
+            link.onclick=()=>{
+                startVideoPeerConn(localStream,receiveChannel,id)
+            }*/
+    
+        }
+        //if (StreamConnection.connectionState === 'closed')
+        console.log(StreamConnection.connectionState)
+    }
+    
+    const offer = await StreamConnection.createOffer();
+    await StreamConnection.setLocalDescription(offer);
+    receiveChannel.send(JSON.stringify({id,set:true,msg:{ id, offer }}));
+    receiveChannel.onmessage = (event) => {
+        
+        const db = JSON.parse(event.data) as { candidate?:RTCIceCandidateInit,answer?:RTCSessionDescriptionInit}
+        if (db.candidate){
+            console.log(`get ICE: ${db.candidate}`) 
+            //await StreamConnection.setRemoteDescription(new RTCSessionDescription({sdp:sign.offer,type:"offer"}));
+            StreamConnection.addIceCandidate(new RTCIceCandidate(db.candidate)).then(()=>{
+                console.log(JSON.stringify(db.candidate))
+            })
+        }else if (db.answer){
+            StreamConnection.setRemoteDescription(new RTCSessionDescription(db.answer))
+        }
+    };  
+}
