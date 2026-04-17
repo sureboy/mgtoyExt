@@ -60,15 +60,28 @@ export async function handleOffer(
 
     // 通过信令服务器发送 Answer
     const msgAnswer:signalingStruct = {   answer: answer.sdp,ICEList:[] ,id:sign.id};
+  
+    let isSend = false;
+    const t = setTimeout(()=>{
+        //if (!isSend){
+        Answer(msgAnswer);
+        isSend = true;
+    },5000);
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
             msgAnswer.ICEList.push (event.candidate);
-            console.log('ICE Candidate 已发送');
+            console.log('ICE Candidate 已发送',event.candidate);
         }else{ 
-            Answer(msgAnswer); 
+            if (!isSend){
+                Answer(msgAnswer); 
+                clearTimeout(t);
+            }
             return;
         }
     };
+
+   
+    
     //peerConnection.ontrack =track;
 
     // 监听 Data Channel，接收消息

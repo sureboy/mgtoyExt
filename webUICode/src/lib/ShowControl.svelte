@@ -24,6 +24,7 @@ onMount(()=>{
     });
     carname.addEventListener('keydown', function(event) {
         event.stopPropagation();
+        //console.log(event)
         if (event.code === "Enter"){
             carInputRun(firstBtn)
         }

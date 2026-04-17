@@ -18,14 +18,14 @@ async function requestWakeLock() {
         } catch (err) {
             console.error(`无法获取唤醒锁: ${err.name}, ${err.message}`);
         }
-    }else{
-        alert("您的浏览器不支持唤醒锁");
+    //}else{
+        //alert("您的浏览器不支持唤醒锁");
     }
 }
 
 function enterFullscreen() {
     const elem = videoWrapper;
-    videoWrapper.style.display= "block"
+    //videoWrapper.style.display= "block"
     const requestMethod = elem.requestFullscreen  
     if (requestMethod) {
         requestMethod.call(elem).then(()=>{
@@ -33,12 +33,15 @@ function enterFullscreen() {
         }).catch(err => {
             console.warn(`全屏请求失败: ${err.message}`);
             // 降级体验: 某些移动端可能被拒绝，但提示不影响使用
-            alert("无法全屏，请允许全屏权限或使用现代浏览器");
+            //alert("无法全屏，请允许全屏权限或使用现代浏览器");
         });
+    } else if (elem.webkitEnterFullScreen) {
+        elem.webkitEnterFullScreen();
     } else {
         console.warn("当前浏览器不支持全屏API");
-        alert("您的浏览器不支持全屏功能");
+        //alert("您的浏览器不支持全屏功能");
     }   
+    
     //requestWakeLock()
      
 }
@@ -49,7 +52,7 @@ function isElementFullscreen() {
 }
 // 退出全屏模式
 function exitFullscreen() {
-    videoWrapper.style.display= "none"
+    
     const exitMethod = document.exitFullscreen  
     if (exitMethod) {
         exitMethod.call(document).catch(err => {
@@ -58,9 +61,10 @@ function exitFullscreen() {
     } else {
         console.warn("浏览器不支持退出全屏");
     }
-    if (wakeLock) {
-        wakeLock.release().then(() => wakeLock = null);
-    }
+    //videoWrapper.style.display= "none"
+    //if (wakeLock) {
+    //    wakeLock.release().then(() => wakeLock = null);
+    //}
     //document.removeEventListener('fullscreenchange')
 
 }
@@ -94,4 +98,4 @@ onMount(()=>{
     });
 })     
 </script>
-<video bind:this={videoWrapper} style="display:none" loop autoplay muted ></video>
+<video bind:this={videoWrapper}  loop autoplay muted ></video>

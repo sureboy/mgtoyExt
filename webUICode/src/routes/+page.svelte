@@ -6,9 +6,7 @@ import {startVideoPeerConn} from '$lib/webrtc'
 import ConnWebrtc,{startConn} from '$lib/ConnWebrtc.svelte';
 import {getVideo} from '$lib/Fullscreen.svelte'
  
-let localVideoTest:HTMLVideoElement
-//let wakeLock = null;
-//let videoWrapper:HTMLDivElement
+ 
  
 async function getLocalStream() { 
     try {
@@ -20,7 +18,7 @@ async function getLocalStream() {
         console.log('摄像头不可用，播放默认视频文件', error);
         try{
             
-            const localVideo = getVideo()
+            const localVideo = document.createElement("video") 
             localVideo.src = '/test.mp4'; // 替换为你的文件路径
             localVideo.loop = true;     // 循环播放
             localVideo.muted = true;     // 必须静音，否则可能无法自动播放
@@ -84,4 +82,4 @@ let urltest:HTMLAnchorElement
 }} />
 <a href="http://192.168.1.8:3000/conn.html"    bind:this={urltest} >test</a>
 <ConnWebrtc></ConnWebrtc>
-<video bind:this={localVideoTest} loop autoplay muted ></video>
+ 
