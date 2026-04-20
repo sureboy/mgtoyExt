@@ -79,10 +79,10 @@ const getOffer = (rbackUrl?:string )=>{
      
       //const u = "http://192.168.1.8:5173/video#"
       res.json().then((v)=>{ 
-        v.backUrl = window.location.href
+        v.backUrl = window.location.origin +window.location.pathname
         
          
-        const u =rbackUrl ||   "https://mgtoy.cn/video"
+        const u =rbackUrl ||   "https://mgtoy.cn/"
         const link = document.createElement("a");
         link.href=u+"#"+encodeURIComponent(JSON.stringify(v))
         link.textContent=rbackUrl
@@ -90,7 +90,7 @@ const getOffer = (rbackUrl?:string )=>{
         dialogConfig.dialogEl?.showModal()
     
         link.click();
-         resolve()
+        resolve()
         //link.target="_blank"
         //console.log(val)
       })
@@ -103,14 +103,20 @@ const getOffer = (rbackUrl?:string )=>{
 onMount(()=>{
   if (window.location.hash){
     const hashdb = decodeURIComponent(window.location.hash.slice(1))
+    
     if (hashdb){
-      postAnswer(hashdb).then(()=>{
-        closeWindow()
-      }).catch(console.error)
+      if (hashdb.startsWith("http://")){
+        getOffer(hashdb).catch(console.error)
+      }else{
+        postAnswer(hashdb).then(()=>{
+          closeWindow()
+        }).catch(console.error)
+      }
+
       return
     }
   }
-  getOffer(document.referrer).catch(console.error)
+  //getOffer(document.referrer).catch(console.error)
   
 })
   // 或 import PlaylistPlayer from './PlaylistPlayer.svelte';

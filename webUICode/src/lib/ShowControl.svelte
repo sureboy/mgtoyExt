@@ -2,6 +2,7 @@
 import { onMount } from 'svelte';
 const {handInputText}:{handInputText?:(v:string)=>boolean} = $props()
 //export let handInputText: (v:string)=>void
+
 const carInputRun = (firstBtn: Node)=>{
     if (handInputText && 
         handInputText(carname.value)){
@@ -15,6 +16,8 @@ const carInputRun = (firstBtn: Node)=>{
     }    
 }  
 onMount(()=>{
+ 
+    
     const firstBtn = tab_header.firstChild 
     carname.addEventListener("change",(e)=>{
         carInputRun(firstBtn)
@@ -41,7 +44,7 @@ import ControlExt,{isStatusOnline} from "$lib/ControlExt.svelte"
 let tab_header:HTMLElement
 let carname:HTMLInputElement 
 let inputKey:number
-
+let datalist:HTMLDataListElement
 let dataChannel:RTCDataChannel|undefined = undefined
 type handleDB ={ url:string,name:string,uri:string,timeOut:number,isNat:boolean }
 let NowCallback:{ e:HTMLAreaElement, callback:(e?:HTMLAreaElement)=>void }= null
@@ -152,11 +155,25 @@ export const initDataChannel = (dc:RTCDataChannel) =>{
         if (!event.data)return;
         handleMsg(event.data)
     }
+    dataChannel.send(JSON.stringify({video:true}))
     //return dataChannel.onmessage
 }
 const handleMsg = (data:any)=>{
     try{
         const db = JSON.parse(data)
+        if (db.videoList){
+            /*
+            datalist.childNodes.forEach(n=>{
+                n.remove();
+            })*/
+            (db.videoList as string[]).forEach(v=>{
+                const opt = document.createElement("option")
+                opt.value = v
+                opt.text = v
+                datalist.append(opt)
+            })
+            return
+        }
         
         const db_ = dbChange( db.DB,db.Update)
         //console.log(db,db_,NowCallback) 
@@ -194,8 +211,11 @@ const initLocalBut = ()=>{
                    const value =  (e.target as HTMLInputElement).value
                    console.log(value)
                     
-                }} type="text" id="code"    placeholder="Input Code">
-            </div>
+                }}   type="text" id="code" list="videoList"   placeholder="Input Code">
+            <datalist bind:this={datalist} id="videoList">
+
+            </datalist>    
+        </div>
         </div>        
         <div   class="tab-pane"  >
             <div class="remote-control">    

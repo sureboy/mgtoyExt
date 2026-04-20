@@ -2,7 +2,7 @@
  <script lang="ts" module>
  export type dialogStruct =  {
     dialogEl?:HTMLDialogElement,
-    title:string,
+    title?:string,
     closeOnBackdrop:boolean,
     closeOnEsc:boolean,
     //children?:any

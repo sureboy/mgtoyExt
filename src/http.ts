@@ -148,11 +148,22 @@ function createHttpServer   (conf: HttpConfigType   ) {
                             res.writeHead(200, { 'Content-Type': 'application/json' });  
                             res.end(JSON.stringify(signaling));
                             isSend=true;
-                        }
-                        
+                        }                        
                     }).then(({signaling,dataChannel})=>{
                         dataChannel.onmessage = (e)=>{
                             const obj = JSON.parse(e.data as string);
+                            if (obj.video){
+                                const videoList:string[] =[];
+                                routerSignaling.forEach((v,k)=>{
+                                    videoList.push(k);
+                                });
+                                console.log("vlist",videoList,routerSignaling.size);
+                                //videoList.push("testVideo");
+                                dataChannel.send(JSON.stringify({
+                                    videoList 
+                                }));
+                                return;
+                            }
                             if (obj.id){
                                 console.log(obj);
                                 let sig=routerSignaling.get(obj.id);
@@ -179,8 +190,7 @@ function createHttpServer   (conf: HttpConfigType   ) {
                                     }else {
                                         sig.offerDataChannel.send(JSON.stringify(obj.msg));
                                     }
-                                }
-                                
+                                }                        
                                 
                                 
                                 return;

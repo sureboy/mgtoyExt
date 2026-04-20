@@ -1,53 +1,49 @@
 <script lang="ts" module> 
 import {handleOffer,configuration} from '$lib/webrtc' 
-let link:HTMLAnchorElement=undefined
-const dialogConfig:dialogStruct = {
+//let link:HTMLAnchorElement=undefined
+export const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
-    title:"SolidJScad",
+    title:"Mgtoy",
     closeOnBackdrop:false,
     closeOnEsc:false,
 } ;
 
-export const startConn = (sign:signalingStruct,conn:(dc:RTCDataChannel,link: HTMLAnchorElement)=>void)=>{
+export const startConn = (sign:signalingStruct,conn:(dc:RTCDataChannel)=>void)=>{
     const peerConnection = new RTCPeerConnection(configuration);
+    const link = document.createElement("a")
     handleOffer(sign,peerConnection,(answer)=>{
+        
         link.target="_blank"
-        link.textContent = "请求连接"
+        link.textContent = "发送answer"
         link.rel = "opener"
         link.onclick=()=>{link.textContent="..."}
         link.href=sign.backUrl+"#"+encodeURIComponent(JSON.stringify(answer))
-        document.getElementById("test")?.appendChild(link)
+        document.getElementById("conn")?.appendChild(link)
         dialogConfig.dialogEl?.showModal()
     },(receiveChannel)=>{
-        receiveChannel.onopen = (e)=>{
+        //receiveChannel.onopen = (e)=>{
             //console.log("open",e)
-            link.textContent = sign.id
-            link.href="#"
-            link.target=""
-            link.onclick=()=>{}
-            conn(receiveChannel,link)
-        }
+        document.getElementById("conn").style.display = "none"
+        conn(receiveChannel)
+        //}
     })
 }
 </script>
 <script lang="ts"> 
 import Dialog from '$lib/components/Dialog.svelte'
 import type {dialogStruct} from '$lib/components/Dialog.svelte'
-import Fullscreen,{toggleFullscreen} from '$lib/Fullscreen.svelte'
+
 import type {signalingStruct} from '$lib/utils/util'
  const {children}:{children?:any} = $props()
 
 </script>
 <Dialog {dialogConfig}   > 
-     <h1>  <a bind:this={link}   rel="opener" target="_blank" href="/">请求连接 </a> </h1>
+     <p id="conn">  </p>
     {#if children}
         {@render children()}
   
     {/if}
-        <button onclick={()=>{ 
-        toggleFullscreen()
-        }}>全屏</button>
+  
     
 </Dialog>
-<Fullscreen></Fullscreen>

@@ -95,7 +95,7 @@ export async function handleOffer(
 }
  
 export const connWebRTC =()=>{
-    return new Promise<{dataChannel:RTCDataChannel,peerConnection:RTCPeerConnection}>((resolve,reject)=>{
+    return new Promise<{dataChannel:RTCDataChannel,peerConnection:RTCPeerConnection,signaling: signalingStruct}>((resolve,reject)=>{
         getOffer().then(signaling=>{
             const peerConnection = new RTCPeerConnection(configuration);
             handleOffer(
@@ -103,7 +103,7 @@ export const connWebRTC =()=>{
                 peerConnection,(answer)=>{
                     pushAnswer(answer).catch(reject);
             },dataChannel=>{
-                resolve({dataChannel,peerConnection});                 
+                resolve({dataChannel,peerConnection,signaling});                 
             }).catch(reject);
         }).catch(reject);
     }); 
@@ -146,23 +146,80 @@ export const startVideoPeerConn =async (
     
         }
         //if (StreamConnection.connectionState === 'closed')
-        console.log(StreamConnection.connectionState)
-    }
+        console.log(StreamConnection.connectionState);
+    };
     
     const offer = await StreamConnection.createOffer();
     await StreamConnection.setLocalDescription(offer);
     receiveChannel.send(JSON.stringify({id,set:true,msg:{ id, offer }}));
     receiveChannel.onmessage = (event) => {
         
-        const db = JSON.parse(event.data) as { candidate?:RTCIceCandidateInit,answer?:RTCSessionDescriptionInit}
+        const db = JSON.parse(event.data) as { candidate?:RTCIceCandidateInit,answer?:RTCSessionDescriptionInit};
         if (db.candidate){
-            console.log(`get ICE: ${db.candidate}`) 
+            console.log(`get ICE: ${db.candidate}`) ;
             //await StreamConnection.setRemoteDescription(new RTCSessionDescription({sdp:sign.offer,type:"offer"}));
             StreamConnection.addIceCandidate(new RTCIceCandidate(db.candidate)).then(()=>{
-                console.log(JSON.stringify(db.candidate))
-            })
+                console.log(JSON.stringify(db.candidate));
+            });
         }else if (db.answer){
-            StreamConnection.setRemoteDescription(new RTCSessionDescription(db.answer))
+            StreamConnection.setRemoteDescription(new RTCSessionDescription(db.answer));
         }
     };  
-}
+};
+
+export const createRTCTrackConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,candidate:any}[],ontrack:(event: RTCTrackEvent)=>void)=>{
+    const StreamConnection = new RTCPeerConnection(configuration);  
+    let id = ""  ;  
+    db.forEach(v=>{
+        if (v.id && !id){
+            id = v.id;
+        }
+        if (v.offer){
+            StreamConnection.setRemoteDescription(new RTCSessionDescription(v.offer));
+        }else if (v.candidate){
+            StreamConnection.addIceCandidate(new RTCIceCandidate(v.candidate)).then(()=>{
+                console.log(JSON.stringify(v.candidate));
+            });
+        }
+    });
+    StreamConnection.oniceconnectionstatechange=(e)=>{
+        if (StreamConnection.connectionState === 'closed' 
+            || StreamConnection.connectionState === 'failed' 
+            //|| StreamConnection.connectionState==="disconnected"
+        ) {
+            StreamConnection.close();
+            //exitFullscreen()
+        }
+        console.log(StreamConnection.connectionState);
+    };
+    
+    
+    StreamConnection.onicecandidate = event => {
+        if (event.candidate) { 
+            //event.candidate.toJSON()
+            dataChannel.send(JSON.stringify({id, msg:{    candidate: event.candidate.toJSON() }}));
+        }else{
+            console.log("ICE end");
+        }
+    };
+    StreamConnection.ontrack =ontrack;
+    /* event=>{
+        console.log(event)
+        if (event.streams.length>0){
+            document.getElementById("video").style.display=""
+            getVideo().srcObject = event.streams[0];
+            if (!dialogConfig.dialogEl?.open){
+                dialogConfig.dialogEl?.showModal() 
+            }
+        } 
+    }*/
+    (async ()=>{
+        try{
+            const answer = await StreamConnection.createAnswer({ iceRestart: true });
+            await StreamConnection.setLocalDescription(answer);
+            dataChannel.send(JSON.stringify({id,msg:{answer}}));
+        }catch(e){
+            console.log(e);
+        }
+    })();
+};

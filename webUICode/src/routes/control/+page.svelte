@@ -4,10 +4,11 @@ import { onMount } from 'svelte';
 import {connWebRTC,configuration} from '$lib/webrtc' 
 import Dialog from '$lib/components/Dialog.svelte'
 import type {dialogStruct} from '$lib/components/Dialog.svelte'
+import ConnWebrtc,{startConn} from '$lib/ConnWebrtc.svelte';
 const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
-    title:"MGToy",
+    //title:"MGToy",
     closeOnBackdrop:false,
     closeOnEsc:false,
 } ;
@@ -32,9 +33,9 @@ const createRTCConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,cand
         }
     });
     StreamConnection.oniceconnectionstatechange=(e)=>{
-        if (StreamConnection.connectionState === 'closed' ||
-            StreamConnection.connectionState === 'failed' ||
-            StreamConnection.connectionState==="disconnected"
+        if (StreamConnection.connectionState === 'closed' 
+            || StreamConnection.connectionState === 'failed' 
+            || StreamConnection.connectionState==="disconnected"
         ) {
             StreamConnection.close()
             exitFullscreen()
@@ -129,8 +130,11 @@ function exitFullscreen() {
 function toggleFullscreen() {
     if (isElementFullscreen()) {
         exitFullscreen();
+        videoWrapper.style.objectFit = 'cover';
+
         //videoHtml.style.display = 'none'
     } else {
+         videoWrapper.style.objectFit = 'contain';
         //videoHtml.style.display = "block"
         enterFullscreen();
     }
@@ -215,6 +219,7 @@ video {
     display: block;
     cursor: pointer;
     outline: none;
+     object-fit: contain;  
 }
 
 /* ========= 自定义控制栏 ========= */

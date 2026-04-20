@@ -1,6 +1,6 @@
 //import {Bonjour} from "bonjour-service";
 import mdns from 'multicast-dns';
-import type {ResponseOutgoingPacket} from 'multicast-dns'
+import type {ResponseOutgoingPacket} from 'multicast-dns';
 import bonjour from 'bonjour-hap';
 import dgram  from 'dgram';
 import dnsPacket from 'dns-packet';
@@ -10,9 +10,9 @@ export const initUDPServer = (SERVICE_PORT:number,LOCAL_IP:string,host:string)=>
     const MDNS_PORT = 5353;
 
     const server = dgram.createSocket({
-  type: 'udp4',
-  reuseAddr: true
-});
+        type: 'udp4',
+        reuseAddr: true
+    });
     //console.log("5353")
     server.on('message', (msg, rinfo) => {
         try {

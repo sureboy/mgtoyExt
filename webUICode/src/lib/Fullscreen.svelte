@@ -13,8 +13,8 @@ async function requestWakeLock() {
             wakeLock = await navigator.wakeLock.request('screen');
             console.log('唤醒锁已激活，屏幕将保持常亮');
             wakeLock.addEventListener('release', () => {
-            console.log('唤醒锁被释放');
-        });
+                console.log('唤醒锁被释放');
+            });
         } catch (err) {
             console.error(`无法获取唤醒锁: ${err.name}, ${err.message}`);
         }
@@ -74,13 +74,14 @@ function exitFullscreen() {
 // 切换全屏/窗口模式 (核心自定义全屏按钮逻辑)
 export function toggleFullscreen() {
     if (isElementFullscreen()) {
+        videoWrapper.style.objectFit = 'cover';
         exitFullscreen();
 
-         
+        
         //videoHtml.style.display = 'none'
     } else {
         //videoHtml.style.display = "block"
-        
+         videoWrapper.style.objectFit = 'contain';
         enterFullscreen();
          
     }
