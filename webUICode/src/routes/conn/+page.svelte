@@ -105,7 +105,7 @@ onMount(()=>{
     const hashdb = decodeURIComponent(window.location.hash.slice(1))
     
     if (hashdb){
-      if (hashdb.startsWith("http://")){
+      if (hashdb.startsWith("http")){
         getOffer(hashdb).catch(console.error)
       }else{
         postAnswer(hashdb).then(()=>{

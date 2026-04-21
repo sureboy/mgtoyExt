@@ -2,7 +2,7 @@
 let videoWrapper:HTMLVideoElement
 let wakeLock = null;
 export const getVideo = ()=>{
-    videoWrapper.style.display= "block"
+    //videoWrapper.style.display= ""
     return videoWrapper
 }
 // 请求唤醒锁的函数
@@ -25,8 +25,8 @@ async function requestWakeLock() {
 
 function enterFullscreen() {
     const elem = videoWrapper;
-    videoWrapper.muted=false
-    videoWrapper.play();
+    //videoWrapper.muted=false
+    //videoWrapper.play();
     //videoWrapper.style.display= "block"
     const requestMethod = elem.requestFullscreen  
     if (requestMethod) {
@@ -101,4 +101,4 @@ onMount(()=>{
     });
 })     
 </script>
-<video bind:this={videoWrapper}  loop autoplay muted playsinline webkit-playsinline></video>
+<video bind:this={videoWrapper}  loop autoplay muted controls playsinline webkit-playsinline></video>

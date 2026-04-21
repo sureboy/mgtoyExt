@@ -1,14 +1,14 @@
 import * as http from 'http'; 
 import * as path from 'path'; 
-import {RTCDataChannel} from 'werift';
+//import {RTCDataChannel} from 'werift';
 //import * as   WebSocket  from 'ws' ;
-import {initWebRtcClient,addRemoteAnswer } from './webrtc';
+import {initWebRtcClient,addRemoteAnswer,webRtcRouterHandle } from './webrtc';
 //import type {signalingStruct} from './webrtc';
 import * as fs from "fs";
 
 import {addrMap,nameMap} from './cache'; 
 
-const routerSignaling = new Map<string,{answerDataChannel?:RTCDataChannel,offerDataChannel:RTCDataChannel,msg:any[]}>();
+//const routerSignaling = new Map<string,{answerDataChannel?:RTCDataChannel,offerDataChannel:RTCDataChannel,msg:any[]}>();
 //import { buffer } from 'stream/consumers';
 export type HttpConfigType = {
     //src:string, 
@@ -152,50 +152,9 @@ function createHttpServer   (conf: HttpConfigType   ) {
                     }).then(({signaling,dataChannel})=>{
                         dataChannel.onmessage = (e)=>{
                             const obj = JSON.parse(e.data as string);
-                            if (obj.video){
-                                const videoList:string[] =[];
-                                routerSignaling.forEach((v,k)=>{
-                                    videoList.push(k);
-                                });
-                                console.log("vlist",videoList,routerSignaling.size);
-                                //videoList.push("testVideo");
-                                dataChannel.send(JSON.stringify({
-                                    videoList 
-                                }));
+                            if (webRtcRouterHandle(obj,dataChannel)){ 
                                 return;
-                            }
-                            if (obj.id){
-                                console.log(obj);
-                                let sig=routerSignaling.get(obj.id);
-                                if (obj.set){
-                                    if (!sig ){
-                                        sig = {offerDataChannel:dataChannel,msg:[obj.msg]};
-                                        routerSignaling.set(obj.id, sig );
-                                    }else{
-                                        if (sig.answerDataChannel){
-                                            sig.answerDataChannel.send(JSON.stringify([obj.msg]));
-                                            
-                                        }else{
-                                            sig.msg.push(obj.msg);
-                                        }
-                                        
-                                    }
-                                }else if (sig){
-                                    if (!sig.answerDataChannel){
-                                        sig.answerDataChannel = dataChannel;
-                                    }
-                                    if (!obj.msg){
-                                        sig.answerDataChannel.send(JSON.stringify(sig.msg));
-                                        sig.msg=[];
-                                    }else {
-                                        sig.offerDataChannel.send(JSON.stringify(obj.msg));
-                                    }
-                                }                        
-                                
-                                
-                                return;
-                            }
-                            //console.log("dc msg",e.data);
+                            } 
                             const db = conf.callBack(obj);
                             if (db){
                                 if ( Array.isArray(db)){
@@ -245,7 +204,7 @@ function createHttpServer   (conf: HttpConfigType   ) {
                      case "/answer":
                         //console.log("post answer");
                         getBody(obj =>{
-                            console.log(obj);
+                            //console.log(obj);
                             res.writeHead(200, { 'Content-Type': 'application/json' });  
                             res.end(JSON.stringify({}));
                             //webrtcChannelMap.get((obj as signalingStruct).id)

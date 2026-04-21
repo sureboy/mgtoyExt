@@ -6,13 +6,13 @@ import {startVideoPeerConn,connWebRTC,createRTCTrackConn} from '$lib/webrtc'
 import ConnWebrtc,{startConn,dialogConfig} from '$lib/ConnWebrtc.svelte';
 //import {getVideo} from '$lib/Fullscreen.svelte'
 import ShowControl,{initDataChannel} from "$lib/ShowControl.svelte";
-import Fullscreen,{getVideo,toggleFullscreen} from '$lib/Fullscreen.svelte'
+import VideoScreen,{getVideo,toggleFullscreen} from '$lib/Fullscreen.svelte'
  
 async function getLocalStream() { 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: true,
-            //audio:true 
+            audio:true 
         });
         console.log('使用摄像头');
         return stream;
@@ -47,16 +47,22 @@ async function getLocalStream() {
 let dataChannel: RTCDataChannel 
 //let Camera:HTMLButtonElement
 const createRTCConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,candidate:any}[])=>{
-
-    createRTCTrackConn(dataChannel,db,(event)=>{
-         console.log(event)
-        if (event.streams.length>0){
-            document.getElementById("video").style.display=""
-            getVideo().srcObject = event.streams[0];
-            if (!dialogConfig.dialogEl?.open){
-                dialogConfig.dialogEl?.showModal() 
-            }
-        } 
+    let finalStream = new MediaStream();
+    const videoPlay =  getVideo()
+    dialogConfig.dialogEl?.showModal() 
+    const Camera = (document.getElementById("camera").firstChild as HTMLButtonElement)
+    Camera.textContent="⛶"
+    Camera.onclick=()=>{
+        videoPlay.muted = false
+        videoPlay.play()
+        toggleFullscreen();
+    }  
+    document.getElementById("video").style.display=""
+    videoPlay.srcObject = finalStream;
+    //videoPlay.muted = true
+    //videoPlay.play()
+    createRTCTrackConn(dataChannel,db,(event)=>{ 
+        finalStream.addTrack(event.track) 
     })
    
 }
@@ -86,12 +92,19 @@ const initCameraClick = (receiveChannel: RTCDataChannel,id:string)=>{
     dataChannel = receiveChannel
     setRemoteRTC( dataChannel)
     const Camera = document.createElement("button")
+    const init = document.getElementById("init")
+    init.childNodes.forEach(v=>{
+        v.remove()
+    })
+    document.getElementById("camera").append(Camera)
     Camera.textContent="开启摄像头"
     Camera.onclick = ()=>{
         getLocalStream().then(localStream=>{ 
-            document.getElementById("video").style.display="inline"
-            getVideo().srcObject = localStream
+            document.getElementById("video").style.display=""
+            const videoP = getVideo()
+            videoP.srcObject = localStream
             const link = document.createElement("a")
+            link.textContent=id
             const reloadHandle = ()=>{
                 link.textContent="重新连接"
                 link.href="#"
@@ -106,25 +119,21 @@ const initCameraClick = (receiveChannel: RTCDataChannel,id:string)=>{
                 id,
                 reloadHandle
             )   
-            Camera.textContent="[]"
+            Camera.textContent="⛶"
             Camera.onclick=()=>{
+                videoP.muted = false
+                videoP.play()
                 toggleFullscreen();
             }       
         })
     } 
-    const init = document.getElementById("conn")
-    init.childNodes.forEach(v=>{
-        v.remove()
-    })
-    document.getElementById("camera").append(Camera)
+
 }
-onMount(() => {   
- 
+onMount(() => {    
     try{
         const sign = JSON.parse(decodeURIComponent(window.location.hash.slice(1))) as signalingStruct
         location.hash = ''; 
-        startConn(sign,(receiveChannel)=>{
-
+        startConn(sign,(receiveChannel)=>{ 
             initCameraClick(receiveChannel,sign.id)  
         })
     }catch(e){
@@ -146,18 +155,13 @@ onMount(() => {
             connButton.textContent="获取offer"
             document.getElementById("init").after(connUrl,connButton)
             //connButton.style.display="none"
-        })
-        //console.error(e)
-    }
- 
-})
- 
+        }) 
+    } 
+}) 
 </script>
- 
-
 <ShowControl {handInputText}></ShowControl>
 <ConnWebrtc>
     <p id="init">   </p>
     <p id="camera"> </p>
-    <p id="video" style="display:none"><Fullscreen></Fullscreen></p>
+    <p id="video" style="display:none"><VideoScreen></VideoScreen></p>
 </ConnWebrtc>

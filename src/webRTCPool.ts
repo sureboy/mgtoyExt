@@ -8,6 +8,7 @@ type ConnectionId = string;
 export class ConnectionPool {
     // 核心存储：用一个Map来管理所有连接
     private connections: Map<ConnectionId, RTCPeerConnection> = new Map();
+    //private connectionsTime: Map<ConnectionId, number> = new Map();
     private iceServers: RTCIceServer[];
 
     constructor(iceServers: RTCIceServer[] = [
@@ -42,8 +43,10 @@ export class ConnectionPool {
 
         // 可选：监听连接关闭事件，以便从池中自动移除
         pc.onconnectionstatechange = () => {
+            console.log(pc.connectionState);
             if (pc.connectionState === 'closed' || pc.connectionState === 'failed') {
                 this.closeConnection(id);
+
             }
         };
         pc.oniceconnectionstatechange = () => console.log(`❄️ ICE 状态: ${pc.iceConnectionState}`);

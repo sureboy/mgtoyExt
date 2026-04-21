@@ -3,6 +3,8 @@ import {ConnectionPool} from './webRTCPool';
 //import readline from 'readline';
 //import {stringToBase64Url} from './strToJson';
 const pool = new ConnectionPool();
+const routerSignaling = new Map<string,{answerDataChannel?:RTCDataChannel,offerDataChannel:RTCDataChannel,msg:any[]}>();
+
 export type  signalingStruct = {
   ICEList:{
     candidate: string;
@@ -65,7 +67,63 @@ export const addRemoteAnswer =async (signaling:signalingStruct  ) =>{
   }
   
 };
- 
+
+const webRtcVideoList = (dataChannel: RTCDataChannel)=>{
+  const videoList:string[] =[];
+  routerSignaling.forEach((v,k)=>{
+    if (!v.answerDataChannel){
+        videoList.push(k);
+    }      
+  });
+  console.log("vlist",videoList,routerSignaling.size);
+  //videoList.push("testVideo");
+  dataChannel.send(JSON.stringify({
+    videoList 
+  }));
+     // return true;
+};
+const webrtcHeartbeat = (obj:any,dataChannel: RTCDataChannel,key:string)=>{
+  if (obj.heartbeat){
+
+  }
+}
+export const webRtcRouterHandle = (obj:any,dataChannel: RTCDataChannel) =>{
+  if (obj.video){
+    webRtcVideoList(dataChannel);
+    return true;
+  }
+  if (obj.id){
+      //console.log(obj);
+      let sig=routerSignaling.get(obj.id);
+      if (obj.set){
+          if (!sig ){
+              sig = {offerDataChannel:dataChannel,msg:[obj.msg]};
+              routerSignaling.set(obj.id, sig );
+          }else{
+              if (sig.answerDataChannel){
+                  sig.answerDataChannel.send(JSON.stringify([obj.msg]));
+                  
+              }else{
+                  sig.msg.push(obj.msg);
+              }              
+          }
+      }else if (sig){
+          if (!sig.answerDataChannel){
+              sig.answerDataChannel = dataChannel;
+          }
+          if (!obj.msg){
+              sig.answerDataChannel.send(JSON.stringify(sig.msg));
+              sig.msg=[];
+          }else {
+              sig.offerDataChannel.send(JSON.stringify(obj.msg));
+          }
+      }                        
+      
+      
+      return true;
+  }
+  return false;
+};
 
   
 
