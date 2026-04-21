@@ -148,6 +148,7 @@ const handleChangeDB = (dbs:handleDB[],e: HTMLAreaElement)=>{
         if (isStatusOnline){isStatusOnline( v.timeOut)} 
     })
 }
+
 export const initDataChannel = (dc:RTCDataChannel) =>{
     initLocalBut()
     dataChannel = dc;
@@ -162,10 +163,8 @@ const handleMsg = (data:any)=>{
     try{
         const db = JSON.parse(data)
         if (db.videoList){
-            /*
-            datalist.childNodes.forEach(n=>{
-                n.remove();
-            })*/
+             
+            datalist.innerHTML = ''; 
             (db.videoList as string[]).forEach(v=>{
                 const opt = document.createElement("option")
                 opt.value = v
@@ -207,7 +206,9 @@ const initLocalBut = ()=>{
     <div class="tab-content" id="tab_content">
         <div   class="tab-pane active">
             <div class="form-group"> 
-                <input bind:this={carname} onchange={(e)=>{
+                <input bind:this={carname} onfocus={()=>{
+                    dataChannel.send(JSON.stringify({video:true}))
+                }} onchange={(e)=>{
                    const value =  (e.target as HTMLInputElement).value
                    console.log(value)
                     

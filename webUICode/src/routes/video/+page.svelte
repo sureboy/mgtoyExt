@@ -4,7 +4,7 @@ import type {signalingStruct} from '$lib/utils/util'
 import {handleOffer} from '$lib/webrtc';
 import Dialog from '$lib/components/Dialog.svelte'
 import type {dialogStruct} from '$lib/components/Dialog.svelte'
-import {configuration,startVideoPeerConn} from '$lib/webrtc' 
+import {configuration,createRTCTrackOffer} from '$lib/webrtc' 
 const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
@@ -158,10 +158,10 @@ onMount(() => {
                             link.href="#"
                             link.target=""
                             link.onclick=()=>{
-                                startVideoPeerConn(localStream,receiveChannel,sign.id,reloadHandle)
+                                createRTCTrackOffer(localStream,receiveChannel,sign.id,reloadHandle)
                             }                            
                         }
-                        startVideoPeerConn(
+                        createRTCTrackOffer(
                             localStream,receiveChannel,
                             sign.id,
                             reloadHandle

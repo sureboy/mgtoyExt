@@ -2,7 +2,7 @@
 import { onMount } from 'svelte';
 import type {signalingStruct} from '$lib/utils/util'
  
-import {startVideoPeerConn,connWebRTC,createRTCTrackConn} from '$lib/webrtc' 
+import {createRTCTrackAnswer ,connWebRTC,createRTCTrackOffer } from '$lib/webrtc' 
 import ConnWebrtc,{startConn,dialogConfig} from '$lib/ConnWebrtc.svelte';
 //import {getVideo} from '$lib/Fullscreen.svelte'
 import ShowControl,{initDataChannel} from "$lib/ShowControl.svelte";
@@ -12,7 +12,11 @@ async function getLocalStream() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: true,
-            audio:true 
+            audio:{
+        echoCancellation: true,   // 开启回声消除
+        noiseSuppression: true,   // 建议同时开启降噪
+        autoGainControl: true     // 建议同时开启自动增益
+    }, 
         });
         console.log('使用摄像头');
         return stream;
@@ -57,12 +61,15 @@ const createRTCConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,cand
         videoPlay.play()
         toggleFullscreen();
     }  
+    //finalStream
     document.getElementById("video").style.display=""
     videoPlay.srcObject = finalStream;
     //videoPlay.muted = true
     //videoPlay.play()
-    createRTCTrackConn(dataChannel,db,(event)=>{ 
+    createRTCTrackAnswer(dataChannel,db,(event)=>{ 
         finalStream.addTrack(event.track) 
+    },(dc)=>{
+        
     })
    
 }
@@ -104,25 +111,29 @@ const initCameraClick = (receiveChannel: RTCDataChannel,id:string)=>{
             const videoP = getVideo()
             videoP.srcObject = localStream
             const link = document.createElement("a")
-            link.textContent=id
+            //link.textContent=id
             const reloadHandle = ()=>{
                 link.textContent="重新连接"
                 link.href="#"
                 link.target=""
                 link.onclick=()=>{
-                    startVideoPeerConn(localStream,receiveChannel,id,reloadHandle)
+                    createRTCTrackOffer(localStream,receiveChannel,id,reloadHandle).then(()=>{
+                        link.textContent=id
+                    })
                 }                            
             }
             init.append(link)
-            startVideoPeerConn(
+            createRTCTrackOffer(
                 localStream,receiveChannel,
                 id,
                 reloadHandle
-            )   
+            ).then(()=>{
+                        link.textContent=id
+                    })   
             Camera.textContent="⛶"
             Camera.onclick=()=>{
-                videoP.muted = false
-                videoP.play()
+                //videoP.muted = false
+                //videoP.play()
                 toggleFullscreen();
             }       
         })
@@ -153,7 +164,7 @@ onMount(() => {
             const connButton = document.createElement("a")
             connButton.href = connUrl.value + "#"+encodeURIComponent(window.location.origin)
             connButton.textContent="获取offer"
-            document.getElementById("init").after(connUrl,connButton)
+            document.getElementById("init").append(connUrl,connButton)
             //connButton.style.display="none"
         }) 
     } 

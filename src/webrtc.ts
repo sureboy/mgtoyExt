@@ -34,7 +34,7 @@ function setupDataChannel(dc:RTCDataChannel,id:string) {
 }
 export const initWebRtcClient =async (back:(msg:{dataChannel: RTCDataChannel,signaling: signalingStruct,pc: RTCPeerConnection})=>void)=>{ 
   const {id,pc} = pool.createConnection();
-  const dataChannel = pc.createDataChannel('chat');
+  const dataChannel = pc.createDataChannel('chat',{ordered:false,protocol:"json"});
 
   const signaling:signalingStruct = {ICEList:[],id };
   pc.onicecandidate = (e) => {
@@ -72,21 +72,17 @@ const webRtcVideoList = (dataChannel: RTCDataChannel)=>{
   const videoList:string[] =[];
   routerSignaling.forEach((v,k)=>{
     if (!v.answerDataChannel){
-        videoList.push(k);
+      videoList.push(k);
     }      
   });
   console.log("vlist",videoList,routerSignaling.size);
   //videoList.push("testVideo");
+  //dataChannel.
   dataChannel.send(JSON.stringify({
     videoList 
   }));
      // return true;
 };
-const webrtcHeartbeat = (obj:any,dataChannel: RTCDataChannel,key:string)=>{
-  if (obj.heartbeat){
-
-  }
-}
 export const webRtcRouterHandle = (obj:any,dataChannel: RTCDataChannel) =>{
   if (obj.video){
     webRtcVideoList(dataChannel);
@@ -96,8 +92,8 @@ export const webRtcRouterHandle = (obj:any,dataChannel: RTCDataChannel) =>{
       //console.log(obj);
       let sig=routerSignaling.get(obj.id);
       if (obj.set){
-          if (!sig ){
-              sig = {offerDataChannel:dataChannel,msg:[obj.msg]};
+          if (!sig || !obj.msg ){
+              sig = {offerDataChannel:dataChannel,msg:(obj.msg?[obj.msg]:[])};
               routerSignaling.set(obj.id, sig );
           }else{
               if (sig.answerDataChannel){

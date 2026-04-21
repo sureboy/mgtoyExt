@@ -108,19 +108,42 @@ export const connWebRTC =()=>{
         }).catch(reject);
     }); 
 };
-export const startVideoPeerConn =async (
+export const createRTCTrackOffer =async (
     localStream: MediaStream,
     receiveChannel: RTCDataChannel,
     id:string,closeHand:()=>void)=>{
     
     const StreamConnection = new RTCPeerConnection(configuration); 
+    receiveChannel.send(JSON.stringify({id,set:true}));
     localStream.getTracks().forEach(track => { 
         console.log(track);
         //if (track.kind==="video"){
-            StreamConnection.addTrack(track, localStream);
-        //}
-        
+        StreamConnection.addTrack(track, localStream);
+        //}        
     });  
+    const dataChannel = StreamConnection.createDataChannel('chat',{ordered:false});
+    let heartbeat = 0;
+    dataChannel.onopen = e=>{
+        heartbeat = performance.now();
+        dataChannel.send(JSON.stringify({heartbeat}));
+        const timeout = setInterval(()=>{
+            if (performance.now()-heartbeat >10000){
+                clearInterval(timeout);
+                StreamConnection.close();
+                console.log("time Out");
+                closeHand();
+            }else{
+                dataChannel.send(JSON.stringify({heartbeat}));
+            }
+        },3000);
+    };
+    dataChannel.onmessage = e=>{
+        console.log(e.data);
+        const obj = JSON.parse(e.data);
+        if (obj.heartbeat){
+            heartbeat = performance.now();
+        }
+    };
     StreamConnection.onicecandidate = event => {
         //console.log(event)
         if (event.candidate) { 
@@ -131,11 +154,12 @@ export const startVideoPeerConn =async (
         }
     };  
     StreamConnection.oniceconnectionstatechange=(e)=>{
-        if (StreamConnection.connectionState === 'closed' ||
-            StreamConnection.connectionState === 'failed' ||
-            StreamConnection.connectionState==="disconnected"
+        if (StreamConnection.connectionState === 'closed' 
+          ||  StreamConnection.connectionState === 'failed' 
+        //  ||  StreamConnection.connectionState==="disconnected"
         ) {
             StreamConnection.close();
+            
             closeHand();/*
             link.textContent="重新连接"
             link.href="#"
@@ -165,9 +189,13 @@ export const startVideoPeerConn =async (
             StreamConnection.setRemoteDescription(new RTCSessionDescription(db.answer));
         }
     };  
+    //return dataChannel;
 };
 
-export const createRTCTrackConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,candidate:any}[],ontrack:(event: RTCTrackEvent)=>void)=>{
+export const createRTCTrackAnswer = ( 
+    dataChannel: RTCDataChannel,
+    db:{id:string,offer:any,candidate:any}[],
+    ontrack:(event: RTCTrackEvent)=>void,datachannel:(channel: RTCDataChannel)=>void)=>{
     const StreamConnection = new RTCPeerConnection(configuration);  
     let id = ""  ;  
     db.forEach(v=>{
@@ -189,10 +217,22 @@ export const createRTCTrackConn = ( dataChannel: RTCDataChannel,db:{id:string,of
         ) {
             StreamConnection.close();
             //exitFullscreen()
+            //closeHand();
         }
         console.log(StreamConnection.connectionState);
     };
-    
+    let heartbeat = 0;
+    StreamConnection.ondatachannel = (event) => {
+        event.channel.onmessage = e=>{
+            console.log(e.data);
+            const obj = JSON.parse(e.data);
+            if (obj.heartbeat){
+                heartbeat = obj.heartbeat;
+                event.channel.send(e.data);
+            }
+        };
+        datachannel(event.channel);
+    };
     
     StreamConnection.onicecandidate = event => {
         if (event.candidate) { 
