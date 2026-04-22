@@ -3,7 +3,6 @@ import {ConnectionPool} from './webRTCPool';
 //import readline from 'readline';
 //import {stringToBase64Url} from './strToJson';
 const pool = new ConnectionPool();
-const routerSignaling = new Map<string,{answerDataChannel?:RTCDataChannel,offerDataChannel:RTCDataChannel,msg:any[]}>();
 
 export type  signalingStruct = {
   ICEList:{
@@ -70,12 +69,12 @@ export const addRemoteAnswer =async (signaling:signalingStruct  ) =>{
 
 const webRtcVideoList = (dataChannel: RTCDataChannel)=>{
   const videoList:string[] =[];
-  routerSignaling.forEach((v,k)=>{
+  pool.routerSignaling.forEach((v,k)=>{
     if (!v.answerDataChannel){
       videoList.push(k);
     }      
   });
-  console.log("vlist",videoList,routerSignaling.size);
+  console.log("vlist",videoList,pool.routerSignaling.size);
   //videoList.push("testVideo");
   //dataChannel.
   dataChannel.send(JSON.stringify({
@@ -90,11 +89,11 @@ export const webRtcRouterHandle = (obj:any,dataChannel: RTCDataChannel) =>{
   }
   if (obj.id){
       //console.log(obj);
-      let sig=routerSignaling.get(obj.id);
+      let sig=pool.routerSignaling.get(obj.id);
       if (obj.set){
           if (!sig || !obj.msg ){
               sig = {offerDataChannel:dataChannel,msg:(obj.msg?[obj.msg]:[])};
-              routerSignaling.set(obj.id, sig );
+              pool.routerSignaling.set(obj.id, sig );
           }else{
               if (sig.answerDataChannel){
                   sig.answerDataChannel.send(JSON.stringify([obj.msg]));

@@ -5,6 +5,7 @@
     title?:string,
     closeOnBackdrop:boolean,
     closeOnEsc:boolean,
+    closeHandle?:()=>void
     //children?:any
 }
  
@@ -14,6 +15,8 @@
   const {dialogConfig,children}:{dialogConfig:dialogStruct,children?:any} = $props()
 
     function closeModal() {
+        console.log(dialogConfig)
+        if (dialogConfig.closeHandle)dialogConfig.closeHandle();
         //config.open = false;
         if (dialogConfig.dialogEl) dialogConfig.dialogEl.close();
     }

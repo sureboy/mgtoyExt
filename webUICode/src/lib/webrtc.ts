@@ -114,6 +114,7 @@ export const createRTCTrackOffer =async (
     id:string,closeHand:()=>void)=>{
     
     const StreamConnection = new RTCPeerConnection(configuration); 
+
     receiveChannel.send(JSON.stringify({id,set:true}));
     localStream.getTracks().forEach(track => { 
         console.log(track);
@@ -133,7 +134,15 @@ export const createRTCTrackOffer =async (
                 console.log("time Out");
                 closeHand();
             }else{
-                dataChannel.send(JSON.stringify({heartbeat}));
+                try{
+                    dataChannel.send(JSON.stringify({heartbeat}));
+                }catch(e){
+                    clearInterval(timeout);
+                    StreamConnection.close();
+                    closeHand();
+                    console.log(e);
+                }
+                
             }
         },3000);
     };
@@ -189,7 +198,7 @@ export const createRTCTrackOffer =async (
             StreamConnection.setRemoteDescription(new RTCSessionDescription(db.answer));
         }
     };  
-    //return dataChannel;
+    return {dataChannel,StreamConnection};
 };
 
 export const createRTCTrackAnswer = ( 
@@ -262,4 +271,5 @@ export const createRTCTrackAnswer = (
             console.log(e);
         }
     })();
+    return StreamConnection;
 };

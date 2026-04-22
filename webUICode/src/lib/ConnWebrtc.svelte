@@ -4,13 +4,16 @@ import {handleOffer,configuration} from '$lib/webrtc'
 export const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
-    title:"Mgtoy",
+    //title:"Mgtoy",
     closeOnBackdrop:false,
     closeOnEsc:false,
 } ;
 
 export const startConn = (sign:signalingStruct,conn:(dc:RTCDataChannel)=>void)=>{
     const peerConnection = new RTCPeerConnection(configuration);
+    //dialogConfig.closeHandle=()=>{
+    //    peerConnection.close()
+    //}
     const link = document.createElement("a")
     handleOffer(sign,peerConnection,(answer)=>{
         

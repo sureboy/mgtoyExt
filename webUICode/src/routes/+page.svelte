@@ -66,11 +66,14 @@ const createRTCConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,cand
     videoPlay.srcObject = finalStream;
     //videoPlay.muted = true
     //videoPlay.play()
-    createRTCTrackAnswer(dataChannel,db,(event)=>{ 
+    const pc = createRTCTrackAnswer(dataChannel,db,(event)=>{ 
         finalStream.addTrack(event.track) 
     },(dc)=>{
         
     })
+    dialogConfig.closeHandle=()=>{
+        pc.close()
+    }
    
 }
 const setRemoteRTC = ( dataChannel: RTCDataChannel)=>{
@@ -117,8 +120,11 @@ const initCameraClick = (receiveChannel: RTCDataChannel,id:string)=>{
                 link.href="#"
                 link.target=""
                 link.onclick=()=>{
-                    createRTCTrackOffer(localStream,receiveChannel,id,reloadHandle).then(()=>{
+                    createRTCTrackOffer(localStream,receiveChannel,id,reloadHandle).then(({StreamConnection})=>{
                         link.textContent=id
+                        dialogConfig.closeHandle = ()=>{
+                            StreamConnection.close()
+                        }
                     })
                 }                            
             }
@@ -127,9 +133,12 @@ const initCameraClick = (receiveChannel: RTCDataChannel,id:string)=>{
                 localStream,receiveChannel,
                 id,
                 reloadHandle
-            ).then(()=>{
-                        link.textContent=id
-                    })   
+            ).then(({StreamConnection})=>{
+                dialogConfig.closeHandle = ()=>{
+                    StreamConnection.close()
+                }
+                link.textContent=id
+            })   
             Camera.textContent="⛶"
             Camera.onclick=()=>{
                 //videoP.muted = false
@@ -150,6 +159,9 @@ onMount(() => {
     }catch(e){
         console.log(e)
         connWebRTC().then((res) =>{  
+            //dialogConfig.closeHandle = ()=>{
+            //    res.peerConnection.close()
+            //}
             initCameraClick(res.dataChannel,res.signaling.id)  
             //setRemoteRTC( dataChannel)
         }).catch(e=>{
@@ -158,11 +170,12 @@ onMount(() => {
             const connUrl = document.createElement("input")
             connUrl.type = "text"
             connUrl.value = "http://192.168.1.8:3000/conn.html"
+            const src = encodeURIComponent(window.location.origin+window.location.pathname)
             connUrl.onchange = (e)=>{
-                connButton.href =  (e.target as HTMLInputElement).value  + "#"+encodeURIComponent(window.location.origin)
+                connButton.href =  (e.target as HTMLInputElement).value  + "#" + src
             }
             const connButton = document.createElement("a")
-            connButton.href = connUrl.value + "#"+encodeURIComponent(window.location.origin)
+            connButton.href = connUrl.value + "#" + src
             connButton.textContent="获取offer"
             document.getElementById("init").append(connUrl,connButton)
             //connButton.style.display="none"

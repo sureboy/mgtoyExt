@@ -10,6 +10,7 @@ export class ConnectionPool {
     private connections: Map<ConnectionId, RTCPeerConnection> = new Map();
     //private connectionsTime: Map<ConnectionId, number> = new Map();
     private iceServers: RTCIceServer[];
+    public routerSignaling = new Map<string,{answerDataChannel?:RTCDataChannel,offerDataChannel:RTCDataChannel,msg:any[]}>();
 
     constructor(iceServers: RTCIceServer[] = [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -71,6 +72,7 @@ export class ConnectionPool {
             // 调用原生方法关闭连接，释放底层资源
             pc.close();
             this.connections.delete(id);
+            this.routerSignaling.delete(id);
             console.log(`连接 ${id} 已关闭并移除，当前活跃连接数: ${this.connections.size}`);
         } else {
             console.warn(`尝试关闭不存在的连接: ${id}`);

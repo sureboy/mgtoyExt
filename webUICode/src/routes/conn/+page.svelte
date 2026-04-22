@@ -7,9 +7,10 @@ import type {dialogStruct} from '$lib/components/Dialog.svelte'
 const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
-    title:"SolidJScad",
+    //title:"SolidJScad",
     closeOnBackdrop:false,
     closeOnEsc:false,
+
 } ;
 const closeWindow = ()=>{
    try{
@@ -43,7 +44,6 @@ const postAnswer = (hashdb:string)=>{
     }).then(res=>{
       if (res.ok){
         res.json().then(resolve).catch(reject)
-        
       }else{
         reject({err:res.status})
       }
@@ -102,9 +102,9 @@ const getOffer = (rbackUrl?:string )=>{
 }
 onMount(()=>{
   if (window.location.hash){
-    const hashdb = decodeURIComponent(window.location.hash.slice(1))
-    
+    let hashdb = window.location.hash.slice(1)
     if (hashdb){
+      hashdb = decodeURIComponent(hashdb)
       if (hashdb.startsWith("http")){
         getOffer(hashdb).catch(console.error)
       }else{
@@ -112,7 +112,6 @@ onMount(()=>{
           closeWindow()
         }).catch(console.error)
       }
-
       return
     }
   }
