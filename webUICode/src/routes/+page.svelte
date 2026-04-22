@@ -51,18 +51,32 @@ async function getLocalStream() {
 let dataChannel: RTCDataChannel 
 //let Camera:HTMLButtonElement
 const createRTCConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,candidate:any}[])=>{
-    let finalStream = new MediaStream();
+    const finalStream = new MediaStream();
+    const pVideo = document.getElementById("video")
+    pVideo.style.display=""
     const videoPlay =  getVideo()
     dialogConfig.dialogEl?.showModal() 
+  
     const Camera = (document.getElementById("camera").firstChild as HTMLButtonElement)
-    Camera.textContent="⛶"
+    //Camera.textContent="⛶"
     Camera.onclick=()=>{
-        videoPlay.muted = false
-        videoPlay.play()
-        toggleFullscreen();
-    }  
+        getLocalStream().then(localStream=>{ 
+            const video_self = createVideo()
+            video_self.srcObject = localStream
+            pVideo.append(video_self)
+            localStream.getTracks().forEach(track => { 
+                //console.log(track);
+                //if (track.kind==="video"){
+                pc.addTrack(track, localStream);
+                //}        
+            }); 
+        })
+        //videoPlay.muted = false
+        //videoPlay.play()
+        //toggleFullscreen();
+    }   
     //finalStream
-    document.getElementById("video").style.display=""
+    
     videoPlay.srcObject = finalStream;
     //videoPlay.muted = true
     //videoPlay.play()
@@ -75,6 +89,20 @@ const createRTCConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,cand
         pc.close()
     }
    
+}
+
+const getTrackShowVideo = (pVideo: HTMLElement,StreamConnection:RTCPeerConnection)=>{
+    let videoR:HTMLVideoElement
+    const finalStream = new MediaStream();
+    StreamConnection.ontrack = (e)=>{
+        console.log("back",e)
+        finalStream.addTrack(e.track)
+        if (!videoR){
+            videoR = createVideo()
+            videoR.srcObject = finalStream
+            pVideo.append(videoR)
+        }
+    }
 }
 const setRemoteRTC = ( dataChannel: RTCDataChannel)=>{
     const oldHandleMsg =dataChannel.onmessage
@@ -97,6 +125,16 @@ const handInputText =(id:string)=>{
     dataChannel.send(JSON.stringify({id}))
     return true
 }
+const createVideo = ()=>{
+    const video_self = document.createElement("video")
+    video_self.muted = true;
+    video_self.controls=true;
+    video_self.autoplay = true;
+    video_self.height = 300;
+    video_self.width = 200;
+    return video_self
+    //video_self.srcObject = localStream
+}
 const initCameraClick = (receiveChannel: RTCDataChannel,id:string)=>{
     initDataChannel(receiveChannel) 
     dataChannel = receiveChannel
@@ -110,35 +148,31 @@ const initCameraClick = (receiveChannel: RTCDataChannel,id:string)=>{
     Camera.textContent="开启摄像头"
     Camera.onclick = ()=>{
         getLocalStream().then(localStream=>{ 
-            document.getElementById("video").style.display=""
+            const pVideo = document.getElementById("video")
+            pVideo.style.display=""
             const videoP = getVideo()
             videoP.srcObject = localStream
             const link = document.createElement("a")
+            function createRTCOffer(){
+                createRTCTrackOffer(localStream,receiveChannel,id,reloadHandle).then(({StreamConnection})=>{
+                    dialogConfig.closeHandle = ()=>{
+                        StreamConnection.close()
+                    }
+                    link.textContent=id
+                    getTrackShowVideo(pVideo,StreamConnection)  
+                })
+            }
             //link.textContent=id
-            const reloadHandle = ()=>{
+            function reloadHandle  (){
                 link.textContent="重新连接"
                 link.href="#"
                 link.target=""
                 link.onclick=()=>{
-                    createRTCTrackOffer(localStream,receiveChannel,id,reloadHandle).then(({StreamConnection})=>{
-                        link.textContent=id
-                        dialogConfig.closeHandle = ()=>{
-                            StreamConnection.close()
-                        }
-                    })
+                    createRTCOffer()
                 }                            
             }
             init.append(link)
-            createRTCTrackOffer(
-                localStream,receiveChannel,
-                id,
-                reloadHandle
-            ).then(({StreamConnection})=>{
-                dialogConfig.closeHandle = ()=>{
-                    StreamConnection.close()
-                }
-                link.textContent=id
-            })   
+            createRTCOffer()
             Camera.textContent="⛶"
             Camera.onclick=()=>{
                 //videoP.muted = false
@@ -149,38 +183,43 @@ const initCameraClick = (receiveChannel: RTCDataChannel,id:string)=>{
     } 
 
 }
-onMount(() => {    
-    try{
-        const sign = JSON.parse(decodeURIComponent(window.location.hash.slice(1))) as signalingStruct
-        location.hash = ''; 
-        startConn(sign,(receiveChannel)=>{ 
-            initCameraClick(receiveChannel,sign.id)  
-        })
-    }catch(e){
-        console.log(e)
-        connWebRTC().then((res) =>{  
-            //dialogConfig.closeHandle = ()=>{
-            //    res.peerConnection.close()
-            //}
-            initCameraClick(res.dataChannel,res.signaling.id)  
-            //setRemoteRTC( dataChannel)
-        }).catch(e=>{
-            console.log(window.location.origin)
-            dialogConfig.dialogEl.showModal()
-            const connUrl = document.createElement("input")
-            connUrl.type = "text"
-            connUrl.value = "http://192.168.1.8:3000/conn.html"
-            const src = encodeURIComponent(window.location.origin+window.location.pathname)
-            connUrl.onchange = (e)=>{
-                connButton.href =  (e.target as HTMLInputElement).value  + "#" + src
-            }
-            const connButton = document.createElement("a")
-            connButton.href = connUrl.value + "#" + src
-            connButton.textContent="获取offer"
-            document.getElementById("init").append(connUrl,connButton)
-            //connButton.style.display="none"
-        }) 
-    } 
+const checkUrlHashErr = ()=>{
+    connWebRTC().then((res) =>{  
+        initCameraClick(res.dataChannel,res.signaling.id)   
+    }).catch(e=>{
+        console.log(window.location.origin)
+        dialogConfig.dialogEl.showModal()
+        const connUrl = document.createElement("input")
+        connUrl.type = "text"
+        connUrl.value = "http://192.168.1.8:3000/conn.html"
+        const src = encodeURIComponent(window.location.origin+window.location.pathname)
+        connUrl.onchange = (e)=>{
+            connButton.href =  (e.target as HTMLInputElement).value  + "#" + src
+        }
+        const connButton = document.createElement("a")
+        connButton.href = connUrl.value + "#" + src
+        connButton.textContent="获取offer"
+        document.getElementById("init").append(connUrl,connButton) 
+    }) 
+}
+onMount(() => {   
+    if (window.location.hash){
+        const hashdb = window.location.hash.slice(1)
+        if (hashdb){
+            try{
+                const sign = JSON.parse(decodeURIComponent(window.location.hash.slice(1))) as signalingStruct
+                location.hash = ''; 
+                startConn(sign,(receiveChannel)=>{ 
+                    initCameraClick(receiveChannel,sign.id)  
+                })
+                return
+            }catch(e){
+                console.log(e)
+                
+            } 
+        }
+    }
+    checkUrlHashErr()   
 }) 
 </script>
 <ShowControl {handInputText}></ShowControl>

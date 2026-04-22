@@ -97,7 +97,6 @@ export const webRtcRouterHandle = (obj:any,dataChannel: RTCDataChannel) =>{
           }else{
               if (sig.answerDataChannel){
                   sig.answerDataChannel.send(JSON.stringify([obj.msg]));
-                  
               }else{
                   sig.msg.push(obj.msg);
               }              

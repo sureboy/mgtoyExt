@@ -101,4 +101,4 @@ onMount(()=>{
     });
 })     
 </script>
-<video bind:this={videoWrapper} width="300" height="200"  autoplay muted controls playsinline webkit-playsinline></video>
+<video bind:this={videoWrapper} width="200" height="300"  autoplay muted controls playsinline webkit-playsinline></video>

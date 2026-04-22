@@ -145,12 +145,35 @@ export const createRTCTrackOffer =async (
                 
             }
         },3000);
+
+        StreamConnection.onicecandidate = event=>{
+            if (event.candidate) { 
+                dataChannel.send(JSON.stringify( event.candidate.toJSON() ));
+            }
+        };
     };
     dataChannel.onmessage = e=>{
         console.log(e.data);
         const obj = JSON.parse(e.data);
         if (obj.heartbeat){
             heartbeat = performance.now();
+            return;
+        }
+        if (obj.candidate){
+            StreamConnection.addIceCandidate(new RTCIceCandidate(obj.candidate)).then(()=>{
+                console.log(JSON.stringify(obj.candidate));
+            });
+            return;
+        }
+        if (obj.sdp){
+            StreamConnection.setRemoteDescription(new RTCSessionDescription(obj));
+            if (obj.type==="offer"){
+                (async ()=>{
+                    const answer = await StreamConnection.createAnswer();
+                    await StreamConnection.setLocalDescription(answer);
+                    dataChannel.send(JSON.stringify(answer));
+                })();
+            }
         }
     };
     StreamConnection.onicecandidate = event => {
@@ -158,8 +181,8 @@ export const createRTCTrackOffer =async (
         if (event.candidate) { 
             //event.candidate.toJSON()
             receiveChannel.send(JSON.stringify({id,set:true,msg:{ id,   candidate: event.candidate.toJSON()  }}));
-        }else{
-            console.log("ICE end");
+        //}else{
+            //console.log("ICE end");
         }
     };  
     StreamConnection.oniceconnectionstatechange=(e)=>{
@@ -196,6 +219,7 @@ export const createRTCTrackOffer =async (
             });
         }else if (db.answer){
             StreamConnection.setRemoteDescription(new RTCSessionDescription(db.answer));
+
         }
     };  
     return {dataChannel,StreamConnection};
@@ -219,6 +243,7 @@ export const createRTCTrackAnswer = (
             });
         }
     });
+
     StreamConnection.oniceconnectionstatechange=(e)=>{
         if (StreamConnection.connectionState === 'closed' 
             || StreamConnection.connectionState === 'failed' 
@@ -238,10 +263,38 @@ export const createRTCTrackAnswer = (
             if (obj.heartbeat){
                 heartbeat = obj.heartbeat;
                 event.channel.send(e.data);
+                return;
+            }
+            if (obj.candidate){
+                StreamConnection.addIceCandidate(new RTCIceCandidate(obj)).then(()=>{
+                    console.log(JSON.stringify(obj));
+                });
+                return;
+            }
+            if (obj.sdp){
+                StreamConnection.setRemoteDescription(new RTCSessionDescription(obj));
+                if (obj.type==="offer"){
+                    (async ()=>{
+                        const answer = await StreamConnection.createAnswer();
+                        await StreamConnection.setLocalDescription(answer);
+                        event.channel.send(JSON.stringify(answer));
+                    })();
+                }
+            }
+        };
+        StreamConnection.onnegotiationneeded = async()=>{
+            const offer =await StreamConnection.createOffer();
+            await StreamConnection.setLocalDescription(offer); 
+            event.channel.send(JSON.stringify(offer));
+        };
+        StreamConnection.onicecandidate  =e => {
+            if (e.candidate) {  
+                event.channel.send(JSON.stringify( e.candidate.toJSON() ));
             }
         };
         datachannel(event.channel);
     };
+    
     
     StreamConnection.onicecandidate = event => {
         if (event.candidate) { 
