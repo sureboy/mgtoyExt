@@ -6,12 +6,18 @@ import {connWebRTC,createRtcTrack } from '$lib/webrtc'
 import ConnWebrtc,{ startWebRTC,dialogConfig} from '$lib/ConnWebrtc.svelte';
 //import {getVideo} from '$lib/Fullscreen.svelte'
 import ShowControl,{initDataChannel} from "$lib/ShowControl.svelte";
+    import CarInfo from '$lib/CarInfo.svelte';
 //import VideoScreen,{getVideo,toggleFullscreen} from '$lib/Fullscreen.svelte'
  
-async function getLocalStream() { 
+async function getLocalStream(cameraID?:number) { 
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: true,
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        // 假设 videoDevices[0] 是前置, videoDevices[1] 是后置。保存它们的 deviceId
+        //const frontCameraId = videoDevices[0].deviceId;
+        //const backCameraId = videoDevices[1].deviceId;
+        const localStream = await navigator.mediaDevices.getUserMedia({ 
+            video: cameraID?true:{ deviceId: { exact: videoDevices[cameraID].deviceId } },
             audio:{
         echoCancellation: true,   // 开启回声消除
         noiseSuppression: true,   // 建议同时开启降噪
@@ -19,7 +25,8 @@ async function getLocalStream() {
     }, 
         });
         console.log('使用摄像头');
-        return stream;
+        
+        return {localStream,cameraNumber:videoDevices.length-1};
     } catch (error) { 
         //console.log(error)
         //return;
@@ -38,7 +45,7 @@ async function getLocalStream() {
                 };
             });
             await localVideo.play(); 
-            return localVideo.captureStream()
+            return {localStream:localVideo.captureStream()}
         }catch(e){
             console.log(e)
             //return undefined
@@ -276,54 +283,48 @@ const init = (receiveChannel: RTCDataChannel )=>{
         }                            
     }
     const init = document.getElementById("init")
-    init.childNodes.forEach(v=>{
-        v.remove()
-    })
+    init.innerHTML=''
+ 
     init.append(link)
 
     const Camera = document.createElement("button")
 
-    document.getElementById("camera").append(Camera)
+    const cam = document.getElementById("camera")
+    cam.innerHTML=''
+    let cameraID = 0
+    cam.append(Camera)
     Camera.textContent=`摄像头`
     Camera.onclick = ()=>{
         requestWakeLock()
-        getLocalStream().then(localStream=>{ 
-            //const StreamConnection = createMyWebRtc( receiveChannel,reloadHandle)
-            
+        getLocalStream(cameraID).then(({localStream,cameraNumber})=>{  
             localStream.getTracks().forEach(track => {  
                 conf.StreamConnection.addTrack(track, localStream);    
             }); 
-            //console.log("start",conf.StreamConnection.signalingState,conf.StreamConnection.connectionState)
-            createOffer(conf.StreamConnection).then(sdp=>{
-                //if (conf.id !== conf.receiveChannel.label)
+            createOffer(conf.StreamConnection).then(sdp=>{ 
                 conf.receiveChannel.send(JSON.stringify({id:conf.receiveChannel.label,msg:{sdp}}))
-            })
-            //const v = createVideo()
-            //v.srcObject=localStream
-            //document.getElementById("video").append(v)
-
-           // getTrackShowVideo(conf.StreamConnection)  
-            /*
-            const videoP = getVideo()
-            videoP.srcObject = localStream
-            getTrackShowVideo(pVideo,conf.StreamConnection)  
-             */
+            }) 
             
-            //createRTCOffer()
-            Camera.textContent=`静音`
-            Camera.onclick=()=>{
-                const senders = conf.StreamConnection.getSenders();
-                senders.forEach(s=>{
-                    console.log(s)
-                    if (s.track.kind ==="audio"){
-                        s.track.enabled=false
-                    }
-                })
-                //conf.StreamConnection.removeTrack()
-                //videoP.muted = false
-                //videoP.play()
-                //toggleFullscreen();
-            }       
+            const AudioCamera = document.createElement("button")
+            
+            
+            AudioCamera.textContent=`静音`
+            AudioCamera.onclick=()=>{
+                const videoSender = conf.StreamConnection.getSenders().find(s => s.track.kind === 'video');
+          
+                videoSender.track.enabled=false
+                  
+            }  
+            cam.innerHTML=''  
+            cam.append(AudioCamera)   
+            if (cameraNumber && cameraNumber>0){ 
+                cameraID++
+                if  (cameraID>cameraNumber){
+                    cameraID =0 
+                }
+                cam.append(Camera)   
+                Camera.textContent=`切换镜头`
+              
+            }
         })
     } 
 
