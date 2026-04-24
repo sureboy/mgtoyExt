@@ -2,11 +2,11 @@
 import { onMount } from 'svelte';
 import type {signalingStruct} from '$lib/utils/util'
  
-import {createRTCTrackAnswer ,connWebRTC,createRTCTrackOffer,createRtcTrack } from '$lib/webrtc' 
+import {connWebRTC,createRtcTrack } from '$lib/webrtc' 
 import ConnWebrtc,{ startWebRTC,dialogConfig} from '$lib/ConnWebrtc.svelte';
 //import {getVideo} from '$lib/Fullscreen.svelte'
 import ShowControl,{initDataChannel} from "$lib/ShowControl.svelte";
-import VideoScreen,{getVideo,toggleFullscreen} from '$lib/Fullscreen.svelte'
+//import VideoScreen,{getVideo,toggleFullscreen} from '$lib/Fullscreen.svelte'
  
 async function getLocalStream() { 
     try {
@@ -45,72 +45,31 @@ async function getLocalStream() {
         } 
     }
 }
- 
-//let link:HTMLAnchorElement=undefined
-
-//let dataChannel: RTCDataChannel 
-//let Camera:HTMLButtonElement
-const createRTCConn = ( dataChannel: RTCDataChannel)=>{
-    const finalStream = new MediaStream();
-    const pVideo = document.getElementById("video")
-    pVideo.style.display=""
-    const videoPlay =  getVideo()
-    dialogConfig.dialogEl?.showModal() 
   
-    const Camera = (document.getElementById("camera").firstChild as HTMLButtonElement)
-    //Camera.textContent="⛶"
-    Camera.onclick=()=>{
-        getLocalStream().then(localStream=>{ 
-            const video_self = createVideo()
-            video_self.srcObject = localStream
-            pVideo.append(video_self)
-            localStream.getTracks().forEach(track => { 
-                //console.log(track);
-                //if (track.kind==="video"){
-                pc.addTrack(track, localStream);
-                //}        
-            }); 
-        })
-        //videoPlay.muted = false
-        //videoPlay.play()
-        //toggleFullscreen();
-    }   
-    //finalStream
-    
-    videoPlay.srcObject = finalStream;
-    //videoPlay.muted = true
-    //videoPlay.play()
-    const pc = createRTCTrackAnswer(dataChannel, (event)=>{ 
-        finalStream.addTrack(event.track) 
-    },(dc)=>{
-        
-    })
-    dialogConfig.closeHandle=()=>{
-        pc.close()
-    }
-   
-}
  
-const getTrackShowVideo = (pVideo: HTMLElement,StreamConnection:RTCPeerConnection)=>{
-    let videoR:HTMLVideoElement
+const getTrackShowVideo = ( StreamConnection:RTCPeerConnection)=>{ 
     const finalStream = new MediaStream();
-    StreamConnection.ontrack = (e)=>{
-        console.log("back",e)
+    let has = false
+    StreamConnection.ontrack = (e)=>{ 
         finalStream.addTrack(e.track)
-        if (!videoR){
-            videoR = createVideo()
+        if (!has){
+            has = true 
+            const videoR:HTMLVideoElement=createVideo()
             videoR.srcObject = finalStream
-            pVideo.append(videoR)
+            document.getElementById("video").append(videoR)
         }
     }
-}
+} 
 const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
     const StreamConnection = createRtcTrack((candidate: RTCIceCandidateInit)=>{
         dataChannel.send(JSON.stringify({id:dataChannel.label,msg:{candidate}}))
     },closeHand)
+    dialogConfig.closeHandle = ()=>{
+        StreamConnection.close()
+    }
     dataChannel.send(JSON.stringify({id:dataChannel.label}))
     let heartbeat = 0;
-    const dc = StreamConnection.createDataChannel(dataChannel.label,{ordered:false})
+    let dc = StreamConnection.createDataChannel(dataChannel.label,{ordered:false})
     dc.onopen=()=>{
         heartbeat = performance.now();
         dc.send(JSON.stringify({heartbeat}));
@@ -138,9 +97,17 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
                 dc.send(JSON.stringify( event.candidate.toJSON() ));
             }
         };
+        dc.addEventListener("message",e=>{
+            const obj = JSON.parse(e.data);
+            if (obj.heartbeat){
+                console.log(obj)
+                heartbeat = performance.now();
+                return;
+            }
+        })
     }
     dc.onmessage = e=>{
-        //console.log(e.data);
+        console.log(e.data);
         const obj = JSON.parse(e.data);
         if (obj.heartbeat){
             heartbeat = performance.now();
@@ -164,20 +131,28 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
     };
     StreamConnection.ondatachannel = (e)=>{
         e.channel.onmessage = dc.onmessage
-        //dc = e.channel
+        e.channel.addEventListener("message",ev=>{
+            const obj = JSON.parse(ev.data);
+            if (obj.heartbeat){
+                e.channel.send(ev.data)
+                //heartbeat = performance.now();
+                return;
+            }
+        })
+        dc = e.channel
     }
     StreamConnection.onnegotiationneeded = (e)=>{
-        
-        console.log(e,StreamConnection.signalingState,StreamConnection.connectionState)
+        console.log("negotiation",e,StreamConnection.signalingState,StreamConnection.connectionState)
         if (StreamConnection.connectionState==="new")return
+        //if (dc.)
         StreamConnection.createOffer().then(sdp=>{
             StreamConnection.setLocalDescription(sdp); 
-            dataChannel.send(JSON.stringify(sdp));
+            dc.send(JSON.stringify(sdp));
         });        
     }
 
     StreamConnection.onicecandidate = (e)=>{
-        console.log(e.candidate,dataChannel.label)
+        //console.log(e.candidate,dataChannel.label)
         if (e.candidate){
             dataChannel.send(
                 JSON.stringify({id:dataChannel.label, msg:{    candidate: e.candidate.toJSON() }}));
@@ -188,27 +163,21 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
 }
 
 
-const createOffer = ( StreamConnection: RTCPeerConnection ,dataChannel: RTCDataChannel)  =>{
+const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
     //const StreamConnection = createMyWebRtc(dataChannel,closeHand)
 
-    StreamConnection.createOffer().then(sdp=>{
+    const sdp  = await StreamConnection.createOffer() 
         //console.log(sdp)
-        StreamConnection.setLocalDescription(sdp).then(()=>{
-            dataChannel.send(JSON.stringify({id:dataChannel.label,msg:{sdp}}))
+    await    StreamConnection.setLocalDescription(sdp)
+    return sdp
+    //.then(()=>{
+    //        dataChannel.send(JSON.stringify({id:dataChannel.label,msg:{sdp}}))
         
-        })
+    //    })
         
-    })
+    //})
 }
-/*
-const handInputText =(id:string)=>{
-    if (id.length!=5 || !dataChannel){
-        return false
-    }
-    
-    dataChannel.send(JSON.stringify({id}))
-    return true
-}*/
+ 
 const createVideo = ()=>{
     const video_self = document.createElement("video")
     video_self.muted = true;
@@ -220,47 +189,46 @@ const createVideo = ()=>{
     //video_self.srcObject = localStream
 }
  
-const initDC = (receiveChannel: RTCDataChannel,StreamConnection:RTCPeerConnection )=>{
+const initDC = (conf:{receiveChannel: RTCDataChannel,StreamConnection:RTCPeerConnection} )=>{
     //let StreamConnection:RTCPeerConnection = undefined
-    receiveChannel.addEventListener("message",(e)=>{
+    
+    conf.receiveChannel.addEventListener("message",(e)=>{
         const db = JSON.parse(e.data)
-        console.log("initDC",db)
+        //console.log("initDC",db)
         if (db.id && db.msg){
             if (!dialogConfig.dialogEl.open){
                 dialogConfig.dialogEl.showModal()
+                
                 //StreamConnection = createMyWebRtc(receiveChannel)
                 
             }
+            //if (!conf.id)conf.id = db.id
+            if (conf.StreamConnection.signalingState==="closed"){
+                    conf.StreamConnection = createMyWebRtc(conf.receiveChannel)
+                }
             if (db.msg.sdp){
                 
-                StreamConnection.setRemoteDescription(new RTCSessionDescription(db.msg.sdp))
+                conf.StreamConnection.setRemoteDescription(new RTCSessionDescription(db.msg.sdp))
                 if (db.msg.sdp.type==="offer"){
-                        const finalStream = new MediaStream();
-                        const pVideo = document.getElementById("video")
-                        pVideo.style.display=""
-                        getVideo().srcObject=finalStream
-                        StreamConnection.ontrack = (e)=>{
-                            console.log(e)
-                            finalStream.addTrack(e.track)
-                        }
-                    StreamConnection.onicecandidate = (e)=>{
+                    getTrackShowVideo(conf.StreamConnection) 
+                    conf.StreamConnection.onicecandidate = (e)=>{
                         console.log(e.candidate,db.id)
                         if (e.candidate){
-                            receiveChannel.send(
+                            conf.receiveChannel.send(
                                 JSON.stringify({id:db.id, msg:{    
                                     candidate: e.candidate.toJSON() }}));
                         }
                     }
-                    StreamConnection.createAnswer({ iceRestart: true }).then(sdp=>{
-                            
-                        StreamConnection.setLocalDescription(sdp)
-                        receiveChannel.send(JSON.stringify({id:db.id,msg:{sdp}}))
+                    conf.StreamConnection.createAnswer({ iceRestart: true }).then(
+                        sdp=>{ 
+                        conf.StreamConnection.setLocalDescription(sdp)
+                        conf.receiveChannel.send(JSON.stringify({id:db.id,msg:{sdp}}))
                         console.log("answer",sdp)
                     })
                 }
             }
             if (db.msg.candidate){
-                StreamConnection.addIceCandidate(new RTCIceCandidate(db.msg.candidate))
+                conf.StreamConnection.addIceCandidate(new RTCIceCandidate(db.msg.candidate))
             }
             
 
@@ -271,11 +239,13 @@ const init = (receiveChannel: RTCDataChannel )=>{
     
     initDataChannel(receiveChannel) 
     //dataChannel = receiveChannel
-    const StreamConnection = createMyWebRtc( receiveChannel,reloadHandle)
-    initDC(receiveChannel,StreamConnection)
-    dialogConfig.closeHandle = ()=>{
-        StreamConnection.close()
-    }
+    const sc = createMyWebRtc( receiveChannel,reloadHandle)
+    const conf:{
+        receiveChannel: RTCDataChannel,
+        StreamConnection:RTCPeerConnection,
+    } = {StreamConnection:sc,receiveChannel}
+    initDC(conf)
+ 
     const link = document.createElement("a") 
     link.textContent=receiveChannel.label
     function reloadHandle  (){
@@ -302,22 +272,30 @@ const init = (receiveChannel: RTCDataChannel )=>{
             //const StreamConnection = createMyWebRtc( receiveChannel,reloadHandle)
             
             localStream.getTracks().forEach(track => {  
-                StreamConnection.addTrack(track, localStream);    
+                conf.StreamConnection.addTrack(track, localStream);    
             }); 
-            createOffer(StreamConnection,receiveChannel)
-            const pVideo = document.getElementById("video")
-            pVideo.style.display=""
+            //console.log("start",conf.StreamConnection.signalingState,conf.StreamConnection.connectionState)
+            createOffer(conf.StreamConnection).then(sdp=>{
+                //if (conf.id !== conf.receiveChannel.label)
+                conf.receiveChannel.send(JSON.stringify({id:conf.receiveChannel.label,msg:{sdp}}))
+            })
+            const v = createVideo()
+            v.srcObject=localStream
+            document.getElementById("video").append(v)
+
+            getTrackShowVideo(conf.StreamConnection)  
+            /*
             const videoP = getVideo()
             videoP.srcObject = localStream
-            getTrackShowVideo(pVideo,StreamConnection)  
-             
+            getTrackShowVideo(pVideo,conf.StreamConnection)  
+             */
             
             //createRTCOffer()
             Camera.textContent="⛶"
             Camera.onclick=()=>{
                 //videoP.muted = false
                 //videoP.play()
-                toggleFullscreen();
+                //toggleFullscreen();
             }       
         })
     } 
@@ -366,5 +344,5 @@ onMount(() => {
 <ConnWebrtc>
     <p id="init">   </p>
     <p id="camera"> </p>
-    <p id="video" style="display:none"><VideoScreen></VideoScreen></p>
+    <p id="video" > </p>
 </ConnWebrtc>
