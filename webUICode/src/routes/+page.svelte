@@ -45,7 +45,7 @@ async function getLocalStream(cameraID?:number) {
                 };
             });
             await localVideo.play(); 
-            return {localStream:localVideo.captureStream()}
+            return {localStream:localVideo.captureStream(),cameraNumber:1}
         }catch(e){
             console.log(e)
             //return undefined
@@ -195,12 +195,7 @@ const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
         //console.log(sdp)
     await    StreamConnection.setLocalDescription(sdp)
     return sdp
-    //.then(()=>{
-    //        dataChannel.send(JSON.stringify({id:dataChannel.label,msg:{sdp}}))
-        
-    //    })
-        
-    //})
+ 
 }
  
 const createVideo = ()=>{
@@ -222,12 +217,8 @@ const initDC = (conf:{receiveChannel: RTCDataChannel,StreamConnection:RTCPeerCon
         //console.log("initDC",db)
         if (db.id && db.msg){
             if (!dialogConfig.dialogEl.open){
-                dialogConfig.dialogEl.showModal()
-                
-                //StreamConnection = createMyWebRtc(receiveChannel)
-                
-            }
-            //if (!conf.id)conf.id = db.id
+                dialogConfig.dialogEl.showModal() 
+            } 
             if (conf.StreamConnection.signalingState==="closed"){
                     conf.StreamConnection = createMyWebRtc(conf.receiveChannel)
                 }
@@ -254,16 +245,13 @@ const initDC = (conf:{receiveChannel: RTCDataChannel,StreamConnection:RTCPeerCon
             }
             if (db.msg.candidate){
                 conf.StreamConnection.addIceCandidate(new RTCIceCandidate(db.msg.candidate))
-            }
-            
-
+            } 
         }
     })
 }
 const init = (receiveChannel: RTCDataChannel )=>{
     
-    initDataChannel(receiveChannel) 
-    //dataChannel = receiveChannel
+    initDataChannel(receiveChannel)  
     const sc = createMyWebRtc( receiveChannel,reloadHandle)
     const conf:{
         receiveChannel: RTCDataChannel,
@@ -294,15 +282,18 @@ const init = (receiveChannel: RTCDataChannel )=>{
     let cameraID = 0
     cam.append(Camera)
     Camera.textContent=`摄像头${cameraID}`
+    const containerStream = new MediaStream();
     Camera.onclick = ()=>{
         requestWakeLock()
         getLocalStream(cameraID).then(({localStream,cameraNumber})=>{  
             const senders = conf.StreamConnection.getSenders();
             localStream.getTracks().forEach(track => {  
-                  
+                
                 const videoSender = senders.find(sender => sender.track && sender.track.kind === track.kind);
+                console.log(videoSender,track,track.kind)
                 if (!videoSender) {
-                    conf.StreamConnection.addTrack(track, localStream); 
+                    containerStream.addTrack(track)
+                    conf.StreamConnection.addTrack(track, containerStream); 
                 }else{
                     videoSender.replaceTrack(track);
                 }
