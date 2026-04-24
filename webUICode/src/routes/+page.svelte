@@ -283,21 +283,21 @@ const init = (receiveChannel: RTCDataChannel )=>{
     //let cameraID = 0
     cam.append(Camera)
     Camera.textContent=`摄像头`
-    //const containerStream = new MediaStream();
+    const containerStream = new MediaStream();
     Camera.onclick = ()=>{
         requestWakeLock()
         getLocalStream().then(({localStream,cameraNumber})=>{  
             const senders = conf.StreamConnection.getSenders();
             localStream.getTracks().forEach(track => {  
                 
-                //const videoSender = senders.find(sender => sender.track && sender.track.kind === track.kind);
+                const videoSender = senders.find(sender => sender.track && sender.track.kind === track.kind);
                 //console.log(videoSender,track,track.kind)
-                //if (!videoSender) {
-                    //containerStream.addTrack(track)
-                    conf.StreamConnection.addTrack(track, localStream); 
-                //}else{
-                //    videoSender.replaceTrack(track);
-                //}
+                if (!videoSender) {
+                    containerStream.addTrack(track)
+                    conf.StreamConnection.addTrack(track, containerStream); 
+                }else{
+                    videoSender.replaceTrack(track);
+                }
                // conf.StreamConnection.addTrack(track, localStream);    
             }); 
             createOffer(conf.StreamConnection).then(sdp=>{ 
