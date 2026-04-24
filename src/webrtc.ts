@@ -109,9 +109,7 @@ export const webRtcRouterHandle = (obj:any,dataChannel: RTCDataChannel) =>{
               sig.remoteDataChannel = dataChannel;
           }
           while (sig.msg.length>0){
-              
               dataChannel.send(JSON.stringify(sig.msg.shift()));
-              //sig.msg=[];
           }
           //if (obj.msg) {
           sig.localDataChannel.send(JSON.stringify(obj));

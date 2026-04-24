@@ -16,6 +16,9 @@ async function getLocalStream(cameraID:number) {
         // 假设 videoDevices[0] 是前置, videoDevices[1] 是后置。保存它们的 deviceId
         //const frontCameraId = videoDevices[0].deviceId;
         //const backCameraId = videoDevices[1].deviceId;
+        if (videoDevices.length<=cameraID){
+            cameraID = 0
+        }
         const localStream = await navigator.mediaDevices.getUserMedia({ 
             video:  { deviceId: { exact: videoDevices[cameraID].deviceId } },
             audio:{
@@ -279,7 +282,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
 
     const cam = document.getElementById("camera")
     cam.innerHTML=''
-    let cameraID = 1
+    let cameraID = 0
     cam.append(Camera)
     Camera.textContent=`摄像头${cameraID}`
     const containerStream = new MediaStream();
