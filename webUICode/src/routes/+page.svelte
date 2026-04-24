@@ -18,7 +18,7 @@ async function getLocalStream(cameraID:number ) {
         //const backCameraId = videoDevices[1].deviceId;
         
         const localStream = await navigator.mediaDevices.getUserMedia({ 
-            video:  { deviceId: { exact: videoDevices[cameraID].deviceId } },
+            video: true,// { deviceId: { exact: videoDevices[cameraID].deviceId } },
             audio:{
                 echoCancellation: true,   // 开启回声消除
                 noiseSuppression: true,   // 建议同时开启降噪
