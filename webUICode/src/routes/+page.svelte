@@ -297,16 +297,21 @@ const init = (receiveChannel: RTCDataChannel )=>{
     Camera.onclick = ()=>{
         requestWakeLock()
         getLocalStream(cameraID).then(({localStream,cameraNumber})=>{  
+            const senders = conf.StreamConnection.getSenders();
             localStream.getTracks().forEach(track => {  
-                conf.StreamConnection.addTrack(track, localStream);    
+                  
+                const videoSender = senders.find(sender => sender.track && sender.track.kind === track.kind);
+                if (!videoSender) {
+                    conf.StreamConnection.addTrack(track, localStream); 
+                }else{
+                    videoSender.replaceTrack(track);
+                }
+               // conf.StreamConnection.addTrack(track, localStream);    
             }); 
             createOffer(conf.StreamConnection).then(sdp=>{ 
                 conf.receiveChannel.send(JSON.stringify({id:conf.receiveChannel.label,msg:{sdp}}))
             }) 
-            
             const AudioCamera = document.createElement("button")
-            
-            
             AudioCamera.textContent=`静音`
             AudioCamera.onclick=()=>{
                 const videoSender = conf.StreamConnection.getSenders().find(s => s.track.kind === 'video');
