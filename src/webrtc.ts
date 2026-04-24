@@ -33,7 +33,7 @@ function setupDataChannel(dc:RTCDataChannel,id:string) {
 }
 export const initWebRtcClient =async (back:(msg:{dataChannel: RTCDataChannel,signaling: signalingStruct,pc: RTCPeerConnection})=>void)=>{ 
   const {id,pc} = pool.createConnection();
-  const dataChannel = pc.createDataChannel('chat',{ordered:false,protocol:"json"});
+  const dataChannel = pc.createDataChannel(id,{ordered:false,protocol:"json"});
 
   const signaling:signalingStruct = {ICEList:[],id };
   pc.onicecandidate = (e) => {
@@ -70,7 +70,7 @@ export const addRemoteAnswer =async (signaling:signalingStruct  ) =>{
 const webRtcVideoList = (dataChannel: RTCDataChannel)=>{
   const videoList:string[] =[];
   pool.routerSignaling.forEach((v,k)=>{
-    if (!v.answerDataChannel){
+    if (!v.remoteDataChannel){
       videoList.push(k);
     }      
   });
@@ -90,27 +90,32 @@ export const webRtcRouterHandle = (obj:any,dataChannel: RTCDataChannel) =>{
   if (obj.id){
       //console.log(obj);
       let sig=pool.routerSignaling.get(obj.id);
-      if (obj.set){
+      //if (!sig || !obj.msg){}
+ 
+      const set = dataChannel.label === obj.id;
+      if (set){
           if (!sig || !obj.msg ){
-              sig = {offerDataChannel:dataChannel,msg:(obj.msg?[obj.msg]:[])};
+              sig = {localDataChannel:dataChannel,msg:[obj]};
               pool.routerSignaling.set(obj.id, sig );
           }else{
-              if (sig.answerDataChannel){
-                  sig.answerDataChannel.send(JSON.stringify([obj.msg]));
+              if (sig.remoteDataChannel){
+                  sig.remoteDataChannel.send(JSON.stringify(obj));
               }else{
-                  sig.msg.push(obj.msg);
+                  sig.msg.push(obj);
               }              
           }
       }else if (sig){
-          if (!sig.answerDataChannel){
-              sig.answerDataChannel = dataChannel;
+          if (!sig.remoteDataChannel){
+              sig.remoteDataChannel = dataChannel;
           }
-          if (!obj.msg){
-              sig.answerDataChannel.send(JSON.stringify(sig.msg));
-              sig.msg=[];
-          }else {
-              sig.offerDataChannel.send(JSON.stringify(obj.msg));
+          while (sig.msg.length>0){
+              
+              dataChannel.send(JSON.stringify(sig.msg.shift()));
+              //sig.msg=[];
           }
+          //if (obj.msg) {
+          sig.localDataChannel.send(JSON.stringify(obj));
+          //}
       }                        
       
       

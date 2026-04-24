@@ -108,6 +108,27 @@ export const connWebRTC =()=>{
         }).catch(reject);
     }); 
 };
+
+export const createRtcTrack = (getRTCIce:(candidate: RTCIceCandidateInit)=>void,closeHand?:()=>void)=>{ 
+    const StreamConnection = new RTCPeerConnection(configuration);  
+    StreamConnection.onicecandidate = event => { 
+        if (event.candidate) { 
+            getRTCIce(event.candidate.toJSON());
+        }
+    };  
+    StreamConnection.oniceconnectionstatechange=(e)=>{
+        if (StreamConnection.connectionState === 'closed' 
+          ||  StreamConnection.connectionState === 'failed' 
+        //  ||  StreamConnection.connectionState==="disconnected"
+        ) {
+            StreamConnection.close(); 
+            if (closeHand){closeHand();}
+        } 
+        console.log(StreamConnection.connectionState);
+    };
+    return StreamConnection;
+};
+
 export const createRTCTrackOffer =async (
     localStream: MediaStream,
     receiveChannel: RTCDataChannel,
@@ -115,7 +136,7 @@ export const createRTCTrackOffer =async (
     
     const StreamConnection = new RTCPeerConnection(configuration); 
 
-    receiveChannel.send(JSON.stringify({id,set:true}));
+    receiveChannel.send(JSON.stringify({id}));
     localStream.getTracks().forEach(track => { 
         console.log(track);
         //if (track.kind==="video"){
@@ -180,7 +201,7 @@ export const createRTCTrackOffer =async (
         //console.log(event)
         if (event.candidate) { 
             //event.candidate.toJSON()
-            receiveChannel.send(JSON.stringify({id,set:true,msg:{ id,   candidate: event.candidate.toJSON()  }}));
+            receiveChannel.send(JSON.stringify({id,msg:{ candidate: event.candidate.toJSON()  }}));
         //}else{
             //console.log("ICE end");
         }
@@ -207,18 +228,18 @@ export const createRTCTrackOffer =async (
     
     const offer = await StreamConnection.createOffer();
     await StreamConnection.setLocalDescription(offer);
-    receiveChannel.send(JSON.stringify({id,set:true,msg:{ id, offer }}));
+    receiveChannel.send(JSON.stringify({id,msg:{  sdp:offer }}));
     receiveChannel.onmessage = (event) => {
         
-        const db = JSON.parse(event.data) as { candidate?:RTCIceCandidateInit,answer?:RTCSessionDescriptionInit};
+        const db = JSON.parse(event.data) as { candidate?:RTCIceCandidateInit,sdp?:RTCSessionDescriptionInit};
         if (db.candidate){
             console.log(`get ICE: ${db.candidate}`) ;
             //await StreamConnection.setRemoteDescription(new RTCSessionDescription({sdp:sign.offer,type:"offer"}));
             StreamConnection.addIceCandidate(new RTCIceCandidate(db.candidate)).then(()=>{
                 console.log(JSON.stringify(db.candidate));
             });
-        }else if (db.answer){
-            StreamConnection.setRemoteDescription(new RTCSessionDescription(db.answer));
+        }else if (db.sdp){
+            StreamConnection.setRemoteDescription(new RTCSessionDescription(db.sdp));
 
         }
     };  
@@ -227,10 +248,21 @@ export const createRTCTrackOffer =async (
 
 export const createRTCTrackAnswer = ( 
     dataChannel: RTCDataChannel,
-    db:{id:string,offer:any,candidate:any}[],
+    //db:{id:string,offer:any,candidate:any}[],
     ontrack:(event: RTCTrackEvent)=>void,datachannel:(channel: RTCDataChannel)=>void)=>{
     const StreamConnection = new RTCPeerConnection(configuration);  
-    let id = ""  ;  
+    let id = dataChannel.label  ;  
+    dataChannel.addEventListener("message",(e)=>{
+        const msg = JSON.parse(e.data);    
+        if (msg.sdp){
+            StreamConnection.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+        }else if (msg.candidate){
+            StreamConnection.addIceCandidate(new RTCIceCandidate(msg.candidate)).then(()=>{
+                console.log(JSON.stringify(msg.candidate));
+            });
+        }        
+    });
+    /*
     db.forEach(v=>{
         if (v.id && !id){
             id = v.id;
@@ -243,7 +275,7 @@ export const createRTCTrackAnswer = (
             });
         }
     });
-
+*/
     StreamConnection.oniceconnectionstatechange=(e)=>{
         if (StreamConnection.connectionState === 'closed' 
             || StreamConnection.connectionState === 'failed' 

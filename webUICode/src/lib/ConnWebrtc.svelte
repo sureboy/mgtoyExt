@@ -9,7 +9,7 @@ export const dialogConfig:dialogStruct = {
     closeOnEsc:false,
 } ;
 
-export const startConn = (sign:signalingStruct,conn:(dc:RTCDataChannel)=>void)=>{
+export const startWebRTC = (sign:signalingStruct,conn:(dc:RTCDataChannel)=>void)=>{
     const peerConnection = new RTCPeerConnection(configuration);
     //dialogConfig.closeHandle=()=>{
     //    peerConnection.close()

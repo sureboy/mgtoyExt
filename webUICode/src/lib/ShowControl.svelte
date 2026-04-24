@@ -1,6 +1,6 @@
 <script lang="ts">
 import { onMount } from 'svelte';
-const {handInputText}:{handInputText?:(v:string)=>boolean} = $props()
+//const {handInputText}:{handInputText?:(v:string)=>boolean} = $props()
 //export let handInputText: (v:string)=>void
 
 const carInputRun = (firstBtn: Node)=>{
@@ -47,6 +47,15 @@ let inputKey:number
 let datalist:HTMLDataListElement
 let dataChannel:RTCDataChannel|undefined = undefined
 type handleDB ={ url:string,name:string,uri:string,timeOut:number,isNat:boolean }
+
+const handInputText =(id:string)=>{
+    if (id.length!=5 || !dataChannel){
+        return false
+    }
+    
+    dataChannel.send(JSON.stringify({id}))
+    return true
+}
 let NowCallback:{ e:HTMLAreaElement, callback:(e?:HTMLAreaElement)=>void }= null
 const buttonClickHandle = (e:HTMLAreaElement,callback?:(e?:HTMLAreaElement)=>void)=>{ 
     const msgString = JSON.stringify({  
@@ -127,6 +136,7 @@ const dbChange = (cache:any,update:number)=>{
             uri:`http://${cache.RemoteIP}`,
             timeOut:update,
             isNat:true}]
+            /*
     }else{
         const dbs:handleDB[] = []
         Object.values(cache).forEach((v:any )=>{  
@@ -138,8 +148,9 @@ const dbChange = (cache:any,update:number)=>{
                 timeOut:update,
                 isNat:true})
         })
-        return dbs
+        return dbs*/
     }
+    return undefined
 }
 const handleChangeDB = (dbs:handleDB[],e: HTMLAreaElement)=>{
     dbs.forEach(v=>{ 
@@ -156,7 +167,7 @@ export const initDataChannel = (dc:RTCDataChannel) =>{
         if (!event.data)return;
         handleMsg(event.data)
     }
-    dataChannel.send(JSON.stringify({video:true}))
+    //dataChannel.send(JSON.stringify({video:true}))
     //return dataChannel.onmessage
 }
 const handleMsg = (data:any)=>{
@@ -176,18 +187,20 @@ const handleMsg = (data:any)=>{
         
         const db_ = dbChange( db.DB,db.Update)
         //console.log(db,db_,NowCallback) 
+        if (db_){
+            if (NowCallback ){            
+                if(NowCallback.callback )NowCallback.callback(NowCallback.e) 
+                handleChangeDB( 
+                            db_,
+                            NowCallback.e)
+                NowCallback=null
+            } else{
+                db_.forEach(v=>{
+                    checkCarName(v.name,tab_header.firstChild as HTMLAreaElement)
+                })
+            }     
+        }
         
-        if (NowCallback ){            
-            if(NowCallback.callback )NowCallback.callback(NowCallback.e) 
-            handleChangeDB( 
-                        db_,
-                        NowCallback.e)
-            NowCallback=null
-        } else{
-            db_.forEach(v=>{
-                checkCarName(v.name,tab_header.firstChild as HTMLAreaElement)
-            })
-        }     
     }catch(e){
         console.log(e)
         return;

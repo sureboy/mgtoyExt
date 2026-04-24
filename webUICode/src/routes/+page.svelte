@@ -2,8 +2,8 @@
 import { onMount } from 'svelte';
 import type {signalingStruct} from '$lib/utils/util'
  
-import {createRTCTrackAnswer ,connWebRTC,createRTCTrackOffer } from '$lib/webrtc' 
-import ConnWebrtc,{startConn,dialogConfig} from '$lib/ConnWebrtc.svelte';
+import {createRTCTrackAnswer ,connWebRTC,createRTCTrackOffer,createRtcTrack } from '$lib/webrtc' 
+import ConnWebrtc,{ startWebRTC,dialogConfig} from '$lib/ConnWebrtc.svelte';
 //import {getVideo} from '$lib/Fullscreen.svelte'
 import ShowControl,{initDataChannel} from "$lib/ShowControl.svelte";
 import VideoScreen,{getVideo,toggleFullscreen} from '$lib/Fullscreen.svelte'
@@ -48,9 +48,9 @@ async function getLocalStream() {
  
 //let link:HTMLAnchorElement=undefined
 
-let dataChannel: RTCDataChannel 
+//let dataChannel: RTCDataChannel 
 //let Camera:HTMLButtonElement
-const createRTCConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,candidate:any}[])=>{
+const createRTCConn = ( dataChannel: RTCDataChannel)=>{
     const finalStream = new MediaStream();
     const pVideo = document.getElementById("video")
     pVideo.style.display=""
@@ -80,7 +80,7 @@ const createRTCConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,cand
     videoPlay.srcObject = finalStream;
     //videoPlay.muted = true
     //videoPlay.play()
-    const pc = createRTCTrackAnswer(dataChannel,db,(event)=>{ 
+    const pc = createRTCTrackAnswer(dataChannel, (event)=>{ 
         finalStream.addTrack(event.track) 
     },(dc)=>{
         
@@ -90,7 +90,7 @@ const createRTCConn = ( dataChannel: RTCDataChannel,db:{id:string,offer:any,cand
     }
    
 }
-
+ 
 const getTrackShowVideo = (pVideo: HTMLElement,StreamConnection:RTCPeerConnection)=>{
     let videoR:HTMLVideoElement
     const finalStream = new MediaStream();
@@ -104,19 +104,103 @@ const getTrackShowVideo = (pVideo: HTMLElement,StreamConnection:RTCPeerConnectio
         }
     }
 }
-const setRemoteRTC = ( dataChannel: RTCDataChannel)=>{
-    const oldHandleMsg =dataChannel.onmessage
-    dataChannel.onmessage = (e)=>{
-        const db = JSON.parse(e.data)
-        //console.log(db)
-        if (Array.isArray(db)){ 
-            createRTCConn( dataChannel,db)
+const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
+    const StreamConnection = createRtcTrack((candidate: RTCIceCandidateInit)=>{
+        dataChannel.send(JSON.stringify({id:dataChannel.label,msg:{candidate}}))
+    },closeHand)
+    dataChannel.send(JSON.stringify({id:dataChannel.label}))
+    let heartbeat = 0;
+    const dc = StreamConnection.createDataChannel(dataChannel.label,{ordered:false})
+    dc.onopen=()=>{
+        heartbeat = performance.now();
+        dc.send(JSON.stringify({heartbeat}));
+        const timeout = setInterval(()=>{
+            if (performance.now()-heartbeat >10000){
+                clearInterval(timeout);
+                //StreamConnection.close();
+                console.log("time Out");
+                StreamConnection.close();
+                closeHand();
+            }else{
+                try{
+                    dc.send(JSON.stringify({heartbeat}));
+                }catch(e){
+                    clearInterval(timeout);
+                    StreamConnection.close();
+                    closeHand();
+                    console.log(e);
+                }
+                
+            }
+        },3000);
+        StreamConnection.onicecandidate = event=>{
+            if (event.candidate) { 
+                dc.send(JSON.stringify( event.candidate.toJSON() ));
+            }
+        };
+    }
+    dc.onmessage = e=>{
+        //console.log(e.data);
+        const obj = JSON.parse(e.data);
+        if (obj.heartbeat){
+            heartbeat = performance.now();
             return;
         }
-        oldHandleMsg?.call(dataChannel,e)
+        if (obj.candidate){
+            StreamConnection.addIceCandidate(new RTCIceCandidate(obj.candidate)).then(()=>{
+                console.log(JSON.stringify(obj.candidate));
+            });
+            return;
+        }
+        if (obj.sdp){
+            StreamConnection.setRemoteDescription(new RTCSessionDescription(obj));
+            if (obj.type==="offer"){
+                StreamConnection.createAnswer().then(sdp=>{
+                    StreamConnection.setLocalDescription(sdp);
+                    dc.send(JSON.stringify(sdp));
+                })
+            }
+        }
+    };
+    StreamConnection.ondatachannel = (e)=>{
+        e.channel.onmessage = dc.onmessage
+        //dc = e.channel
     }
-    
+    StreamConnection.onnegotiationneeded = (e)=>{
+        
+        console.log(e,StreamConnection.signalingState,StreamConnection.connectionState)
+        if (StreamConnection.connectionState==="new")return
+        StreamConnection.createOffer().then(sdp=>{
+            StreamConnection.setLocalDescription(sdp); 
+            dataChannel.send(JSON.stringify(sdp));
+        });        
+    }
+
+    StreamConnection.onicecandidate = (e)=>{
+        console.log(e.candidate,dataChannel.label)
+        if (e.candidate){
+            dataChannel.send(
+                JSON.stringify({id:dataChannel.label, msg:{    candidate: e.candidate.toJSON() }}));
+        }
+    }
+
+    return StreamConnection
 }
+
+
+const createOffer = ( StreamConnection: RTCPeerConnection ,dataChannel: RTCDataChannel)  =>{
+    //const StreamConnection = createMyWebRtc(dataChannel,closeHand)
+
+    StreamConnection.createOffer().then(sdp=>{
+        //console.log(sdp)
+        StreamConnection.setLocalDescription(sdp).then(()=>{
+            dataChannel.send(JSON.stringify({id:dataChannel.label,msg:{sdp}}))
+        
+        })
+        
+    })
+}
+/*
 const handInputText =(id:string)=>{
     if (id.length!=5 || !dataChannel){
         return false
@@ -124,7 +208,7 @@ const handInputText =(id:string)=>{
     
     dataChannel.send(JSON.stringify({id}))
     return true
-}
+}*/
 const createVideo = ()=>{
     const video_self = document.createElement("video")
     video_self.muted = true;
@@ -135,44 +219,100 @@ const createVideo = ()=>{
     return video_self
     //video_self.srcObject = localStream
 }
-const initCameraClick = (receiveChannel: RTCDataChannel,id:string)=>{
+ 
+const initDC = (receiveChannel: RTCDataChannel,StreamConnection:RTCPeerConnection )=>{
+    //let StreamConnection:RTCPeerConnection = undefined
+    receiveChannel.addEventListener("message",(e)=>{
+        const db = JSON.parse(e.data)
+        console.log("initDC",db)
+        if (db.id && db.msg){
+            if (!dialogConfig.dialogEl.open){
+                dialogConfig.dialogEl.showModal()
+                //StreamConnection = createMyWebRtc(receiveChannel)
+                
+            }
+            if (db.msg.sdp){
+                
+                StreamConnection.setRemoteDescription(new RTCSessionDescription(db.msg.sdp))
+                if (db.msg.sdp.type==="offer"){
+                        const finalStream = new MediaStream();
+                        const pVideo = document.getElementById("video")
+                        pVideo.style.display=""
+                        getVideo().srcObject=finalStream
+                        StreamConnection.ontrack = (e)=>{
+                            console.log(e)
+                            finalStream.addTrack(e.track)
+                        }
+                    StreamConnection.onicecandidate = (e)=>{
+                        console.log(e.candidate,db.id)
+                        if (e.candidate){
+                            receiveChannel.send(
+                                JSON.stringify({id:db.id, msg:{    
+                                    candidate: e.candidate.toJSON() }}));
+                        }
+                    }
+                    StreamConnection.createAnswer({ iceRestart: true }).then(sdp=>{
+                            
+                        StreamConnection.setLocalDescription(sdp)
+                        receiveChannel.send(JSON.stringify({id:db.id,msg:{sdp}}))
+                        console.log("answer",sdp)
+                    })
+                }
+            }
+            if (db.msg.candidate){
+                StreamConnection.addIceCandidate(new RTCIceCandidate(db.msg.candidate))
+            }
+            
+
+        }
+    })
+}
+const init = (receiveChannel: RTCDataChannel )=>{
+    
     initDataChannel(receiveChannel) 
-    dataChannel = receiveChannel
-    setRemoteRTC( dataChannel)
-    const Camera = document.createElement("button")
+    //dataChannel = receiveChannel
+    const StreamConnection = createMyWebRtc( receiveChannel,reloadHandle)
+    initDC(receiveChannel,StreamConnection)
+    dialogConfig.closeHandle = ()=>{
+        StreamConnection.close()
+    }
+    const link = document.createElement("a") 
+    link.textContent=receiveChannel.label
+    function reloadHandle  (){
+        link.textContent="重新连接"
+        link.href="#"
+        link.target=""
+        link.onclick=()=>{
+            receiveChannel.send(JSON.stringify({id:receiveChannel.label}));
+            createMyWebRtc(receiveChannel,reloadHandle)
+        }                            
+    }
     const init = document.getElementById("init")
     init.childNodes.forEach(v=>{
         v.remove()
     })
+    init.append(link)
+
+    const Camera = document.createElement("button")
+
     document.getElementById("camera").append(Camera)
     Camera.textContent="开启摄像头"
     Camera.onclick = ()=>{
         getLocalStream().then(localStream=>{ 
+            //const StreamConnection = createMyWebRtc( receiveChannel,reloadHandle)
+            
+            localStream.getTracks().forEach(track => {  
+                StreamConnection.addTrack(track, localStream);    
+            }); 
+            createOffer(StreamConnection,receiveChannel)
             const pVideo = document.getElementById("video")
             pVideo.style.display=""
             const videoP = getVideo()
             videoP.srcObject = localStream
-            const link = document.createElement("a")
-            function createRTCOffer(){
-                createRTCTrackOffer(localStream,receiveChannel,id,reloadHandle).then(({StreamConnection})=>{
-                    dialogConfig.closeHandle = ()=>{
-                        StreamConnection.close()
-                    }
-                    link.textContent=id
-                    getTrackShowVideo(pVideo,StreamConnection)  
-                })
-            }
-            //link.textContent=id
-            function reloadHandle  (){
-                link.textContent="重新连接"
-                link.href="#"
-                link.target=""
-                link.onclick=()=>{
-                    createRTCOffer()
-                }                            
-            }
-            init.append(link)
-            createRTCOffer()
+            getTrackShowVideo(pVideo,StreamConnection)  
+             
+            
+            //createRTCOffer()
             Camera.textContent="⛶"
             Camera.onclick=()=>{
                 //videoP.muted = false
@@ -185,7 +325,7 @@ const initCameraClick = (receiveChannel: RTCDataChannel,id:string)=>{
 }
 const checkUrlHashErr = ()=>{
     connWebRTC().then((res) =>{  
-        initCameraClick(res.dataChannel,res.signaling.id)   
+        init(res.dataChannel)   
     }).catch(e=>{
         console.log(window.location.origin)
         dialogConfig.dialogEl.showModal()
@@ -209,8 +349,8 @@ onMount(() => {
             try{
                 const sign = JSON.parse(decodeURIComponent(window.location.hash.slice(1))) as signalingStruct
                 location.hash = ''; 
-                startConn(sign,(receiveChannel)=>{ 
-                    initCameraClick(receiveChannel,sign.id)  
+                startWebRTC(sign,(receiveChannel)=>{ 
+                    init (receiveChannel)  
                 })
                 return
             }catch(e){
@@ -222,7 +362,7 @@ onMount(() => {
     checkUrlHashErr()   
 }) 
 </script>
-<ShowControl {handInputText}></ShowControl>
+<ShowControl  ></ShowControl>
 <ConnWebrtc>
     <p id="init">   </p>
     <p id="camera"> </p>

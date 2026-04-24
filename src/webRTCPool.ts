@@ -10,7 +10,12 @@ export class ConnectionPool {
     private connections: Map<ConnectionId, RTCPeerConnection> = new Map();
     //private connectionsTime: Map<ConnectionId, number> = new Map();
     private iceServers: RTCIceServer[];
-    public routerSignaling = new Map<string,{answerDataChannel?:RTCDataChannel,offerDataChannel:RTCDataChannel,msg:any[]}>();
+    public routerSignaling = 
+    new Map<string,
+    {
+        remoteDataChannel?:RTCDataChannel,
+        localDataChannel:RTCDataChannel,
+        msg:any[]}>();
 
     constructor(iceServers: RTCIceServer[] = [
         { urls: 'stun:stun.l.google.com:19302' },
