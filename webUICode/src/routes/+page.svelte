@@ -9,25 +9,25 @@ import ShowControl,{initDataChannel} from "$lib/ShowControl.svelte";
 //    import CarInfo from '$lib/CarInfo.svelte';
 //import VideoScreen,{getVideo,toggleFullscreen} from '$lib/Fullscreen.svelte'
  
-async function getLocalStream( ) { 
+async function getLocalStream(cameraID:number ) { 
     try {
-        //const devices = await navigator.mediaDevices.enumerateDevices();
-        //const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
         // 假设 videoDevices[0] 是前置, videoDevices[1] 是后置。保存它们的 deviceId
         //const frontCameraId = videoDevices[0].deviceId;
         //const backCameraId = videoDevices[1].deviceId;
         
         const localStream = await navigator.mediaDevices.getUserMedia({ 
-            video: true,
+            video:  { deviceId: { exact: videoDevices[cameraID].deviceId } },
             audio:{
-        echoCancellation: true,   // 开启回声消除
-        noiseSuppression: true,   // 建议同时开启降噪
-        autoGainControl: true     // 建议同时开启自动增益
-    }, 
+                echoCancellation: true,   // 开启回声消除
+                noiseSuppression: true,   // 建议同时开启降噪
+                autoGainControl: true     // 建议同时开启自动增益
+            }, 
         });
         console.log('使用摄像头');
         
-        return {localStream };
+        return {localStream ,cameraNumber:videoDevices.length};
     } catch (error) { 
         //console.log(error)
         //return;
@@ -280,13 +280,13 @@ const init = (receiveChannel: RTCDataChannel )=>{
 
     const cam = document.getElementById("camera")
     cam.innerHTML=''
-    //let cameraID = 0
+    let cameraID = 0
     cam.append(Camera)
     Camera.textContent=`摄像头`
     const containerStream = new MediaStream();
     Camera.onclick = ()=>{
         requestWakeLock()
-        getLocalStream().then(({localStream,cameraNumber})=>{  
+        getLocalStream(cameraID).then(({localStream,cameraNumber})=>{  
             const senders = conf.StreamConnection.getSenders();
             localStream.getTracks().forEach(track => {  
                 
@@ -306,23 +306,21 @@ const init = (receiveChannel: RTCDataChannel )=>{
             const AudioCamera = document.createElement("button")
             AudioCamera.textContent=`静音`
             AudioCamera.onclick=()=>{
-                const videoSender = conf.StreamConnection.getSenders().find(s => s.track.kind === 'audio');
-          
-                videoSender.track.enabled=false
-                  
+                const videoSender = conf.StreamConnection.getSenders().find(s => s.track.kind === 'audio'); 
+                videoSender.track.enabled=false 
             }  
             cam.innerHTML=''  
             cam.append(AudioCamera)   
-            /*
+             
             if (cameraNumber && cameraNumber>0){ 
                 cameraID++
-                if  (cameraID>cameraNumber){
+                if  (cameraID>=cameraNumber){
                     cameraID =0 
                 }
                 cam.append(Camera)   
                 Camera.textContent=`切换镜头${cameraID}`
               
-            }*/
+            } 
         })
     } 
 
