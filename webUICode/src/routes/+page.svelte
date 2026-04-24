@@ -16,9 +16,10 @@ async function getLocalStream(cameraID:number ) {
         // 假设 videoDevices[0] 是前置, videoDevices[1] 是后置。保存它们的 deviceId
         //const frontCameraId = videoDevices[0].deviceId;
         //const backCameraId = videoDevices[1].deviceId;
-        
+        //if (videoDevices.length<=cameraID)
+        const cameraNumber = videoDevices.length
         const localStream = await navigator.mediaDevices.getUserMedia({ 
-            video: true,// { deviceId: { exact: videoDevices[cameraID].deviceId } },
+            video: (cameraNumber<=cameraID)?true:{ deviceId: { exact: videoDevices[cameraID].deviceId } },
             audio:{
                 echoCancellation: true,   // 开启回声消除
                 noiseSuppression: true,   // 建议同时开启降噪
@@ -27,7 +28,7 @@ async function getLocalStream(cameraID:number ) {
         });
         console.log('使用摄像头');
         
-        return {localStream ,cameraNumber:videoDevices.length};
+        return {localStream ,cameraNumber};
     } catch (error) { 
         //console.log(error)
         //return;
