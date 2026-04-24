@@ -50,6 +50,8 @@ async function getLocalStream() {
 const getTrackShowVideo = ( StreamConnection:RTCPeerConnection)=>{ 
     const finalStream = new MediaStream();
     let has = false
+    const v = document.getElementById("video")
+    v.innerHTML=""
     StreamConnection.ontrack = (e)=>{ 
         finalStream.addTrack(e.track)
         if (!has){
@@ -150,7 +152,7 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
             dc.send(JSON.stringify(sdp));
         });        
     }
-
+    getTrackShowVideo(StreamConnection) 
     StreamConnection.onicecandidate = (e)=>{
         //console.log(e.candidate,dataChannel.label)
         if (e.candidate){
@@ -161,7 +163,23 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
 
     return StreamConnection
 }
+async function requestWakeLock() {
 
+    if ('wakeLock' in navigator) {
+        try {
+            const wakeLock = await navigator.wakeLock.request('screen');
+            console.log('唤醒锁已激活，屏幕将保持常亮');
+            wakeLock.addEventListener('release', () => {
+                console.log('唤醒锁被释放');
+            });
+            //return wakeLock
+        } catch (err) {
+            console.error(`无法获取唤醒锁: ${err.name}, ${err.message}`);
+        }
+    //}else{
+        //alert("您的浏览器不支持唤醒锁");
+    }
+}
 
 const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
     //const StreamConnection = createMyWebRtc(dataChannel,closeHand)
@@ -210,7 +228,7 @@ const initDC = (conf:{receiveChannel: RTCDataChannel,StreamConnection:RTCPeerCon
                 
                 conf.StreamConnection.setRemoteDescription(new RTCSessionDescription(db.msg.sdp))
                 if (db.msg.sdp.type==="offer"){
-                    getTrackShowVideo(conf.StreamConnection) 
+                    
                     conf.StreamConnection.onicecandidate = (e)=>{
                         console.log(e.candidate,db.id)
                         if (e.candidate){
@@ -266,8 +284,9 @@ const init = (receiveChannel: RTCDataChannel )=>{
     const Camera = document.createElement("button")
 
     document.getElementById("camera").append(Camera)
-    Camera.textContent="开启摄像头"
+    Camera.textContent=`摄像头`
     Camera.onclick = ()=>{
+        requestWakeLock()
         getLocalStream().then(localStream=>{ 
             //const StreamConnection = createMyWebRtc( receiveChannel,reloadHandle)
             
@@ -279,11 +298,11 @@ const init = (receiveChannel: RTCDataChannel )=>{
                 //if (conf.id !== conf.receiveChannel.label)
                 conf.receiveChannel.send(JSON.stringify({id:conf.receiveChannel.label,msg:{sdp}}))
             })
-            const v = createVideo()
-            v.srcObject=localStream
-            document.getElementById("video").append(v)
+            //const v = createVideo()
+            //v.srcObject=localStream
+            //document.getElementById("video").append(v)
 
-            getTrackShowVideo(conf.StreamConnection)  
+           // getTrackShowVideo(conf.StreamConnection)  
             /*
             const videoP = getVideo()
             videoP.srcObject = localStream
@@ -291,8 +310,16 @@ const init = (receiveChannel: RTCDataChannel )=>{
              */
             
             //createRTCOffer()
-            Camera.textContent="⛶"
+            Camera.textContent=`静音`
             Camera.onclick=()=>{
+                const senders = conf.StreamConnection.getSenders();
+                senders.forEach(s=>{
+                    console.log(s)
+                    if (s.track.kind ==="audio"){
+                        s.track.enabled=false
+                    }
+                })
+                //conf.StreamConnection.removeTrack()
                 //videoP.muted = false
                 //videoP.play()
                 //toggleFullscreen();
