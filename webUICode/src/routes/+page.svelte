@@ -6,10 +6,10 @@ import {connWebRTC,createRtcTrack } from '$lib/webrtc'
 import ConnWebrtc,{ startWebRTC,dialogConfig} from '$lib/ConnWebrtc.svelte';
 //import {getVideo} from '$lib/Fullscreen.svelte'
 import ShowControl,{initDataChannel} from "$lib/ShowControl.svelte";
-    import CarInfo from '$lib/CarInfo.svelte';
+//    import CarInfo from '$lib/CarInfo.svelte';
 //import VideoScreen,{getVideo,toggleFullscreen} from '$lib/Fullscreen.svelte'
  
-async function getLocalStream(cameraID?:number) { 
+async function getLocalStream(cameraID:number) { 
     try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
@@ -17,7 +17,7 @@ async function getLocalStream(cameraID?:number) {
         //const frontCameraId = videoDevices[0].deviceId;
         //const backCameraId = videoDevices[1].deviceId;
         const localStream = await navigator.mediaDevices.getUserMedia({ 
-            video: cameraID?true:{ deviceId: { exact: videoDevices[cameraID].deviceId } },
+            video:  { deviceId: { exact: videoDevices[cameraID].deviceId } },
             audio:{
         echoCancellation: true,   // 开启回声消除
         noiseSuppression: true,   // 建议同时开启降噪
@@ -279,7 +279,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
 
     const cam = document.getElementById("camera")
     cam.innerHTML=''
-    let cameraID = 0
+    let cameraID = 1
     cam.append(Camera)
     Camera.textContent=`摄像头${cameraID}`
     const containerStream = new MediaStream();
