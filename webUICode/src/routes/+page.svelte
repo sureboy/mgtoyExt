@@ -293,7 +293,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
     cam.innerHTML=''
     let cameraID = 0
     cam.append(Camera)
-    Camera.textContent=`摄像头`
+    Camera.textContent=`摄像头${cameraID}`
     Camera.onclick = ()=>{
         requestWakeLock()
         getLocalStream(cameraID).then(({localStream,cameraNumber})=>{  
@@ -314,7 +314,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
             const AudioCamera = document.createElement("button")
             AudioCamera.textContent=`静音`
             AudioCamera.onclick=()=>{
-                const videoSender = conf.StreamConnection.getSenders().find(s => s.track.kind === 'video');
+                const videoSender = conf.StreamConnection.getSenders().find(s => s.track.kind === 'audio');
           
                 videoSender.track.enabled=false
                   
@@ -327,7 +327,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
                     cameraID =0 
                 }
                 cam.append(Camera)   
-                Camera.textContent=`切换镜头`
+                Camera.textContent=`切换镜头${cameraID}`
               
             }
         })
