@@ -8,7 +8,11 @@ import ConnWebrtc,{ startWebRTC,dialogConfig} from '$lib/ConnWebrtc.svelte';
 import ShowControl,{initDataChannel} from "$lib/ShowControl.svelte";
 //    import CarInfo from '$lib/CarInfo.svelte';
 //import VideoScreen,{getVideo,toggleFullscreen} from '$lib/Fullscreen.svelte'
- 
+type myWebRtcConf  = {
+    dataChannel: RTCDataChannel,
+    StreamConnection?:RTCPeerConnection,
+    myDataChannel?:RTCDataChannel,
+}
 async function getLocalStream(facingMode:ConstrainDOMString ) { 
     try {
         //const devices = await navigator.mediaDevices.enumerateDevices();
@@ -69,51 +73,51 @@ const getTrackShowVideo = ( StreamConnection:RTCPeerConnection)=>{
         }
     }
 } 
-const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
-    const StreamConnection = createRtcTrack((candidate: RTCIceCandidateInit)=>{
-        dataChannel.send(JSON.stringify({id:dataChannel.label,msg:{candidate}}))
+const createMyWebRtc = (conf:myWebRtcConf,closeHand?:()=>void)=>{
+    conf.StreamConnection = createRtcTrack((candidate: RTCIceCandidateInit)=>{
+        conf.dataChannel.send(JSON.stringify({id:conf.dataChannel.label,msg:{candidate}}))
     },closeHand)
     dialogConfig.closeHandle = ()=>{
-        StreamConnection.close()
+        conf.StreamConnection.close()
     }
-    dataChannel.send(JSON.stringify({id:dataChannel.label}))
+    conf.dataChannel.send(JSON.stringify({id:conf.dataChannel.label}))
     let heartbeat = 0;
-    let dc = StreamConnection.createDataChannel(dataChannel.label,{ordered:false})
-    dc.onopen=()=>{
+    conf.myDataChannel = conf.StreamConnection.createDataChannel(conf.dataChannel.label,{ordered:false})
+    conf.myDataChannel.onopen=()=>{
         heartbeat = performance.now();
-        dc.send(JSON.stringify({heartbeat}));
+        conf.myDataChannel.send(JSON.stringify({heartbeat}));
         const timeout = setInterval(()=>{
             if (performance.now()-heartbeat >10000){
                 clearInterval(timeout);
                 //StreamConnection.close();
                 console.log("time Out");
-                StreamConnection.close();
+                conf.StreamConnection.close();
                 closeHand();
             }else{
                 try{
-                    dc.send(JSON.stringify({heartbeat}));
+                    conf.myDataChannel.send(JSON.stringify({heartbeat}));
                 }catch(e){
                     clearInterval(timeout);
-                    StreamConnection.close();
+                    conf.StreamConnection.close();
                     closeHand();
                     console.log(e);
                 }
                 
             }
         },3000);
-        StreamConnection.onicecandidate = event=>{
+        conf.StreamConnection.onicecandidate = event=>{
             if (event.candidate) { 
-                dc.send(JSON.stringify( event.candidate.toJSON() ));
+                conf.myDataChannel.send(JSON.stringify( event.candidate.toJSON() ));
             }
         };
-        StreamConnection.onnegotiationneeded = (e)=>{
-            StreamConnection.createOffer().then(sdp=>{
-                StreamConnection.setLocalDescription(sdp).then(()=>{
-                    dc.send(JSON.stringify(StreamConnection.localDescription.toJSON()));
+        conf.StreamConnection.onnegotiationneeded = (e)=>{
+            conf.StreamConnection.createOffer().then(sdp=>{
+                conf.StreamConnection.setLocalDescription(sdp).then(()=>{
+                    conf.myDataChannel.send(JSON.stringify(conf.StreamConnection.localDescription.toJSON()));
                 });                 
             });        
         }
-        dc.addEventListener("message",e=>{
+        conf.myDataChannel.addEventListener("message",e=>{
             const obj = JSON.parse(e.data);
             if (obj.heartbeat){
                 console.log(obj)
@@ -122,7 +126,7 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
             }
         })
     }
-    dc.onmessage = e=>{
+    conf.myDataChannel.onmessage = e=>{
         console.log(e.data);
         const obj = JSON.parse(e.data);
         if (obj.heartbeat){
@@ -130,23 +134,23 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
             return;
         }
         if (obj.candidate){
-            StreamConnection.addIceCandidate(new RTCIceCandidate(obj.candidate)).then(()=>{
+            conf.StreamConnection.addIceCandidate(new RTCIceCandidate(obj.candidate)).then(()=>{
                 console.log(JSON.stringify(obj.candidate));
             });
             return;
         }
         if (obj.sdp){
-            StreamConnection.setRemoteDescription(new RTCSessionDescription(obj));
+            conf.StreamConnection.setRemoteDescription(new RTCSessionDescription(obj));
             if (obj.type==="offer"){
-                StreamConnection.createAnswer().then(sdp=>{
-                    StreamConnection.setLocalDescription(sdp);
-                    dc.send(JSON.stringify(sdp));
+                conf.StreamConnection.createAnswer().then(sdp=>{
+                    conf.StreamConnection.setLocalDescription(sdp);
+                    conf.myDataChannel.send(JSON.stringify(sdp));
                 })
             }
         }
     };
-    StreamConnection.ondatachannel = (e)=>{
-        e.channel.onmessage = dc.onmessage
+    conf.StreamConnection.ondatachannel = (e)=>{
+        e.channel.onmessage = conf.myDataChannel.onmessage
         e.channel.addEventListener("message",ev=>{
             const obj = JSON.parse(ev.data);
             if (obj.heartbeat){
@@ -155,16 +159,16 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
                 return;
             }
         })
-        dc = e.channel
+        conf.myDataChannel = e.channel
     }
-    StreamConnection.onnegotiationneeded = (e)=>{
-        StreamConnection.createOffer().then(sdp=>{
-            StreamConnection.setLocalDescription(sdp).then(()=>{
-                dataChannel.send(JSON.stringify({id:dataChannel.label,msg:{sdp}}))
+    conf.StreamConnection.onnegotiationneeded = (e)=>{
+        conf.StreamConnection.createOffer().then(sdp=>{
+            conf.StreamConnection.setLocalDescription(sdp).then(()=>{
+                conf.dataChannel.send(JSON.stringify({id:conf.dataChannel.label,msg:{sdp}}))
             });             
         });        
     }
-    getTrackShowVideo(StreamConnection) /*
+    getTrackShowVideo(conf.StreamConnection) /*
     StreamConnection.onicecandidate = (e)=>{
         //console.log(e.candidate,dataChannel.label)
         if (e.candidate){
@@ -173,7 +177,7 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
         }
     }
 */
-    return StreamConnection
+    //return StreamConnection
 }
 async function requestWakeLock() {
 
@@ -223,10 +227,10 @@ const createVideo = (finalStream?: MediaStream)=>{
     //video_self.srcObject = localStream
 }
  
-const initDC = (conf:{receiveChannel: RTCDataChannel,StreamConnection:RTCPeerConnection} )=>{
+const initDC = (conf:myWebRtcConf )=>{
     //let StreamConnection:RTCPeerConnection = undefined
     
-    conf.receiveChannel.addEventListener("message",(e)=>{
+    conf.dataChannel.addEventListener("message",(e)=>{
         const db = JSON.parse(e.data)
         //console.log("initDC",db)
         if (!db.id || !db.msg){
@@ -236,7 +240,7 @@ const initDC = (conf:{receiveChannel: RTCDataChannel,StreamConnection:RTCPeerCon
             dialogConfig.dialogEl.showModal() 
         } 
         if (!conf.StreamConnection || conf.StreamConnection.signalingState==="closed"){
-            conf.StreamConnection = createMyWebRtc(conf.receiveChannel)
+            createMyWebRtc(conf)
         }
         if (db.msg.sdp){
             
@@ -246,7 +250,7 @@ const initDC = (conf:{receiveChannel: RTCDataChannel,StreamConnection:RTCPeerCon
                 conf.StreamConnection.onicecandidate = (e)=>{
                     console.log(e.candidate,db.id)
                     if (e.candidate){
-                        conf.receiveChannel.send(
+                        conf.dataChannel.send(
                             JSON.stringify({id:db.id, msg:{    
                                 candidate: e.candidate.toJSON() }}));
                     }
@@ -255,7 +259,7 @@ const initDC = (conf:{receiveChannel: RTCDataChannel,StreamConnection:RTCPeerCon
                 conf.StreamConnection.createAnswer({ iceRestart: true }).then(
                     sdp=>{ 
                     conf.StreamConnection.setLocalDescription(sdp)
-                    conf.receiveChannel.send(JSON.stringify({id:db.id,msg:{sdp}}))
+                    conf.dataChannel.send(JSON.stringify({id:db.id,msg:{sdp}}))
                     //console.log("answer",sdp)
                 })
             }
@@ -269,13 +273,11 @@ const initDC = (conf:{receiveChannel: RTCDataChannel,StreamConnection:RTCPeerCon
 const init = (receiveChannel: RTCDataChannel )=>{
     
     initDataChannel(receiveChannel)  
-    const sc = createMyWebRtc( receiveChannel,reloadHandle)
-    const conf:{
-        receiveChannel: RTCDataChannel,
-        StreamConnection:RTCPeerConnection,
-    } = {StreamConnection:sc,receiveChannel}
+    
+    const conf:myWebRtcConf = { dataChannel:receiveChannel}
+    const sc = createMyWebRtc( conf,reloadHandle)
     initDC(conf)
- 
+    
     const link = document.createElement("a") 
     link.textContent=receiveChannel.label
     function reloadHandle  (){
@@ -285,7 +287,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
         link.onclick=()=>{
             link.textContent = receiveChannel.label
             //receiveChannel.send(JSON.stringify({id:receiveChannel.label}));
-            conf.StreamConnection = createMyWebRtc(receiveChannel,reloadHandle)
+            createMyWebRtc(conf,reloadHandle)
         }                            
     }
     const init = document.getElementById("init")
