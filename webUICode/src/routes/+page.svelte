@@ -105,6 +105,13 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
                 dc.send(JSON.stringify( event.candidate.toJSON() ));
             }
         };
+        StreamConnection.onnegotiationneeded = (e)=>{
+            StreamConnection.createOffer().then(sdp=>{
+                StreamConnection.setLocalDescription(sdp).then(()=>{
+                    dc.send(JSON.stringify(StreamConnection.localDescription.toJSON()));
+                });                 
+            });        
+        }
         dc.addEventListener("message",e=>{
             const obj = JSON.parse(e.data);
             if (obj.heartbeat){
@@ -150,15 +157,13 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
         dc = e.channel
     }
     StreamConnection.onnegotiationneeded = (e)=>{
-        console.log("negotiation",e,StreamConnection.signalingState,StreamConnection.connectionState)
-        if (StreamConnection.connectionState==="new")return
-        //if (dc.)
         StreamConnection.createOffer().then(sdp=>{
-            StreamConnection.setLocalDescription(sdp); 
-            dc.send(JSON.stringify(sdp));
+            StreamConnection.setLocalDescription(sdp).then(()=>{
+                dataChannel.send(JSON.stringify({id:dataChannel.label,msg:{sdp}}))
+            });             
         });        
     }
-    getTrackShowVideo(StreamConnection) 
+    getTrackShowVideo(StreamConnection) /*
     StreamConnection.onicecandidate = (e)=>{
         //console.log(e.candidate,dataChannel.label)
         if (e.candidate){
@@ -166,7 +171,7 @@ const createMyWebRtc = (dataChannel: RTCDataChannel,closeHand?:()=>void)=>{
                 JSON.stringify({id:dataChannel.label, msg:{    candidate: e.candidate.toJSON() }}));
         }
     }
-
+*/
     return StreamConnection
 }
 async function requestWakeLock() {
@@ -186,7 +191,7 @@ async function requestWakeLock() {
         //alert("您的浏览器不支持唤醒锁");
     }
 }
-
+ /*
 const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
     //const StreamConnection = createMyWebRtc(dataChannel,closeHand)
 
@@ -196,7 +201,7 @@ const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
     return sdp
  
 }
- 
+ */
 const createVideo = (finalStream?: MediaStream)=>{
     const v = document.getElementById("video")
     v.innerHTML=""
@@ -223,38 +228,41 @@ const initDC = (conf:{receiveChannel: RTCDataChannel,StreamConnection:RTCPeerCon
     conf.receiveChannel.addEventListener("message",(e)=>{
         const db = JSON.parse(e.data)
         //console.log("initDC",db)
-        if (db.id && db.msg){
-            if (!dialogConfig.dialogEl.open){
-                dialogConfig.dialogEl.showModal() 
-            } 
-            if (conf.StreamConnection.signalingState==="closed"){
-                    conf.StreamConnection = createMyWebRtc(conf.receiveChannel)
-                }
-            if (db.msg.sdp){
-                
-                conf.StreamConnection.setRemoteDescription(new RTCSessionDescription(db.msg.sdp))
-                if (db.msg.sdp.type==="offer"){
-                    
-                    conf.StreamConnection.onicecandidate = (e)=>{
-                        console.log(e.candidate,db.id)
-                        if (e.candidate){
-                            conf.receiveChannel.send(
-                                JSON.stringify({id:db.id, msg:{    
-                                    candidate: e.candidate.toJSON() }}));
-                        }
-                    }
-                    conf.StreamConnection.createAnswer({ iceRestart: true }).then(
-                        sdp=>{ 
-                        conf.StreamConnection.setLocalDescription(sdp)
-                        conf.receiveChannel.send(JSON.stringify({id:db.id,msg:{sdp}}))
-                        console.log("answer",sdp)
-                    })
-                }
-            }
-            if (db.msg.candidate){
-                conf.StreamConnection.addIceCandidate(new RTCIceCandidate(db.msg.candidate))
-            } 
+        if (!db.id || !db.msg){
+            return
         }
+        if (!dialogConfig.dialogEl.open){
+            dialogConfig.dialogEl.showModal() 
+        } 
+        if (!conf.StreamConnection || conf.StreamConnection.signalingState==="closed"){
+            conf.StreamConnection = createMyWebRtc(conf.receiveChannel)
+        }
+        if (db.msg.sdp){
+            
+            conf.StreamConnection.setRemoteDescription(new RTCSessionDescription(db.msg.sdp))
+            if (db.msg.sdp.type==="offer"){
+                
+                conf.StreamConnection.onicecandidate = (e)=>{
+                    console.log(e.candidate,db.id)
+                    if (e.candidate){
+                        conf.receiveChannel.send(
+                            JSON.stringify({id:db.id, msg:{    
+                                candidate: e.candidate.toJSON() }}));
+                    }
+                }
+                //conf.StreamConnection.restartIce()
+                conf.StreamConnection.createAnswer({ iceRestart: true }).then(
+                    sdp=>{ 
+                    conf.StreamConnection.setLocalDescription(sdp)
+                    conf.receiveChannel.send(JSON.stringify({id:db.id,msg:{sdp}}))
+                    //console.log("answer",sdp)
+                })
+            }
+        }
+        if (db.msg.candidate){
+            conf.StreamConnection.addIceCandidate(new RTCIceCandidate(db.msg.candidate))
+        } 
+         
     })
 }
 const init = (receiveChannel: RTCDataChannel )=>{
@@ -274,8 +282,9 @@ const init = (receiveChannel: RTCDataChannel )=>{
         link.href="#"
         link.target=""
         link.onclick=()=>{
-            receiveChannel.send(JSON.stringify({id:receiveChannel.label}));
-            createMyWebRtc(receiveChannel,reloadHandle)
+            link.textContent = receiveChannel.label
+            //receiveChannel.send(JSON.stringify({id:receiveChannel.label}));
+            conf.StreamConnection = createMyWebRtc(receiveChannel,reloadHandle)
         }                            
     }
     const init = document.getElementById("init")
@@ -318,9 +327,11 @@ const init = (receiveChannel: RTCDataChannel )=>{
                 }
                // conf.StreamConnection.addTrack(track, localStream);    
             }); 
+            /*
             createOffer(conf.StreamConnection).then(sdp=>{ 
+                
                 conf.receiveChannel.send(JSON.stringify({id:conf.receiveChannel.label,msg:{sdp}}))
-            }) 
+            }) */
             const AudioCamera = document.createElement("button")
             AudioCamera.textContent=`静音`
             AudioCamera.onclick=()=>{
