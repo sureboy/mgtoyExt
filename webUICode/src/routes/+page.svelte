@@ -305,7 +305,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
         getLocalStream(facingMode).then(({localStream})=>{  
             containerStream.getTracks().forEach(t=>{
                 if (t.kind==="video"){
-                    t.stop()
+                    //t.stop()
                     containerStream.removeTrack(t)
                 }
             })
@@ -323,6 +323,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
                         return
                     }
                     containerStream.addTrack(track)
+                    videoSender.track.stop()
                     videoSender.replaceTrack(track);
                 }
                // conf.StreamConnection.addTrack(track, localStream);    
