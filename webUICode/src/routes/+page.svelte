@@ -303,13 +303,14 @@ const init = (receiveChannel: RTCDataChannel )=>{
     const containerStream = new MediaStream();
     Camera.onclick = ()=>{
         requestWakeLock()
+        containerStream.getTracks().forEach(t=>{
+            if (t.kind==="video"){
+                t.stop()
+                containerStream.removeTrack(t)
+            }
+        })
         getLocalStream(facingMode).then(({localStream})=>{  
-            containerStream.getTracks().forEach(t=>{
-                if (t.kind==="video"){
-                    //t.stop()
-                    containerStream.removeTrack(t)
-                }
-            })
+            
             const senders = conf.StreamConnection.getSenders();
             localStream.getTracks().forEach(track => {  
                 
