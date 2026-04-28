@@ -47,7 +47,7 @@ async function getLocalStream(facingMode:ConstrainDOMString ) {
                 };
             });
             await localVideo.play(); 
-            return {localStream:localVideo.captureStream(),cameraNumber:1}
+            return {localStream:localVideo.captureStream()}
         }catch(e){
             console.log(e)
             //return undefined
@@ -59,15 +59,12 @@ async function getLocalStream(facingMode:ConstrainDOMString ) {
 const getTrackShowVideo = ( StreamConnection:RTCPeerConnection)=>{ 
     const finalStream = new MediaStream();
     let has = false
-    const v = document.getElementById("video")
-    v.innerHTML=""
+    
     StreamConnection.ontrack = (e)=>{ 
         finalStream.addTrack(e.track)
         if (!has){
             has = true 
-            const videoR:HTMLVideoElement=createVideo()
-            videoR.srcObject = finalStream
-            document.getElementById("video").append(videoR)
+            createVideo(finalStream) 
         }
     }
 } 
@@ -200,13 +197,22 @@ const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
  
 }
  
-const createVideo = ()=>{
+const createVideo = (finalStream?: MediaStream)=>{
+    const v = document.getElementById("video")
+    v.innerHTML=""
     const video_self = document.createElement("video")
+    v.append(video_self)
+    if (finalStream) video_self.srcObject = finalStream
     video_self.muted = true;
     video_self.controls=true;
     video_self.autoplay = true;
+    video_self['playsinline'] = true;
+    video_self["webkit-playsinline"]=true;
+    video_self['disableremoteplayback']=true
+    video_self['disablepictureinpicture']=true
     video_self.height = 300;
     video_self.width = 200;
+    video_self.poster="./logo.png"
     return video_self
     //video_self.srcObject = localStream
 }
@@ -287,7 +293,10 @@ const init = (receiveChannel: RTCDataChannel )=>{
     const containerStream = new MediaStream();
     Camera.onclick = ()=>{
         requestWakeLock()
-        getLocalStream(facingMode).then(({localStream,cameraNumber})=>{  
+        containerStream.getTracks().forEach(t=>{
+            t.stop()
+        })
+        getLocalStream(facingMode).then(({localStream})=>{  
             const senders = conf.StreamConnection.getSenders();
             localStream.getTracks().forEach(track => {  
                 
@@ -297,6 +306,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
                     containerStream.addTrack(track)
                     conf.StreamConnection.addTrack(track, containerStream); 
                 }else{
+                    
                     videoSender.replaceTrack(track);
                 }
                // conf.StreamConnection.addTrack(track, localStream);    
@@ -324,6 +334,13 @@ const init = (receiveChannel: RTCDataChannel )=>{
                 Camera.textContent=`切换镜头 `
               
             //} 
+            //document.createElement("video")
+            //const v = document.getElementById("video")
+            const videoR=createVideo()
+            
+            //videoR.
+            //videoR.srcObject = finalStream
+            //v.append(videoR)
         })
     } 
 
