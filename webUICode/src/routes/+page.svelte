@@ -111,10 +111,10 @@ const createMyWebRtc = (conf:myWebRtcConf,closeHand?:()=>void)=>{
             }
         };
         conf.StreamConnection.onnegotiationneeded = (e)=>{
-            conf.StreamConnection.createOffer().then(sdp=>{
-                conf.StreamConnection.setLocalDescription(sdp).then(()=>{
-                    conf.myDataChannel.send(JSON.stringify(conf.StreamConnection.localDescription.toJSON()));
-                });                 
+            createOffer(conf.StreamConnection).then(sdp=>{
+                //conf.StreamConnection.setLocalDescription(sdp).then(()=>{
+                conf.myDataChannel.send(JSON.stringify(conf.StreamConnection.localDescription.toJSON()));
+                //});                 
             });        
         }
         conf.myDataChannel.addEventListener("message",e=>{
@@ -168,10 +168,10 @@ const createMyWebRtc = (conf:myWebRtcConf,closeHand?:()=>void)=>{
         conf.myDataChannel = e.channel
     }
     conf.StreamConnection.onnegotiationneeded = (e)=>{
-        conf.StreamConnection.createOffer().then(sdp=>{
-            conf.StreamConnection.setLocalDescription(sdp).then(()=>{
+        createOffer(conf.StreamConnection).then(sdp=>{
+            //conf.StreamConnection.setLocalDescription(sdp).then(()=>{
                 conf.dataChannel.send(JSON.stringify({id:conf.dataChannel.label,msg:{sdp}}))
-            });             
+            //});             
         });        
     }
     getTrackShowVideo(conf.StreamConnection) /*
@@ -202,17 +202,28 @@ async function requestWakeLock() {
         //alert("您的浏览器不支持唤醒锁");
     }
 }
- /*
+ 
 const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
     //const StreamConnection = createMyWebRtc(dataChannel,closeHand)
-
+const capabilities = RTCRtpSender.getCapabilities('video');
+    if (capabilities) {
+        // 从返回结果的 codecs 数组中查找 VP8
+        const vp8Codec = capabilities.codecs.find(c => c.mimeType === 'video/VP8'); 
+        if (vp8Codec) { 
+            StreamConnection.getTransceivers().forEach(transceiver => {
+                if (transceiver.sender && transceiver.sender.track?.kind === 'video') {
+                    transceiver.setCodecPreferences([vp8Codec]);
+                }
+            });
+        }
+    }
     const sdp  = await StreamConnection.createOffer() 
         //console.log(sdp)
     await    StreamConnection.setLocalDescription(sdp)
     return sdp
  
 }
- */
+  
 const createVideo = (finalStream?: MediaStream)=>{
     const v = document.getElementById("video")
     v.innerHTML=""
