@@ -3,7 +3,8 @@ export const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         {urls: 'stun:stun.qq.com:3478'}, 
-    ]
+    ],
+    //sdpSemantics: 'unified-plan'
 };
  
 const pushAnswer = (answer:signalingStruct)=>{

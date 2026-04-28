@@ -117,27 +117,43 @@ const createMyWebRtc = (conf:myWebRtcConf,closeHand?:()=>void)=>{
                 //});                 
             });        
         }
+        
         conf.myDataChannel.addEventListener("message",e=>{
             const obj = JSON.parse(e.data);
             if (obj.heartbeat){
+
                 console.log(obj)
                 heartbeat = performance.now();
+
+                conf.StreamConnection.getStats().then(v=>{
+                    console.log("getStats")
+                    for (const l of v.entries()) {
+                        console.log(l)
+                    }
+                })
                 return;
             }
-        })
+        }) 
     }
     conf.myDataChannel.onmessage = e=>{
         console.log(e.data);
+         conf.StreamConnection.getStats().then(v=>{
+                    console.log("getStats")
+                    for (const l of v.entries()) {
+                        console.log(l)
+                    }
+                })
         const obj = JSON.parse(e.data);
+        /*
         if (obj.heartbeat){
             heartbeat = performance.now();
-            //return;
-        }
+            return;
+        }*/
         if (obj.candidate){
             conf.StreamConnection.addIceCandidate(new RTCIceCandidate(obj.candidate)).then(()=>{
                 console.log(JSON.stringify(obj.candidate));
             });
-            //return;
+            return;
         }
         if (obj.sdp){
             conf.StreamConnection.setRemoteDescription(new RTCSessionDescription(obj));
@@ -147,11 +163,12 @@ const createMyWebRtc = (conf:myWebRtcConf,closeHand?:()=>void)=>{
                     conf.myDataChannel.send(JSON.stringify(sdp));
                 })
             }
-            //return
+            return
         }
         if (obj.click){
             console.log(obj.click)
             document.getElementById(obj.click)?.click()
+            return
         }
 
     };
@@ -205,7 +222,7 @@ async function requestWakeLock() {
  
 const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
     //const StreamConnection = createMyWebRtc(dataChannel,closeHand)
-const capabilities = RTCRtpSender.getCapabilities('video');
+    const capabilities = RTCRtpSender.getCapabilities('video');
     if (capabilities) {
         // 从返回结果的 codecs 数组中查找 VP8
         const vp8Codec = capabilities.codecs.find(c => c.mimeType === 'video/VP8'); 
@@ -263,7 +280,6 @@ const initDC = (conf:myWebRtcConf )=>{
                 conf.myDataChannel.send(JSON.stringify({click:"cameraClick"}))
             }
             camera.append(changecamera)
-
         } 
         if (!conf.StreamConnection || conf.StreamConnection.signalingState==="closed"){
             createMyWebRtc(conf)
@@ -341,16 +357,22 @@ const init = (receiveChannel: RTCDataChannel )=>{
             }
         })
         getLocalStream(facingMode).then(({localStream})=>{  
-            
             const senders = conf.StreamConnection.getSenders();
             localStream.getTracks().forEach(track => {  
-                
-                
                 const videoSender = senders.find(sender => sender.track && sender.track.kind === track.kind);
-                //console.log(videoSender,track,track.kind)
                 if (!videoSender) {
                     containerStream.addTrack(track)
-                    conf.StreamConnection.addTrack(track, containerStream); 
+                    const sender = conf.StreamConnection.addTrack(track, containerStream); 
+                    /*
+                    const parameters = sender.getParameters();
+                    if (parameters.encodings && parameters.encodings.length > 0) {
+                        // 指定编码器选择：优先使用硬件编码（preferred）或强制使用（required）
+                        parameters.encodings[0].codec = {
+                            mimeType: 'video/H264',
+                            hardwareAcceleration: 'preferred'  // 或 'required' 强制硬件编码
+                        };
+                        await sender.setParameters(parameters);
+                    }*/
                 }else{
                     if (track.kind==="audio"){
                         return
@@ -358,14 +380,9 @@ const init = (receiveChannel: RTCDataChannel )=>{
                     containerStream.addTrack(track)
                     videoSender.track.stop()
                     videoSender.replaceTrack(track);
-                }
-               // conf.StreamConnection.addTrack(track, localStream);    
-            }); 
-            /*
-            createOffer(conf.StreamConnection).then(sdp=>{ 
-                
-                conf.receiveChannel.send(JSON.stringify({id:conf.receiveChannel.label,msg:{sdp}}))
-            }) */
+                } 
+            });  
+            
             const AudioCamera = document.createElement("button")
             AudioCamera.textContent=`静音`
             AudioCamera.id="audioClick"
