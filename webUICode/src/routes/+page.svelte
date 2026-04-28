@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import type {signalingStruct} from '$lib/utils/util'
- 
+import {getFace} from "$lib/canvasFace"
 import {connWebRTC,createRtcTrack } from '$lib/webrtc' 
 import ConnWebrtc,{ startWebRTC,dialogConfig} from '$lib/ConnWebrtc.svelte';
 //import {getVideo} from '$lib/Fullscreen.svelte'
@@ -117,32 +117,16 @@ const createMyWebRtc = (conf:myWebRtcConf,closeHand?:()=>void)=>{
                 //});                 
             });        
         }
-        
         conf.myDataChannel.addEventListener("message",e=>{
             const obj = JSON.parse(e.data);
-            if (obj.heartbeat){
-
-                console.log(obj)
-                heartbeat = performance.now();
-
-                conf.StreamConnection.getStats().then(v=>{
-                    console.log("getStats")
-                    for (const l of v.entries()) {
-                        console.log(l)
-                    }
-                })
+            if (obj.heartbeat){ 
+                heartbeat = performance.now(); 
                 return;
             }
         }) 
     }
     conf.myDataChannel.onmessage = e=>{
-        console.log(e.data);
-         conf.StreamConnection.getStats().then(v=>{
-                    console.log("getStats")
-                    for (const l of v.entries()) {
-                        console.log(l)
-                    }
-                })
+        console.log(e.data); 
         const obj = JSON.parse(e.data);
         /*
         if (obj.heartbeat){
@@ -240,13 +224,16 @@ const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
     return sdp
  
 }
-  
+
 const createVideo = (finalStream?: MediaStream)=>{
     const v = document.getElementById("video")
     v.innerHTML=""
     const video_self = document.createElement("video")
     v.append(video_self)
     if (finalStream) video_self.srcObject = finalStream
+    else{
+        getFace(video_self) 
+    }
     video_self.muted = true;
     video_self.controls=true;
     video_self.autoplay = true;
@@ -256,7 +243,7 @@ const createVideo = (finalStream?: MediaStream)=>{
     video_self['disablepictureinpicture']=true
     video_self.height = 300;
     video_self.width = 200;
-    video_self.poster="./logo.png"
+    //video_self.poster="./logo.png"
     return video_self
     //video_self.srcObject = localStream
 }
@@ -313,7 +300,13 @@ const initDC = (conf:myWebRtcConf )=>{
     })
 }
 const init = (receiveChannel: RTCDataChannel )=>{
-    
+    window.addEventListener('beforeunload', function (e) {
+        //const confirmationMessage = '您确定要离开此页面吗？未保存的操作可能会丢失。';
+            e.preventDefault();          // 某些浏览器需要
+            //e.returnValue = confirmationMessage;   // 标准属性
+            //return confirmationMessage;   
+    })
+
     initDataChannel(receiveChannel)  
     
     const conf:myWebRtcConf = { dataChannel:receiveChannel}
@@ -436,6 +429,9 @@ const checkUrlHashErr = ()=>{
     }) 
 }
 onMount(() => {   
+    document.body.addEventListener("touchmove",(e)=>{
+         e.preventDefault();
+    },{ passive: false })
     if (window.location.hash){
         const hashdb = window.location.hash.slice(1)
         if (hashdb){

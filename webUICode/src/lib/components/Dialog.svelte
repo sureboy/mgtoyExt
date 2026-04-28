@@ -44,10 +44,12 @@
         //else dialogEl.close();
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
+
     });
 </script>
 
-<dialog   bind:this={dialogConfig.dialogEl} onclick={handleBackdropClick}  >
+<dialog 
+      bind:this={dialogConfig.dialogEl} onclick={handleBackdropClick}  >
     <div class="dialog-card">
         {#if dialogConfig.title}
             <h3 class="dialog-title">{dialogConfig.title}</h3>
