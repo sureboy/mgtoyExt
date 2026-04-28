@@ -30,6 +30,7 @@ async function getLocalStream(facingMode:ConstrainDOMString ) {
         
         return {localStream };
     } catch (error) { 
+        alert(error)
         //console.log(error)
         //return;
         //return undefined;
