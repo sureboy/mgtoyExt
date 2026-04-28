@@ -7,11 +7,11 @@
 <svelte:head>
 	<link rel="icon" href={favicon} />
 </svelte:head>
-<svelte:window ontouchend={(e)=>{
-	e.preventDefault()
+<svelte:window  ontouchend={(e)=>{
+	//e.preventDefault()
 }} ontouchstart={(e)=>{
-	e.preventDefault()
+	//e.preventDefault()
 }} ontouchmove={(e)=>{
-	e.preventDefault()
+	//e.preventDefault()
 }} /> 
 {@render children()}
