@@ -293,12 +293,16 @@ const init = (receiveChannel: RTCDataChannel )=>{
     const containerStream = new MediaStream();
     Camera.onclick = ()=>{
         requestWakeLock()
-        containerStream.getTracks().forEach(t=>{
-            t.stop()
-        })
         getLocalStream(facingMode).then(({localStream})=>{  
+            containerStream.getTracks().forEach(t=>{
+                if (t.kind==="video"){
+                    t.stop()
+                    containerStream.removeTrack(t)
+                }
+            })
             const senders = conf.StreamConnection.getSenders();
             localStream.getTracks().forEach(track => {  
+                
                 
                 const videoSender = senders.find(sender => sender.track && sender.track.kind === track.kind);
                 //console.log(videoSender,track,track.kind)
@@ -306,7 +310,10 @@ const init = (receiveChannel: RTCDataChannel )=>{
                     containerStream.addTrack(track)
                     conf.StreamConnection.addTrack(track, containerStream); 
                 }else{
-                    
+                    if (track.kind==="audio"){
+                        return
+                    }
+                    containerStream.addTrack(track)
                     videoSender.replaceTrack(track);
                 }
                // conf.StreamConnection.addTrack(track, localStream);    

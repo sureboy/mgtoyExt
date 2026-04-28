@@ -19,4 +19,13 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
- 
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* 避免拖动时选中文本 */
+            -webkit-tap-highlight-color: transparent; /* 移除移动端点击灰层 */
+        } 
+html body {
+  touch-action: none;
+}
