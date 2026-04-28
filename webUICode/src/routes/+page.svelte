@@ -131,13 +131,13 @@ const createMyWebRtc = (conf:myWebRtcConf,closeHand?:()=>void)=>{
         const obj = JSON.parse(e.data);
         if (obj.heartbeat){
             heartbeat = performance.now();
-            return;
+            //return;
         }
         if (obj.candidate){
             conf.StreamConnection.addIceCandidate(new RTCIceCandidate(obj.candidate)).then(()=>{
                 console.log(JSON.stringify(obj.candidate));
             });
-            return;
+            //return;
         }
         if (obj.sdp){
             conf.StreamConnection.setRemoteDescription(new RTCSessionDescription(obj));
@@ -147,7 +147,13 @@ const createMyWebRtc = (conf:myWebRtcConf,closeHand?:()=>void)=>{
                     conf.myDataChannel.send(JSON.stringify(sdp));
                 })
             }
+            //return
         }
+        if (obj.click){
+            console.log(obj.click)
+            document.getElementById(obj.click)?.click()
+        }
+
     };
     conf.StreamConnection.ondatachannel = (e)=>{
         e.channel.onmessage = conf.myDataChannel.onmessage
@@ -238,6 +244,15 @@ const initDC = (conf:myWebRtcConf )=>{
         }
         if (!dialogConfig.dialogEl.open){
             dialogConfig.dialogEl.showModal() 
+            const camera = document.getElementById("camera")
+            camera.innerHTML = ""
+            const changecamera = document.createElement("button")
+            changecamera.textContent="切换摄像头"
+            changecamera.onclick = (e)=>{
+                conf.myDataChannel.send(JSON.stringify({click:"cameraClick"}))
+            }
+            camera.append(changecamera)
+
         } 
         if (!conf.StreamConnection || conf.StreamConnection.signalingState==="closed"){
             createMyWebRtc(conf)
@@ -275,7 +290,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
     initDataChannel(receiveChannel)  
     
     const conf:myWebRtcConf = { dataChannel:receiveChannel}
-    const sc = createMyWebRtc( conf,reloadHandle)
+    //createMyWebRtc( conf,reloadHandle)
     initDC(conf)
     
     const link = document.createElement("a") 
@@ -304,6 +319,9 @@ const init = (receiveChannel: RTCDataChannel )=>{
     Camera.textContent=`摄像头`
     const containerStream = new MediaStream();
     Camera.onclick = ()=>{
+        if (!conf.StreamConnection){
+            createMyWebRtc(conf,reloadHandle)
+        }
         requestWakeLock()
         containerStream.getTracks().forEach(t=>{
             if (t.kind==="video"){
@@ -339,6 +357,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
             }) */
             const AudioCamera = document.createElement("button")
             AudioCamera.textContent=`静音`
+            AudioCamera.id="audioClick"
             AudioCamera.onclick=()=>{
                 const videoSender = conf.StreamConnection.getSenders().find(s => s.track.kind === 'audio'); 
                 videoSender.track.enabled=false 
@@ -354,7 +373,8 @@ const init = (receiveChannel: RTCDataChannel )=>{
                 }
      
                 cam.append(Camera)   
-                Camera.textContent=`切换镜头 `
+                Camera.textContent=`切换镜头`
+                Camera.id = "cameraClick"
               
             //} 
             //document.createElement("video")
