@@ -15,13 +15,6 @@ type myWebRtcConf  = {
 }
 async function getLocalStream(facingMode:ConstrainDOMString ) { 
     try {
-        //const devices = await navigator.mediaDevices.enumerateDevices();
-        //const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        // 假设 videoDevices[0] 是前置, videoDevices[1] 是后置。保存它们的 deviceId
-        //const frontCameraId = videoDevices[0].deviceId;
-        //const backCameraId = videoDevices[1].deviceId;
-        //if (videoDevices.length<=cameraID)
-        //const cameraNumber = 0//videoDevices.length
         const localStream = await navigator.mediaDevices.getUserMedia({ 
             video:{facingMode},// (cameraNumber<=cameraID)?true:{ deviceId: { exact: videoDevices[cameraID].deviceId } },
             audio:{
@@ -30,15 +23,14 @@ async function getLocalStream(facingMode:ConstrainDOMString ) {
                 autoGainControl: true     // 建议同时开启自动增益
             }, 
         });
-        console.log('使用摄像头');
-        
+        console.log('使用摄像头'); 
         return {localStream };
     } catch (error) { 
         alert(error)
         //console.log(error)
         //return;
         //return undefined;
-        console.log('摄像头不可用，播放默认视频文件', error);
+        //console.log( error);
         try{
             
             const localVideo = document.createElement("video") 
@@ -79,6 +71,15 @@ const createMyWebRtc = (conf:myWebRtcConf,closeHand?:()=>void)=>{
     },closeHand)
     dialogConfig.closeHandle = ()=>{
         conf.StreamConnection.close()
+        const vp = document.getElementById("video")
+
+        vp?.childNodes.forEach(v=>{
+            console.log(v)
+            const videoc = (v as HTMLVideoElement)
+            videoc.remove()             
+        })
+        vp.innerHTML=""
+        //navigator.mediaDevices.dispatchEvent()
     }
     conf.dataChannel.send(JSON.stringify({id:conf.dataChannel.label}))
     let heartbeat = 0;
@@ -232,7 +233,13 @@ const createVideo = (finalStream?: MediaStream)=>{
     v.append(video_self)
     if (finalStream) video_self.srcObject = finalStream
     else{
-        getFace(video_self) 
+        const faceStop = getFace(video_self) 
+        //video_self.addEventListener("")
+        const videoRemove = video_self.remove
+        video_self.remove = ()=>{
+            faceStop();
+            videoRemove.bind(video_self);
+        }
     }
     video_self.muted = true;
     video_self.controls=true;
@@ -243,6 +250,7 @@ const createVideo = (finalStream?: MediaStream)=>{
     video_self['disablepictureinpicture']=true
     video_self.height = 300;
     video_self.width = 200;
+    
     //video_self.poster="./logo.png"
     return video_self
     //video_self.srcObject = localStream

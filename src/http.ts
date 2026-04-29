@@ -95,26 +95,26 @@ const readBinaryFile = (filePaths:string,contentType:string,res:http.ServerRespo
     req: http.IncomingMessage;
 } ) =>{
     try{
-         fs.stat(filePaths, (err, stats) => {
+        fs.stat(filePaths, (err, stats) => {
             if (err || !stats.isFile()) {
                 res.statusCode = 404;
                 res.end('File not found');
                 return;
             }
-             res.setHeader('Content-Type', contentType || 'text/plain');
-      // 设置 Content-Length，避免分块传输时长度未知
-      res.setHeader('Content-Length', stats.size);
-        //binary
-        const stream = fs.createReadStream(filePaths);
-        stream.pipe(res);
-      stream.on('error', (err) => {
-        console.error('Stream error:', err);
-        if (!res.headersSent) {
-          res.statusCode = 500;
-          res.end('Internal Server Error');
-        }
-      });
-         }); 
+            res.setHeader('Content-Type', contentType || 'text/plain');
+            // 设置 Content-Length，避免分块传输时长度未知
+            res.setHeader('Content-Length', stats.size);
+            //binary
+            const stream = fs.createReadStream(filePaths);
+            stream.pipe(res);
+            stream.on('error', (err) => {
+                console.error('Stream error:', err);
+                if (!res.headersSent) {
+                    res.statusCode = 500;
+                    res.end('Internal Server Error');
+                }
+            });
+        }); 
     }catch(e){
         console.error(e);
         res.writeHead(404);
