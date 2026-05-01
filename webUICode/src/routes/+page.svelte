@@ -243,11 +243,20 @@ const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
 
 const createVideo = (finalStream?: MediaStream)=>{
     const v = document.getElementById("video")
-    v.innerHTML=""
+    //let video_self:HTMLVideoElement
+    if (v.childElementCount>0){
+        const video =  v.firstChild as HTMLVideoElement 
+        if (finalStream){
+            video.srcObject = finalStream
+        }
+        return video
+    } 
     const video_self = document.createElement("video")
-    v.append(video_self)
-    if (finalStream) video_self.srcObject = finalStream
-    else{
+    v.append(video_self) 
+    if (finalStream){ 
+        video_self.srcObject = finalStream
+        //faceStop();
+    } else{
         const faceStop = getFace(video_self) 
         //video_self.addEventListener("")
         const videoRemove = video_self.remove
@@ -406,8 +415,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
                     facingMode = { exact: "environment" }
                 }else{
                     facingMode ="user"
-                }
-     
+                } 
                 cam.append(Camera)   
                 Camera.textContent=`切换镜头`
                 Camera.id = "cameraClick"
@@ -415,7 +423,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
             //} 
             //document.createElement("video")
             //const v = document.getElementById("video")
-            const videoR=createVideo()
+             createVideo()
             
             //videoR.
             //videoR.srcObject = finalStream
