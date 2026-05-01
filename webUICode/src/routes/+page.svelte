@@ -13,6 +13,20 @@ type myWebRtcConf  = {
     StreamConnection?:RTCPeerConnection,
     myDataChannel?:RTCDataChannel,
 }
+const showDialog = ()=>{
+    dialogConfig.dialogEl?.show()
+    Object.assign(dialogConfig.dialogEl.style, {
+        position: 'static',      /* 回归文档流 */
+        display: 'block',       /* 块级元素 */
+        margin: '0',          /* 重置默认边距 */
+        border: 'none',          /* 移除边框 */
+        padding: '0'  ,         /* 移除内边距 */
+        background: 'none',      /* 透明背景 */
+        color: 'inherit',        /* 继承字体颜色 */
+        width: 'auto',           /* 自适应宽度 */
+        height: 'auto'
+    })
+}
 async function getLocalStream(facingMode:ConstrainDOMString ) { 
     try {
         const localStream = await navigator.mediaDevices.getUserMedia({ 
@@ -267,21 +281,24 @@ const initDC = (conf:myWebRtcConf )=>{
             return
         }
         if (!dialogConfig.dialogEl.open){
-            dialogConfig.dialogEl.showModal() 
+            showDialog() 
+        } 
+
+        
+        if (!conf.StreamConnection || conf.StreamConnection.signalingState==="closed"){
+            createMyWebRtc(conf, ()=>{
+                conf.StreamConnection=undefined
+            })
             const camera = document.getElementById("camera")
-            camera.innerHTML = ""
+            //camera.innerHTML = ""
             const changecamera = document.createElement("button")
             changecamera.textContent="切换摄像头"
             changecamera.onclick = (e)=>{
                 conf.myDataChannel.send(JSON.stringify({click:"cameraClick"}))
             }
             camera.append(changecamera)
-        } 
-        if (!conf.StreamConnection || conf.StreamConnection.signalingState==="closed"){
-            createMyWebRtc(conf)
         }
-        if (db.msg.sdp){
-            
+        if (db.msg.sdp){ 
             conf.StreamConnection.setRemoteDescription(new RTCSessionDescription(db.msg.sdp))
             if (db.msg.sdp.type==="offer"){
                 
@@ -304,21 +321,22 @@ const initDC = (conf:myWebRtcConf )=>{
         }
         if (db.msg.candidate){
             conf.StreamConnection.addIceCandidate(new RTCIceCandidate(db.msg.candidate))
-        } 
-         
+        }          
     })
 }
 const init = (receiveChannel: RTCDataChannel )=>{
     window.addEventListener('beforeunload', function (e) { 
         e.preventDefault(); 
-    })
-
-    initDataChannel(receiveChannel)  
-    
-    const conf:myWebRtcConf = { dataChannel:receiveChannel}
-    //createMyWebRtc( conf,reloadHandle)
-    initDC(conf)
-    
+    }) 
+    if (dialogConfig.dialogEl?.open){
+        dialogConfig.dialogEl.close()
+        
+    }
+    //dialogConfig.dialogEl.show()
+    showDialog()
+    initDataChannel(receiveChannel)   
+    const conf:myWebRtcConf = { dataChannel:receiveChannel} 
+    initDC(conf) 
     const link = document.createElement("a") 
     link.textContent=receiveChannel.label
     function reloadHandle  (){
@@ -327,9 +345,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
         link.href="#"
         link.target=""
         link.onclick=()=>{
-            link.textContent = receiveChannel.label
-            //receiveChannel.send(JSON.stringify({id:receiveChannel.label}));
-            //createMyWebRtc(conf,reloadHandle)
+            link.textContent = receiveChannel.label 
             Camera.click()
         }                      
     }
@@ -431,18 +447,7 @@ handCmdList.unshift((v)=>{
     if (v==="video"){
         if (!dialogConfig.dialogEl?.open){
 
-            dialogConfig.dialogEl?.show()
-            Object.assign(dialogConfig.dialogEl.style, {
-                position: 'static',      /* 回归文档流 */
-                display: 'block',       /* 块级元素 */
-                margin: '0',          /* 重置默认边距 */
-                border: 'none',          /* 移除边框 */
-                padding: '0'  ,         /* 移除内边距 */
-                background: 'none',      /* 透明背景 */
-                color: 'inherit',        /* 继承字体颜色 */
-                width: 'auto',           /* 自适应宽度 */
-                height: 'auto'
-            })
+            showDialog()
         }
         return true
     }
