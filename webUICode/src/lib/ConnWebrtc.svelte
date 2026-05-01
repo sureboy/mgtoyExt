@@ -20,7 +20,7 @@ export const startWebRTC = (sign:signalingStruct,conn:(dc:RTCDataChannel)=>void)
         link.href=sign.backUrl+"#"+encodeURIComponent(JSON.stringify(answer))
         Conn?.appendChild(link)
         dialogConfig.dialogEl?.showModal()
-        link.click()
+        //link.click()
     },(receiveChannel)=>{ 
         Conn.innerHTML="" 
         conn(receiveChannel) 
