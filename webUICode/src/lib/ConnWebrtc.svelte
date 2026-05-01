@@ -1,6 +1,6 @@
 <script lang="ts" module> 
 import {handleOffer,configuration} from '$lib/webrtc' 
-//let link:HTMLAnchorElement=undefined
+let Conn:HTMLElement
 export const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
@@ -10,26 +10,20 @@ export const dialogConfig:dialogStruct = {
 } ;
 
 export const startWebRTC = (sign:signalingStruct,conn:(dc:RTCDataChannel)=>void)=>{
-    const peerConnection = new RTCPeerConnection(configuration);
-    //dialogConfig.closeHandle=()=>{
-    //    peerConnection.close()
-    //}
+    const peerConnection = new RTCPeerConnection(configuration); 
     const link = document.createElement("a")
-    handleOffer(sign,peerConnection,(answer)=>{
-        
+    handleOffer(sign,peerConnection,(answer)=>{ 
         link.target="_blank"
-        link.textContent = "发送answer"
+        link.textContent = "确定"
         link.rel = "opener"
         link.onclick=()=>{link.textContent="..."}
         link.href=sign.backUrl+"#"+encodeURIComponent(JSON.stringify(answer))
-        document.getElementById("conn")?.appendChild(link)
+        Conn?.appendChild(link)
         dialogConfig.dialogEl?.showModal()
-    },(receiveChannel)=>{
-        //receiveChannel.onopen = (e)=>{
-            //console.log("open",e)
-        document.getElementById("conn").style.display = "none"
-        conn(receiveChannel)
-        //}
+        link.click()
+    },(receiveChannel)=>{ 
+        Conn.innerHTML="" 
+        conn(receiveChannel) 
     })
 }
 </script>
@@ -41,12 +35,10 @@ import type {signalingStruct} from '$lib/utils/util'
  const {children}:{children?:any} = $props()
 
 </script>
+
 <Dialog {dialogConfig}   > 
-     <p id="conn">  </p>
+    <p bind:this={Conn}>  </p>
     {#if children}
         {@render children()}
-  
-    {/if}
-  
-    
+    {/if}   
 </Dialog>

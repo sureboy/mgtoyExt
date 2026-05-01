@@ -5,7 +5,7 @@ import {getFace} from "$lib/canvasFace"
 import {connWebRTC,createRtcTrack } from '$lib/webrtc' 
 import ConnWebrtc,{ startWebRTC,dialogConfig} from '$lib/ConnWebrtc.svelte';
 //import {getVideo} from '$lib/Fullscreen.svelte'
-import ShowControl,{initDataChannel} from "$lib/ShowControl.svelte";
+import ShowControl,{initDataChannel,handCmdList} from "$lib/ShowControl.svelte";
 //    import CarInfo from '$lib/CarInfo.svelte';
 //import VideoScreen,{getVideo,toggleFullscreen} from '$lib/Fullscreen.svelte'
 type myWebRtcConf  = {
@@ -71,6 +71,7 @@ const createMyWebRtc = (conf:myWebRtcConf,closeHand?:()=>void)=>{
     },closeHand)
     dialogConfig.closeHandle = ()=>{
         conf.StreamConnection.close()
+        closeHand()
         const vp = document.getElementById("video")
 
         vp?.childNodes.forEach(v=>{
@@ -308,11 +309,8 @@ const initDC = (conf:myWebRtcConf )=>{
     })
 }
 const init = (receiveChannel: RTCDataChannel )=>{
-    window.addEventListener('beforeunload', function (e) {
-        //const confirmationMessage = '您确定要离开此页面吗？未保存的操作可能会丢失。';
-            e.preventDefault();          // 某些浏览器需要
-            //e.returnValue = confirmationMessage;   // 标准属性
-            //return confirmationMessage;   
+    window.addEventListener('beforeunload', function (e) { 
+        e.preventDefault(); 
     })
 
     initDataChannel(receiveChannel)  
@@ -324,14 +322,16 @@ const init = (receiveChannel: RTCDataChannel )=>{
     const link = document.createElement("a") 
     link.textContent=receiveChannel.label
     function reloadHandle  (){
+        conf.StreamConnection=undefined
         link.textContent="重新连接"
         link.href="#"
         link.target=""
         link.onclick=()=>{
             link.textContent = receiveChannel.label
             //receiveChannel.send(JSON.stringify({id:receiveChannel.label}));
-            createMyWebRtc(conf,reloadHandle)
-        }                            
+            //createMyWebRtc(conf,reloadHandle)
+            Camera.click()
+        }                      
     }
     const init = document.getElementById("init")
     init.innerHTML=''
@@ -350,6 +350,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
         if (!conf.StreamConnection){
             createMyWebRtc(conf,reloadHandle)
         }
+          
         requestWakeLock()
         containerStream.getTracks().forEach(t=>{
             if (t.kind==="video"){
@@ -363,17 +364,7 @@ const init = (receiveChannel: RTCDataChannel )=>{
                 const videoSender = senders.find(sender => sender.track && sender.track.kind === track.kind);
                 if (!videoSender) {
                     containerStream.addTrack(track)
-                    const sender = conf.StreamConnection.addTrack(track, containerStream); 
-                    /*
-                    const parameters = sender.getParameters();
-                    if (parameters.encodings && parameters.encodings.length > 0) {
-                        // 指定编码器选择：优先使用硬件编码（preferred）或强制使用（required）
-                        parameters.encodings[0].codec = {
-                            mimeType: 'video/H264',
-                            hardwareAcceleration: 'preferred'  // 或 'required' 强制硬件编码
-                        };
-                        await sender.setParameters(parameters);
-                    }*/
+                    conf.StreamConnection.addTrack(track, containerStream); 
                 }else{
                     if (track.kind==="audio"){
                         return
@@ -432,11 +423,33 @@ const checkUrlHashErr = ()=>{
         }
         const connButton = document.createElement("a")
         connButton.href = connUrl.value + "#" + src
-        connButton.textContent="获取offer"
+        connButton.textContent="连接"
         document.getElementById("init").append(connUrl,connButton) 
     }) 
 }
+handCmdList.unshift((v)=>{
+    if (v==="video"){
+        if (!dialogConfig.dialogEl?.open){
+
+            dialogConfig.dialogEl?.show()
+            Object.assign(dialogConfig.dialogEl.style, {
+                position: 'static',      /* 回归文档流 */
+                display: 'block',       /* 块级元素 */
+                margin: '0',          /* 重置默认边距 */
+                border: 'none',          /* 移除边框 */
+                padding: '0'  ,         /* 移除内边距 */
+                background: 'none',      /* 透明背景 */
+                color: 'inherit',        /* 继承字体颜色 */
+                width: 'auto',           /* 自适应宽度 */
+                height: 'auto'
+            })
+        }
+        return true
+    }
+    return false
+})
 onMount(() => {   
+
     document.body.addEventListener("touchmove",(e)=>{
          e.preventDefault();
     },{ passive: false })
@@ -457,11 +470,14 @@ onMount(() => {
         }
     }
     checkUrlHashErr()   
+
 }) 
 </script>
-<ShowControl  ></ShowControl>
-<ConnWebrtc>
-    <p id="init">   </p>
-    <p id="camera"> </p>
-    <p id="video" > </p>
-</ConnWebrtc>
+<ShowControl  >
+    <ConnWebrtc>
+        <p id="init">   </p>
+        <p id="camera"> </p>
+        <p id="video" > </p>
+    </ConnWebrtc>
+</ShowControl>
+

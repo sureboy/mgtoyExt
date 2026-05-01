@@ -1,23 +1,11 @@
 <script lang="ts">
 import { onMount } from 'svelte';
-//const {handInputText}:{handInputText?:(v:string)=>boolean} = $props()
+const {children}:{children?:any} = $props()
 //export let handInputText: (v:string)=>void
 
-const carInputRun = (firstBtn: Node)=>{
-    if (handInputText && 
-        handInputText(carname.value)){
-        return
-    }  
-    if (carname.value.startsWith("#")){
-        console.log(carname.value.slice(1)) 
-    }else if (carname.value.length==6){   
-        initCarName(carname.value,firstBtn)                    
-        carname.value="" 
-    }    
-}  
+
 onMount(()=>{
  
-    
     const firstBtn = tab_header.firstChild 
     carname.addEventListener("change",(e)=>{
         carInputRun(firstBtn)
@@ -45,17 +33,30 @@ let tab_header:HTMLElement
 let carname:HTMLInputElement 
 let inputKey:number
 let datalist:HTMLDataListElement
-let dataChannel:RTCDataChannel|undefined = undefined
+let dataChannel:{send:(v:string)=>void}|undefined = undefined
 type handleDB ={ url:string,name:string,uri:string,timeOut:number,isNat:boolean }
-
-const handInputText =(id:string)=>{
+export const handCmdList:((v:string)=>boolean)[] = [
+    handInputText
+]
+const carInputRun = (firstBtn: Node )=>{
+    for (const f of handCmdList){
+        if (f(carname.value))return
+    } 
+    if (carname.value.startsWith("#")){
+        console.log(carname.value.slice(1)) 
+    }else if (carname.value.length==6){   
+        initCarName(carname.value,firstBtn)                    
+        carname.value="" 
+    }    
+}  
+function handInputText (id:string){
     if (id.length!=5 || !dataChannel){
         return false
     }
     
     dataChannel.send(JSON.stringify({id}))
     return true
-}
+} 
 let NowCallback:{ e:HTMLAreaElement, callback:(e?:HTMLAreaElement)=>void }= null
 const buttonClickHandle = (e:HTMLAreaElement,callback?:(e?:HTMLAreaElement)=>void)=>{ 
     const msgString = JSON.stringify({  
@@ -161,9 +162,9 @@ const handleChangeDB = (dbs:handleDB[],e: HTMLAreaElement)=>{
 }
 
 export const initDataChannel = (dc:RTCDataChannel) =>{
-    initLocalBut()
+    initLocalBtn()
     dataChannel = dc;
-    dataChannel.onmessage = (event)=>{
+    dc.onmessage = (event)=>{
         if (!event.data)return;
         handleMsg(event.data)
     }
@@ -175,8 +176,15 @@ const handleMsg = (data:any)=>{
         const db = JSON.parse(data)
         if (db.videoList){
              
-            datalist.innerHTML = ''; 
+            //datalist.innerHTML = ''; 
+            
+            //const list = datalist.childNodes?.values().map((v)=>{return v.textContent})
             (db.videoList as string[]).forEach(v=>{
+                for (const n of datalist.childNodes.values()){
+                    if (v===n.textContent){
+                        return
+                    }
+                }
                 const opt = document.createElement("option")
                 opt.value = v
                 opt.text = v
@@ -206,7 +214,7 @@ const handleMsg = (data:any)=>{
         return;
     }             
 }
-const initLocalBut = ()=>{
+const initLocalBtn = ()=>{
     updateCarButton("local",tab_header.firstChild as HTMLAreaElement).click()
 }
 </script>
@@ -220,22 +228,29 @@ const initLocalBut = ()=>{
         <div   class="tab-pane active">
             <div class="form-group"> 
                 <input bind:this={carname} onfocus={()=>{
-                    dataChannel.send(JSON.stringify({video:true}))
+                    dataChannel?.send(JSON.stringify({video:true}))
                 }} onchange={(e)=>{
                    const value =  (e.target as HTMLInputElement).value
                    console.log(value)
                     
                 }}   type="text" id="code" list="videoList"   placeholder="Input Code">
-            <datalist bind:this={datalist} id="videoList">
+                <datalist bind:this={datalist} id="videoList">
 
-            </datalist>    
-        </div>
-        </div>        
+                </datalist>    
+            </div>
+                    
+        </div>   
+ 
         <div   class="tab-pane"  >
             <div class="remote-control">    
                 <div class="control-panel" >
                     <div class="speed-control">
-                        <ControlExt />
+                    <ControlExt />
+                    {#if children}
+     
+                    {@render children()} 
+                    
+                    {/if} 
                     </div>
                     <Control {inputKey} />
                 </div>

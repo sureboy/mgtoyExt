@@ -13,11 +13,13 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20260426.1",
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/kit": "^2.49.1",
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"svelte": "^5.45.6",
 		"svelte-check": "^4.3.4",
+		"sveltekit-cloudflare-durable-objects": "^0.1.1",
 		"typescript": "^5.9.3",
 		"vite": "^7.2.6"
 	},
@@ -25,6 +27,7 @@
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@tonaljs/midi": "^4.10.2",
 		"@tonejs/midi": "^2.0.28",
+		"cloudflare": "^5.2.0",
 		"dotenv": "^17.4.2",
 		"tonal": "^6.4.2"
 	}
