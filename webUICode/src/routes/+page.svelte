@@ -437,7 +437,7 @@ const checkUrlHashErr = ()=>{
         init(res.dataChannel)   
     }).catch(e=>{
         console.log(window.location.origin)
-        dialogConfig.dialogEl.showModal()
+        showDialog()
         const connUrl = document.createElement("input")
         connUrl.type = "text"
         connUrl.value = "http://192.168.1.8:3000/conn.html"

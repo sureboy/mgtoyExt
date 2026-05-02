@@ -23,6 +23,9 @@ onMount(()=>{
     carname.addEventListener('keyup', function(event) {
         event.stopPropagation();
     });
+    carname.addEventListener('focus',e=>{
+         dataChannel?.send(JSON.stringify({video:true}))
+    })
 })
 </script>
 <script lang="ts" module>
@@ -225,37 +228,23 @@ const initLocalBtn = ()=>{
     </div>
     
     <div class="tab-content" id="tab_content">
-        <div   class="tab-pane active">
-            <div class="form-group"> 
-                <input bind:this={carname} onfocus={()=>{
-                    dataChannel?.send(JSON.stringify({video:true}))
-                }} onchange={(e)=>{
-                   const value =  (e.target as HTMLInputElement).value
-                   console.log(value)
-                    
-                }}   type="text" id="code" list="videoList"   placeholder="Input Code">
-                <datalist bind:this={datalist} id="videoList">
-
-                </datalist>    
-            </div>
-                    
-        </div>   
- 
         <div   class="tab-pane"  >
-            <div class="remote-control">    
-                <div class="control-panel" >
-                    <div class="speed-control">
-                    <ControlExt />
-                    {#if children}
-     
-                    {@render children()} 
-                    
-                    {/if} 
-                    </div>
-                    <Control {inputKey} />
+            <div class="control-panel" >
+                <div class="form-group"> 
+                    <input bind:this={carname} type="text" id="code" list="videoList"   placeholder="Input Code">
+                    <datalist bind:this={datalist} id="videoList">
+                    </datalist>    
+                </div>   
+                <div class="speed-control">
+                <ControlExt />
+                {#if children}
+                {@render children()} 
+                {/if} 
                 </div>
-                
+                <Control {inputKey} />
             </div>
+                
+            
         </div>     
     </div>
 
@@ -291,6 +280,7 @@ const initLocalBtn = ()=>{
     min-width: 250px;
     padding: 20px;
 
+                
     }
 /* 标签容器 */
 .tab-container {
