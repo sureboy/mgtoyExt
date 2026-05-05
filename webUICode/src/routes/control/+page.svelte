@@ -1,42 +1,79 @@
 <script lang="ts">  
-import {getFace} from "$lib/canvasFace"
-import { onMount } from 'svelte';
+import BlinkEyes from '$lib/components/BlinkEyes.svelte';
 import InfoPanel from "$lib/components/InfoPanel.svelte";
 import Joystick from "$lib/components/Joystick.svelte";
+import {onMount} from "svelte"
+import {connWebRTC } from '$lib/webrtc' 
+//    import { clearInterval } from 'node:timers';
 //let canvas:HTMLCanvasElement
-let directionSpan:number;
-let video:HTMLVideoElement;
-// ----- 摄像头初始化 (视频背景) -----
-function initCamera() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.warn("浏览器不支持摄像头");
-        showCameraFallback();
-        return;
-    }
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-            video.srcObject = stream;
-            video.play().catch(e => console.warn("自动播放失败", e));
-        })
-        .catch(err => {
-            console.error("摄像头错误: ", err);
-            showCameraFallback();
-        });
-} 
-// 降级处理: 如果摄像头不可用，显示纯色背景并带文字提示 (依然能测试摇杆)
-function showCameraFallback() {
-    getFace(video) 
+const createCmdSender = (sendMsg:(n:number)=>void) => {
+    let currentTimer: NodeJS.Timeout | null = null;
+    let currentN: number | undefined; 
+    return (n: number) => {
+        if (currentN === n) return;
+        if (currentTimer) clearTimeout(currentTimer);
+        sendMsg(n)
+        //console.log(wheelNumber[changeNumber[n]]);
+        currentN = n;
+
+        const tick = () => {
+            if (currentN === 0) return;      // 若n=0则停止循环
+            //console.log(wheelNumber[changeNumber[currentN!]]);
+            sendMsg(currentN)
+            currentTimer = setTimeout(tick, 1000);
+        };
+
+        if (n !== 0) {
+            currentTimer = setTimeout(tick, 1000);
+        }
+    };
+};
+const wheel = {
+    up:1|(1<<2),
+    down:2|(2<<2),
+    left:2|(1<<2),
+    right:1|(2<<2),
+    stop:0,
 }
- 
+const wheelNumber = [
+    ()=>0,
+    ()=>wheel.down & wheel.left,
+    ()=>wheel.down,
+    ()=>wheel.down & wheel.right,
+    ()=>wheel.left,
+    ()=>0,
+    ()=>wheel.right,
+    ()=>wheel.up & wheel.left,
+    ()=>wheel.up,
+    ()=>wheel.up & wheel.right,
+]
+const changeNumber=[ 0,6,3,2,1,4,7,8,9 ]
+const initDataChannel = (dataChannel: RTCDataChannel)=>{
+    dataChannel.addEventListener("message",(e)=>{
+        console.log(e)
+    })
+}
+
 onMount(()=>{ 
-   initCamera()
+    connWebRTC().then((res) =>{  
+        initDataChannel(res.dataChannel)
+        console.log(res)
+            const msgString = JSON.stringify({  
+            name:"local" ,
+            msg: 0
+        })
+        console.log(msgString)
+        res.dataChannel.send(msgString)
+    }).catch(e=>{
+        console.log(e)
+    })
 })
 </script>
-<svelte:head><title  >{directionSpan}</title></svelte:head> 
-
-<video id="bgVideo" bind:this={video} autoplay muted playsinline></video> 
- 
-<Joystick bind:directionSpan={directionSpan}></Joystick>
+<svelte:head><title  >mgtoy</title></svelte:head> 
+<div class="bg"><BlinkEyes></BlinkEyes></div>
+<Joystick clickEvent={createCmdSender((n)=>{
+    console.log(wheelNumber[changeNumber[n]]);
+})}></Joystick>
 <InfoPanel></InfoPanel>
 <footer>🎥 摄像头视频背景 | 半透明摇杆 | 拖拽右下角 → 8方向 + 中心停止</footer>
 <style>
@@ -57,7 +94,7 @@ footer {
 }
  
 /* 视频全屏背景层 */
-#bgVideo {
+.bg {
     position: fixed;
     top: 0;
     left: 0;
@@ -65,7 +102,7 @@ footer {
     height: 100%;
     object-fit: cover;   /* 覆盖全屏，保持比例裁剪 */
     z-index: 1;
-    background: #0a0f14;
+    background: #000;
 }
 
  

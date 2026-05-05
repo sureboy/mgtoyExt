@@ -2,7 +2,7 @@
 import { onMount } from "svelte";
 
 
-export let directionSpan = 0;
+export let clickEvent:(n:number)=>void;
 let canvas:HTMLCanvasElement
 let stickOuterRadius = 110;      // 大圈半径 (底座)
 let stickInnerRadius = 34;       // 小手柄半径
@@ -42,10 +42,10 @@ function updateDirectionUI() {
     const newDir = computeDirection(offsetX, offsetY);
     if (currentDirection !== newDir) {
         currentDirection = newDir;
-        directionSpan = currentDirection;
-    } else {
-        directionSpan = currentDirection;
-    }
+        //directionSpan(currentDirection);
+    }// else {
+        clickEvent(currentDirection);
+    //}
 }
 // 重置摇杆至中心 (停止)
 function resetStick() {

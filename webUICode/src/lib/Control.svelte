@@ -4,21 +4,32 @@ let settingNode = null
 const wheel = {
     up:1|(1<<2),
     down:2|(2<<2),
+
     left:2|(1<<2),
     right:1|(2<<2),
     stop:0,
 }
 export const wheelNumber = [
     ()=>0,
-    ()=>wheel.down & 3,
+    ()=>wheel.down & wheel.left,
     ()=>wheel.down,
-    ()=>wheel.down & 3<<2,
+    ()=>wheel.down & wheel.right,
     ()=>wheel.left,
     ()=>0,
     ()=>wheel.right,
-    ()=>wheel.up & 3,
+    ()=>wheel.up & wheel.left,
     ()=>wheel.up,
-    ()=>wheel.up & 3<<2,
+    ()=>wheel.up & wheel.right,
+    //()=>0,
+    //()=>wheel.down & 3,
+    //()=>wheel.down,
+    //()=>wheel.down & 3<<2,
+    //()=>wheel.left,
+    //()=>0,
+    //()=>wheel.right,
+    //()=>wheel.up & 3,
+    //()=>wheel.up,
+    //()=>wheel.up & 3<<2,
 ]
     
 export const handleStartNumber = (n:number)=>{ 
