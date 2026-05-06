@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cacheServer/WebRtc"
 	"context"
 	"encoding/json"
 	"flag"
@@ -88,12 +89,7 @@ func getClientIP(r *http.Request) string {
 func init() {
 	flag.Parse()
 	cacheMap.SetCacheMaxLen(*cacheLen)
-	AddExcludedPath("/rtc", 10, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Write([]byte("test"))
-		//w.WriteHeader(200)
-	})
+	AddExcludedPath("/rtc", 10, WebRtc.RtcHttpHandle)
 	AddExcludedPath("/api", 10, func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
