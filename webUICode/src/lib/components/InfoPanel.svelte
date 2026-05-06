@@ -24,7 +24,7 @@ onMount(()=>{
     infoData.codeInput.addEventListener('focus',e=>{
         console.log(e)
         //showInfo=true
-        info_panel.style.right="16px"
+        info_panel.style.right="10px"
 
     })
     infoData.codeInput.addEventListener('click',e=>{
@@ -59,7 +59,7 @@ onMount(()=>{
     
         <a class="code-label" href="#conn" onclick={(e)=>{
             infoData.codeInput.value = defaultUrl
-            infoData.codeInput.focus()
+            //infoData.codeInput.focus()
         }} >webrtc连接</a> 
     </div>
    
@@ -69,8 +69,8 @@ onMount(()=>{
 /* 信息面板 - 半透明玻璃效果，并且可以点击交互 */
 .info-panel {
     position: fixed;
-    top: 24px;
-    left: 24px;
+    top: 44px;
+    left: 10px;
     background: rgba(0, 0, 0, 0.65);
     backdrop-filter: blur(12px);
     border-radius: 20px;
@@ -80,8 +80,8 @@ onMount(()=>{
     z-index: 100;
     pointer-events: auto;      /* 允许面板内元素交互（输入框、按钮） */
     font-weight: 600;
-        flex-direction: column;
-        align-items: stretch;
+    flex-direction: column;
+    align-items: stretch;
     gap: 16px;
     flex-wrap: wrap;
     color: white;
@@ -161,24 +161,5 @@ onMount(()=>{
     background: #3b82f6;
 }   
 
- @media (max-width: 700px) {
-    .info-panel {
-        top: 16px;
-        left: 16px;
-        right: 16px;
-        flex-direction: column;
-        align-items: stretch;
-        border-radius: 32px;
-        gap: 12px;
-    }
-    .code-section {
-        justify-content: space-between;
-    }
-
-
-    .code-value {
-        font-size: 40px;
-        min-width: 55px;
-    }
-}
+ 
 </style>
