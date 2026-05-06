@@ -1,41 +1,68 @@
 <script lang="ts"  >
 import { onMount } from "svelte";
-import SuggestInput,{getInputValue} from "./SuggestInput.svelte";
-const Link = {
-    show:true,
-    onclick:()=>{
-        //const value = getInputValue()
+import type {infoStruct} from "$lib/utils/mainDataStruct"
+//    import { info } from "node:console";
+//    import { info } from "node:console";
+//import type {infoStruct} from "../utils/mainDataStruct.ts"
+const {infoData}:{infoData:infoStruct} = $props()
 
-        alert(getInputValue())
-    }
-};
+//let codeInput:HTMLInputElement
+//let sendBtn:HTMLButtonElement
+//let showInfo=$state(true)
 //let datalist:HTMLDataListElement
+let info_panel:HTMLDivElement
 const defaultUrl = "http://192.168.1.8:3000/conn.html"
-const options = [defaultUrl,"test2","test3","test1"];
+//let inputStyle:any
 onMount(()=>{
-    //init()
+    infoData.codeInput.addEventListener('blur',e=>{
+        console.log(e)
+        //inputStyle = infoData.codeInput.style
+        infoData.codeInput.style=""
+        info_panel.style.right=""
+        //info=false
+    })
+    infoData.codeInput.addEventListener('focus',e=>{
+        console.log(e)
+        //showInfo=true
+        info_panel.style.right="16px"
+
+    })
+    infoData.codeInput.addEventListener('click',e=>{
+        //console.log(e)
+        // alert("test")
+    })
+    infoData.sendBtn.addEventListener("click",(e)=>{
+        if (infoData.codeInput.value.startsWith("http")){
+            const src = encodeURIComponent(window.location.origin+window.location.pathname)
+            const connButton = document.createElement("a")
+            connButton.href = infoData.codeInput.value + "#" + src
+            connButton.textContent="连接"
+            infoData.info.append(connButton) 
+            connButton.click()
+        }
+    })
 })
-let info=false
+
 </script>
 
-<div class="info-panel">
-    {#if info}
-    <div class="code-section">
-        <span class="code-label">方向码</span>
-        <span class="code-value" id="directionCode">0</span>
-        <div class="direction-hint">
-            <span class="hint-item">↑1</span> <span class="hint-item">↗2</span> <span class="hint-item">→3</span>
-            <span class="hint-item">↘4</span> <span class="hint-item">↓5</span> <span class="hint-item">↙6</span>
-            <span class="hint-item">←7</span> <span class="hint-item">↖8</span> <span class="hint-item">●0</span>
-        </div>
-    </div>
-    {/if}
-    {#if Link.show}
+<div class="info-panel" bind:this={info_panel}>
     <div class="command-area">
-        <SuggestInput {options}></SuggestInput>
-        <button  id="sendBtn" onclick={Link.onclick} class="send-btn">确定</button>
+        <textarea bind:this={infoData.codeInput} 
+          id="cmdInput" 
+          
+        class="command-input" 
+        placeholder="指令 (1-8 / 0)" autocomplete="off"></textarea>
+        <button  bind:this={infoData.sendBtn}   class="send-btn">确定</button>
     </div>
-    {/if}
+     
+    <div class="code-section" id="info" bind:this={infoData.info}>
+    
+        <a class="code-label" href="#conn" onclick={(e)=>{
+            infoData.codeInput.value = defaultUrl
+            infoData.codeInput.focus()
+        }} >webrtc连接</a> 
+    </div>
+   
 </div>
 
 <style>
@@ -46,15 +73,15 @@ let info=false
     left: 24px;
     background: rgba(0, 0, 0, 0.65);
     backdrop-filter: blur(12px);
-    border-radius: 48px;
+    border-radius: 20px;
     padding: 12px 24px;
     border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
     z-index: 100;
     pointer-events: auto;      /* 允许面板内元素交互（输入框、按钮） */
     font-weight: 600;
-    display: flex;
-    align-items: center;
+        flex-direction: column;
+        align-items: stretch;
     gap: 16px;
     flex-wrap: wrap;
     color: white;
@@ -73,44 +100,47 @@ let info=false
     font-size: 14px;
     letter-spacing: 1px;
     color: #ccdeff;
-    text-transform: uppercase;
-}
-
-.code-value {
-    font-size: 52px;
-    font-weight: 800;
-    font-family: 'Monaco', 'Menlo', monospace;
-    color: #ffffff;
-    text-shadow: 0 2px 12px #00aaff80;
-    line-height: 1;
-    min-width: 70px;
-    text-align: center;
-}
-
-.direction-hint {
-    font-size: 13px;
-    color: #eef4ff;
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 40px;
-    padding: 5px 14px;
-    display: inline-flex;
-    gap: 8px;
-    backdrop-filter: blur(4px);
-}
-
-.hint-item {
-    font-family: monospace;
-    font-weight: bold;
+     
 }
 
 /* 输入框和按钮样式 */
 .command-area {
     display: flex;
     gap: 10px;
-    align-items: center; 
+    align-items: center;
+    background: rgba(20, 30, 40, 0.6);
+    border-radius: 15px;
+    padding: 5px 12px 5px 20px;
     backdrop-filter: blur(4px);
+    justify-content: space-between;
 }
- 
+
+.command-input {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 15px;
+    color: white;
+    font-family: monospace;
+    outline: none;
+    width: 130px;
+    transition: all 0.2s;
+    backdrop-filter: blur(4px);
+    flex: 1;
+    width: auto;
+}
+
+.command-input:focus {
+    border-color: #6ab0ff;
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 6px #6ab0ff80;
+}
+
+.command-input::placeholder {
+    color: #bbd9ffaa;
+    font-size: 12px;
+}
 
 .send-btn {
     background: rgba(80, 140, 200, 0.85);
@@ -129,7 +159,8 @@ let info=false
 .send-btn:active {
     transform: scale(0.96);
     background: #3b82f6;
-}
+}   
+
  @media (max-width: 700px) {
     .info-panel {
         top: 16px;
@@ -143,10 +174,8 @@ let info=false
     .code-section {
         justify-content: space-between;
     }
-    .command-area {
-        justify-content: space-between;
-    }
- 
+
+
     .code-value {
         font-size: 40px;
         min-width: 55px;

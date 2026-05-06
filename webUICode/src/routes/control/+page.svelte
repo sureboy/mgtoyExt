@@ -3,68 +3,89 @@ import BlinkEyes from '$lib/components/BlinkEyes.svelte';
 import InfoPanel from "$lib/components/InfoPanel.svelte";
 import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
-import {connWebRTC } from '$lib/webrtc' 
+import {connWebRTC } from '$lib/webrtc'
+import ConnWebrtc,{ startWebRTC,dialogConfig} from '$lib/ConnWebrtc.svelte'; 
+import type {infoStruct,signalingStruct} from "$lib/utils/mainDataStruct" 
+import {createCmdSender} from "$lib/utils/wheelCmdSender"
 //    import { clearInterval } from 'node:timers';
 //let canvas:HTMLCanvasElement
-const createCmdSender = (sendMsg:(n:number)=>void) => {
-    let currentTimer: NodeJS.Timeout | null = null;
-    let currentN: number | undefined; 
-    return (n: number) => {
-        if (currentN === n) return;
-        if (currentTimer) clearTimeout(currentTimer);
-        sendMsg(n)
-        //console.log(wheelNumber[changeNumber[n]]);
-        currentN = n;
+let sender:(n:number)=>void = undefined
+const infoData:infoStruct= {cars:[]}
+ 
 
-        const tick = () => {
-            if (currentN === 0) return;      // 若n=0则停止循环
-            //console.log(wheelNumber[changeNumber[currentN!]]);
-            sendMsg(currentN)
-            currentTimer = setTimeout(tick, 1000);
-        };
-
-        if (n !== 0) {
-            currentTimer = setTimeout(tick, 1000);
-        }
-    };
-};
-const wheel = {
-    up:1|(1<<2),
-    down:2|(2<<2),
-    left:2|(1<<2),
-    right:1|(2<<2),
-    stop:0,
-}
-const wheelNumber = [
-    ()=>0,
-    ()=>wheel.down & wheel.left,
-    ()=>wheel.down,
-    ()=>wheel.down & wheel.right,
-    ()=>wheel.left,
-    ()=>0,
-    ()=>wheel.right,
-    ()=>wheel.up & wheel.left,
-    ()=>wheel.up,
-    ()=>wheel.up & wheel.right,
-]
-const changeNumber=[ 0,6,3,2,1,4,7,8,9 ]
-const initDataChannel = (dataChannel: RTCDataChannel)=>{
+const initDataChannelListener = (dataChannel: RTCDataChannel)=>{
     dataChannel.addEventListener("message",(e)=>{
-        console.log(e)
-    })
+        //console.log(e)
+        const db = JSON.parse(e.data)
+        if (db.DB && db.DB.Carname){
+            const car = {name:db.DB.Carname}
+            const timeOut = (Date.now() - db.Update)/6000
+            let car_ = document.getElementById(db.DB.Carname) as HTMLAnchorElement
+            if (!car_){
+                car_=infoData.info.firstChild.cloneNode() as HTMLAnchorElement;// document.createElement('a')
+                car_.href="#"+car.name
+                car_.id = car.name
+                car_.onclick = ()=>{
+                    infoData.codeInput.value = JSON.stringify(car)
+                }
+                infoData.info.append(car_)
+            }
+            console.log(timeOut)
+            if (timeOut>=1){
+                car_.textContent = car.name
+            }else{
+                car_.textContent=car.name+":"+(100-timeOut  *100).toFixed(0) +"%"
+            }
+            
+            
+            
+            //infoData.cars.push(car)
+            
+            
+            
+        }
+        console.log(db,infoData.info) 
+    }) 
 }
-
+const initDataChannelSender = (dataChannel: RTCDataChannel)=>{
+    dataChannel.send(JSON.stringify({  
+        name:"local" ,
+        msg: 0
+    }))
+    sender= n=>{ 
+        dataChannel.send(JSON.stringify(
+            Object.assign(
+                {msg:n},
+                JSON.parse(infoData.codeInput.value)
+            )   
+        ))
+    } 
+}
+const init = (dataChannel: RTCDataChannel)=>{
+    initDataChannelListener(dataChannel) 
+    initDataChannelSender(dataChannel) 
+}
 onMount(()=>{ 
+    if (window.location.hash){
+        const hashdb = window.location.hash.slice(1)
+        if (hashdb){
+            try{
+                const sign = JSON.parse(decodeURIComponent(window.location.hash.slice(1))) as signalingStruct
+                location.hash = ''; 
+                startWebRTC(sign,(receiveChannel)=>{ 
+                    init (receiveChannel)  
+                })
+                return
+            }catch(e){
+                console.log(e)
+                
+            } 
+        }
+    }
     connWebRTC().then((res) =>{  
-        initDataChannel(res.dataChannel)
-        console.log(res)
-            const msgString = JSON.stringify({  
-            name:"local" ,
-            msg: 0
-        })
-        console.log(msgString)
-        res.dataChannel.send(msgString)
+        init(res.dataChannel)
     }).catch(e=>{
+
         console.log(e)
     })
 })
@@ -72,10 +93,16 @@ onMount(()=>{
 <svelte:head><title  >mgtoy</title></svelte:head> 
 <div class="bg"><BlinkEyes></BlinkEyes></div>
 <Joystick clickEvent={createCmdSender((n)=>{
-    console.log(wheelNumber[changeNumber[n]]);
+    //console.log( n]]);
+    if (sender)sender(n)
 })}></Joystick>
-<InfoPanel></InfoPanel>
+<InfoPanel {infoData} ></InfoPanel>
 <footer>🎥 摄像头视频背景 | 半透明摇杆 | 拖拽右下角 → 8方向 + 中心停止</footer>
+    <ConnWebrtc>
+        <p id="init">   </p>
+        <p id="camera"> </p>
+        <p id="video" > </p>
+    </ConnWebrtc>
 <style>
 footer {
     position: fixed;
