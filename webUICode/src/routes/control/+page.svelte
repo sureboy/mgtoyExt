@@ -87,6 +87,24 @@ onMount(()=>{
     }).catch(e=>{
 
         console.log(e)
+        fetch("http://127.0.0.1:8088/?create=true",{
+            method:"POST",
+            headers: {
+                "Content-Type": "application/json"   // 告诉服务器发送的是 JSON
+            },
+            body: JSON.stringify({id:"test"}) 
+        }).then(r=>{
+            if (r.ok){
+                console.log("post",r)
+                const source = new EventSource(
+                    'http://127.0.0.1:8088/?create=true&id=test',
+                    {withCredentials:false}
+                );
+                source.onmessage = function(event) {
+                    console.log(event.data)
+                };
+            }
+        })
     })
 })
 </script>
