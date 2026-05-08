@@ -2,8 +2,18 @@ package main
 
 import (
 	"cacheServer/WebRtc"
+	"cacheServer/udp"
+	"context"
+	"flag"
 	"fmt"
+	"log"
 	"net/http"
+
+	"golang.org/x/sync/errgroup"
+)
+
+var (
+	udpAddr = flag.String("post", ":9002", "udp address ")
 )
 
 func enableCORS(next http.HandlerFunc) http.HandlerFunc {
@@ -25,8 +35,24 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 func main() {
-	err := http.ListenAndServe(":8088", enableCORS(WebRtc.RtcHttpHandle))
-	if err != nil {
-		fmt.Println(err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	g, _ := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		err := http.ListenAndServe(":8088", enableCORS(WebRtc.RtcHttpHandle))
+		if err != nil {
+			fmt.Println(err)
+		}
+		return err
+	})
+	g.Go(func() error {
+		err := udp.UDPServer(*udpAddr)
+		if err != nil {
+			log.Println(err)
+		}
+		return err
+	})
+	if err := g.Wait(); err != nil {
+		log.Printf("服务器错误: %v", err)
 	}
 }

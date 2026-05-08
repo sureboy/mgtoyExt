@@ -1,12 +1,14 @@
 package WebRtc
 
 import (
+	"cacheServer/room"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func getClientIP(r *http.Request) string {
@@ -27,14 +29,6 @@ func getClientIP(r *http.Request) string {
 	// 3. 最后回退到 RemoteAddr
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 	return ip
-}
-
-type PostDB struct {
-	Id  string `json:"id"`
-	Msg string `json:"msg"`
-	//Create bool           `json:"create"`
-	//Ip    string `json:"ip"`
-	//cache any
 }
 
 func httpHandleEnd(w http.ResponseWriter) {
@@ -60,35 +54,39 @@ func RtcSSEHandle(w http.ResponseWriter, r *http.Request) {
 	if id == "" {
 		id = getClientIP(r)
 	}
-	cache := CacheID.read(id)
+	cache := room.ReadCache(id)
 	if cache == nil {
 		http.Error(w, "Unauthorized:"+id, http.StatusUnauthorized)
 		return
 	}
-	var chann chan string
-	if query.Get("create") == "" {
-		chann = cache.append
-	} else {
-		chann = cache.create
+	//var chann chan string
+	write := func(db string) {
+		_, err := fmt.Fprintf(w, "data: %s\n\n", db)
+		if err != nil {
+			log.Printf("Write error: %v", err)
+			return
+		}
+		flusher.Flush()
 	}
-	//ticker := time.NewTicker(1 * time.Second)
-	//defer ticker.Stop()
+	if query.Get("create") != "true" {
+
+		cache.Create = write
+	} else {
+		cache.SetAppend(write)
+	}
+	ticker := time.NewTicker(5 * time.Second)
+	defer func() {
+		ticker.Stop()
+		room.CleanCache(cache)
+	}()
 	for {
 		select {
 		case <-ctx.Done():
 			// 客户端断开连接，退出循环
 			log.Println("Client disconnected")
 			return
-		case t := <-chann:
-			// 发送消息格式: "data: 内容\n\n"
-			msg := fmt.Sprintf("data: %s\n\n", t)
-			_, err := w.Write([]byte(msg))
-			if err != nil {
-				log.Printf("Write error: %v", err)
-				return
-			}
-			flusher.Flush()
-
+		case test := <-ticker.C:
+			write(test.Format(time.RFC3339))
 		}
 	}
 }
@@ -103,34 +101,19 @@ func RtcHttpHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var db PostDB
-	if err := json.NewDecoder(r.Body).Decode(&db); err != nil {
+	db := room.NewPostDB()
+	if err := json.NewDecoder(r.Body).Decode(db); err != nil {
 		http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 		return
 	}
+	httpHandleEnd(w)
 	if db.Id == "" {
 		db.Id = getClientIP(r)
 	}
-	httpHandleEnd(w)
-	if r.URL.Query().Get("create") == "" {
-		roomAppend(w, &db)
-	} else {
-		roomCreate(w, &db)
+	c := db.HandleMsg()
+	msglist, err := json.Marshal(c.Msg())
+	if err == nil && msglist != nil {
+		w.Write(msglist)
 	}
-}
-func roomAppend(w http.ResponseWriter, db *PostDB) {
-	cache := CacheID.read(db.Id)
-	if cache == nil {
-		return
-	}
-	cache.append <- db.Msg
-}
-func roomCreate(w http.ResponseWriter, db *PostDB) {
 
-	cache := CacheID.read(db.Id)
-	if cache == nil {
-		cache = CreateDBChan()
-		CacheID.write(db.Id, cache)
-	}
-	cache.create <- db.Msg
 }

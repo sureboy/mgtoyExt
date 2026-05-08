@@ -3,10 +3,11 @@ import BlinkEyes from '$lib/components/BlinkEyes.svelte';
 import InfoPanel from "$lib/components/InfoPanel.svelte";
 import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
-import {connWebRTC } from '$lib/webrtc'
+import {connWebRTC ,createRtcTrack,createOffer} from '$lib/webrtc'
 import ConnWebrtc,{ startWebRTC,dialogConfig} from '$lib/ConnWebrtc.svelte'; 
 import type {infoStruct,signalingStruct} from "$lib/utils/mainDataStruct" 
 import {createCmdSender} from "$lib/utils/wheelCmdSender"
+import {decodeBase64} from "$lib/utils/util"
 //    import { clearInterval } from 'node:timers';
 //let canvas:HTMLCanvasElement
 let sender:(n:number)=>void = undefined
@@ -35,14 +36,7 @@ const initDataChannelListener = (dataChannel: RTCDataChannel)=>{
                 car_.textContent = car.name
             }else{
                 car_.textContent=car.name+":"+(100-timeOut  *100).toFixed(0) +"%"
-            }
-            
-            
-            
-            //infoData.cars.push(car)
-            
-            
-            
+            } 
         }
         console.log(db,infoData.info) 
     }) 
@@ -65,6 +59,81 @@ const init = (dataChannel: RTCDataChannel)=>{
     initDataChannelListener(dataChannel) 
     initDataChannelSender(dataChannel) 
 }
+const startRtcConn = (send:(db:string)=>void,obj={id:"test",create:true})=>{
+    const pc = createRtcTrack((ice)=>{
+        send(JSON.stringify(ice))
+    })
+    const dc = pc.createDataChannel(obj.id,{ordered:false})
+    pc.onnegotiationneeded = ()=>{
+        createOffer(pc).then(sdp=>{
+            send(JSON.stringify(sdp))
+        })
+    }
+    return {pc,dc}
+}
+const postWebRTCMsg = (obj={id:"",create:false},u:string="http://127.0.0.1:8088/")=>{
+    return fetch(u,{
+        method:"POST",
+        headers: {
+            "Content-Type": "application/json"   // 告诉服务器发送的是 JSON
+        },
+        body: JSON.stringify(obj) 
+    })
+}
+const getWebRTCMsg = (msg:(msg:string)=>void,obj={id:""},u:string="http://127.0.0.1:8088/")=>{
+    u+="?" 
+    for (const [k,v] of Object.entries(obj)){
+        u+=`${k}=${v}&`
+    }
+    const source = new EventSource(
+        u ,
+        {withCredentials:false}
+    );
+    source.onmessage = function(event) {
+        //event.d
+        msg(decodeBase64(event.data))
+        
+    };
+}
+const createWebrtcConnFromCenterUrl = (obj={id:"",create:false},u:string="http://127.0.0.1:8088/")=>{
+
+    postWebRTCMsg(obj,u).then(r=>{
+        if (r.ok){
+            if (obj.create){ 
+                const conn = startRtcConn((msg)=>{
+                    postWebRTCMsg(Object.assign({msg},obj),u)
+                },obj)
+                getWebRTCMsg((msg)=>{
+                    const MsgObj = JSON.parse(msg);
+                     if (MsgObj.candidate){
+                        conn.pc.addIceCandidate(new RTCIceCandidate(MsgObj.candidate)).then(()=>{
+                            console.log(JSON.stringify(MsgObj.candidate));
+                        });
+                        return;
+                    }
+                    if (MsgObj.sdp){
+                        conn.pc.setRemoteDescription(new RTCSessionDescription(MsgObj));
+                        /*
+                        if (obj.type==="offer"){
+                            conn.pc.createAnswer().then(sdp=>{
+                                conn.pc.setLocalDescription(sdp);
+                                conn.dc.send(JSON.stringify(sdp));
+                            })
+                        }*/
+                        return
+                    }
+                } ,obj,u)
+            }else{
+                r.json().then(db=>{
+
+                })
+            }
+            
+             
+            
+        }
+    })
+}
 onMount(()=>{ 
     if (window.location.hash){
         const hashdb = window.location.hash.slice(1)
@@ -85,26 +154,10 @@ onMount(()=>{
     connWebRTC().then((res) =>{  
         init(res.dataChannel)
     }).catch(e=>{
-
-        console.log(e)
-        fetch("http://127.0.0.1:8088/?create=true",{
-            method:"POST",
-            headers: {
-                "Content-Type": "application/json"   // 告诉服务器发送的是 JSON
-            },
-            body: JSON.stringify({id:"test"}) 
-        }).then(r=>{
-            if (r.ok){
-                console.log("post",r)
-                const source = new EventSource(
-                    'http://127.0.0.1:8088/?create=true&id=test',
-                    {withCredentials:false}
-                );
-                source.onmessage = function(event) {
-                    console.log(event.data)
-                };
-            }
+        infoData.sendBtn.addEventListener('click',(e)=>{
+            if (infoData.codeInput.value.startsWith("webrtc:"))
         })
+        createWebrtcConnFromCenterUrl()
     })
 })
 </script>

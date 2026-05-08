@@ -129,4 +129,23 @@ export const createRtcTrack = (getRTCIce:(candidate: RTCIceCandidateInit)=>void,
     };
     return StreamConnection;
 };
+export const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
+    //const StreamConnection = createMyWebRtc(dataChannel,closeHand)
+    const capabilities = RTCRtpSender.getCapabilities('video');
+    if (capabilities) {
+        // 从返回结果的 codecs 数组中查找 VP8
+        const vp8Codec = capabilities.codecs.find(c => c.mimeType === 'video/VP8'); 
+        if (vp8Codec) { 
+            StreamConnection.getTransceivers().forEach(transceiver => {
+                if (transceiver.sender && transceiver.sender.track?.kind === 'video') {
+                    transceiver.setCodecPreferences([vp8Codec]);
+                }
+            });
+        }
+    }
+    const sdp  = await StreamConnection.createOffer() ;
+        //console.log(sdp)
+    await    StreamConnection.setLocalDescription(sdp);
+    return sdp;
  
+};
