@@ -7,7 +7,7 @@ import {connWebRTC ,createRtcTrack,createOffer} from '$lib/webrtc'
 import ConnWebrtc,{ startWebRTC,dialogConfig} from '$lib/ConnWebrtc.svelte'; 
 import type {infoStruct,signalingStruct} from "$lib/utils/mainDataStruct" 
 import {createCmdSender} from "$lib/utils/wheelCmdSender"
-import {decodeBase64} from "$lib/utils/util"
+//import {decodeBase64} from "$lib/utils/util"
 //    import { clearInterval } from 'node:timers';
 //let canvas:HTMLCanvasElement
 let sender:(n:number)=>void = undefined

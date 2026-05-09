@@ -98,7 +98,6 @@ func UDPServer(udpAddr string) error {
 			fmt.Println("Error reading:", err)
 			continue
 		}
-
 		db := packet.getPostDB()
 		if db.Id == "" {
 			db.Id = packet.addr.IP.String()
@@ -110,6 +109,7 @@ func UDPServer(udpAddr string) error {
 			}
 		}
 		c := db.HandleMsg()
+		//fmt.Println("udp create", db.Id)
 		if c != nil {
 			if db.Create {
 				if c.Create == nil {
@@ -124,8 +124,9 @@ func UDPServer(udpAddr string) error {
 			}
 		}
 
-		write("{}")
+		//write("{}")
 		packet.Clean()
+		db.Clean()
 		//handleUDPMsg(buf, n, clientAddr)
 
 	}

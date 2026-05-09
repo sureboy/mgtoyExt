@@ -29,11 +29,11 @@ type PostDB struct {
 	//cache any
 }
 
-func (db *PostDB) clean() {
+func (db *PostDB) Clean() {
 	buffer.Put(db)
 }
 func (db *PostDB) HandleMsg() *MsgHandle {
-	defer db.clean()
+
 	c := ReadCache(db.Id)
 	//fmt.Println(c)
 	if c == nil {

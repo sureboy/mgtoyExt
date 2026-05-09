@@ -42,27 +42,33 @@ const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: s
         return;
     }
 };
-export const createWebRtcConn = (host:string="127.0.0.1:9003")=>{
+export const createWebRtcConn = (create=true,host:string="127.0.0.1:9003")=>{
   const {id,pc} = pool.createConnection();
   const client = dgram.createSocket('udp4');
   const [SERVER_HOST,SERVER_PORT] = host.split(":");
   const outObj = {pc,
     dc:{
       send(msg:string){
-        client.send(JSON.stringify({id,create:true,msg}), Number(SERVER_PORT), SERVER_HOST, (err) => {
+        
+        client.send(
+            JSON.stringify(
+                {id,create,msg:Buffer.from(msg).toString('base64')}
+            ), 
+            Number(SERVER_PORT), SERVER_HOST, (err) => {
             if (err) {
-            console.error('发送失败:', err);
-            client.close();
+                console.error('发送失败:', err);
+                client.close();
             } else {
-            console.log('消息已发送');
- 
+                console.log('消息已发送'); 
             }
         }); 
       }
     }
   };
   client.on("message",(msg,rinfo)=>{
-    setRemoteRTCMsg(JSON.parse(msg.toString()),outObj);
+     
+    //Buffer.from(msg.toString(), 'base64').toString('utf8');
+    setRemoteRTCMsg(JSON.parse(Buffer.from(msg.toString(), 'base64').toString('utf8')),outObj);
   });
   client.on("error",(e)=>{
     console.error("webrtc err",e);

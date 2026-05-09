@@ -103,6 +103,7 @@ func RtcHttpHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db := room.NewPostDB()
+	defer db.Clean()
 	if err := json.NewDecoder(r.Body).Decode(db); err != nil {
 		http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 		return
@@ -114,6 +115,11 @@ func RtcHttpHandle(w http.ResponseWriter, r *http.Request) {
 
 	c := db.HandleMsg()
 	if db.Create {
+		return
+	}
+	//fmt.Println(db.Id, c)
+	if c == nil {
+		w.Write([]byte("[]"))
 		return
 	}
 	msglist, err := json.Marshal(c.Msg())
