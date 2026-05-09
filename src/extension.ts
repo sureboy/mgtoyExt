@@ -10,6 +10,9 @@ import {stopServer,startServer} from './init';
 
 export function activate(context: vscode.ExtensionContext) { 
 	//console.log('Congratulations, your extension "mgtoy" is now active!'); 
+	const conn = vscode.commands.registerCommand('mgtoy.conn', () => { 
+		stopServer();
+	});  
 	const stop =  vscode.commands.registerCommand('mgtoy.stop', () => { 
 		stopServer();
 	});  
@@ -17,7 +20,7 @@ export function activate(context: vscode.ExtensionContext) {
 		startServer(context );
 		vscode.window.showInformationMessage('Hello World from mgtoy!');
 	}); 
-	context.subscriptions.push(start,stop);
+	context.subscriptions.push(start,stop,conn);
 }
 
 // This method is called when your extension is deactivated

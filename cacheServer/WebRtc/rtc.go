@@ -75,7 +75,7 @@ func RtcSSEHandle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		cache.SetAppend(write)
 	}
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	defer func() {
 		ticker.Stop()
 		room.CleanCache(cache)

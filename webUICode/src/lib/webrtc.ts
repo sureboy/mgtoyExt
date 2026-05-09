@@ -124,6 +124,7 @@ export const createRtcTrack = (getRTCIce:(candidate: RTCIceCandidateInit)=>void,
 };
 export const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
     //const StreamConnection = createMyWebRtc(dataChannel,closeHand)
+    /*
     const capabilities = RTCRtpSender.getCapabilities('video');
     if (capabilities) {
         // 从返回结果的 codecs 数组中查找 VP8
@@ -135,7 +136,7 @@ export const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
                 }
             });
         }
-    }
+    }*/
     const sdp  = await StreamConnection.createOffer() ;
         //console.log(sdp)
     await    StreamConnection.setLocalDescription(sdp);

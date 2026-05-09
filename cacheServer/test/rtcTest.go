@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	udpAddr = flag.String("post", ":9002", "udp address ")
+	udpAddr = flag.String("post", ":9003", "udp address ")
 )
 
 func enableCORS(next http.HandlerFunc) http.HandlerFunc {
@@ -48,7 +48,7 @@ func main() {
 	g.Go(func() error {
 		err := udp.UDPServer(*udpAddr)
 		if err != nil {
-			log.Println(err)
+			log.Println("err", err)
 		}
 		return err
 	})

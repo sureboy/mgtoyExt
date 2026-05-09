@@ -97,8 +97,7 @@ func UDPServer(udpAddr string) error {
 			fmt.Println("Error reading:", err)
 			continue
 		}
-		//fmt.Println(packet.len)
-		//fmt.Println(packet.len)
+
 		db := packet.getPostDB()
 		if db.Id == "" {
 			db.Id = packet.addr.IP.String()

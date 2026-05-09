@@ -39,7 +39,7 @@ func (db *MsgHandle) SetAppend(w func(string)) {
 func (db *MsgHandle) Msg() []string {
 	m := db.msg
 
-	//db.msg = db.msg[:]
+	db.msg = db.msg[:]
 
 	return m
 }

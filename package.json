@@ -36,6 +36,10 @@
     },
     "commands": [
       {
+        "command": "mgtoy.conn",
+        "title": "mgtoy conn"
+      },
+      {
         "command": "mgtoy.start",
         "title": "mgtoy start"
       },
