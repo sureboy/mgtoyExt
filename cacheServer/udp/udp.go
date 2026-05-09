@@ -89,8 +89,9 @@ func UDPServer(udpAddr string) error {
 		//ptr := buffer.Get().(*[]byte)
 		packet := NewTaskPacket()
 		//packet := buffer.Get().(*TaskPacket)
-		packet.len, packet.addr, err = conn.ReadFromUDP(packet.buf[:])
-
+		len, addr, err := conn.ReadFromUDP(packet.buf[:])
+		packet.len = len
+		packet.addr = addr
 		if err != nil {
 			packet.Clean()
 			//buffer.Put(packet)
@@ -103,9 +104,9 @@ func UDPServer(udpAddr string) error {
 			db.Id = packet.addr.IP.String()
 		}
 		write := func(m string) {
-			_, err := conn.WriteToUDP([]byte(m), packet.addr)
+			_, err := conn.WriteToUDP([]byte(m), addr)
 			if err != nil {
-				log.Println(err)
+				log.Println(m, err)
 			}
 		}
 		c := db.HandleMsg()
@@ -122,6 +123,8 @@ func UDPServer(udpAddr string) error {
 				}
 			}
 		}
+
+		write("{}")
 		packet.Clean()
 		//handleUDPMsg(buf, n, clientAddr)
 

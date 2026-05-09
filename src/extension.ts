@@ -2,7 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import {stopServer,startServer} from './init';
-
+import {createWebRtcConn} from './webRtcHost';
 
 
 // This method is called when your extension is activated
@@ -11,7 +11,7 @@ import {stopServer,startServer} from './init';
 export function activate(context: vscode.ExtensionContext) { 
 	//console.log('Congratulations, your extension "mgtoy" is now active!'); 
 	const conn = vscode.commands.registerCommand('mgtoy.conn', () => { 
-		stopServer();
+		createWebRtcConn();
 	});  
 	const stop =  vscode.commands.registerCommand('mgtoy.stop', () => { 
 		stopServer();

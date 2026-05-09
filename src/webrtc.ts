@@ -1,9 +1,9 @@
 import  { RTCPeerConnection ,RTCDataChannel } from 'werift';
 import {ConnectionPool} from './webRTCPool'; 
-import dgram from 'dgram';
+//import dgram from 'dgram';
 //import readline from 'readline';
 //import {stringToBase64Url} from './strToJson';
-const pool = new ConnectionPool();
+export const pool = new ConnectionPool();
 
 export type  signalingStruct = {
   ICEList:{
@@ -16,49 +16,7 @@ export type  signalingStruct = {
   answer?:string,
   id:string;
 }
-const postWebRTCMsg = (obj={id:"",create:false,host:"127.0.0.1:9003"})=>{
-  const client = dgram.createSocket('udp4');
-  const [SERVER_PORT, SERVER_HOST] = obj.host.split(":");
-  client.send(JSON.stringify(obj), Number(SERVER_PORT), SERVER_HOST, (err) => {
-    if (err) {
-      console.error('发送失败:', err);
-      client.close();
-    } else {
-      console.log('消息已发送');
-      // 可选：如果需要接收服务器的响应，监听 'message' 事件
-      // 否则可以直接关闭 socket
-      // client.close();
-    }
-  });
-  client.on('message', (msg, rinfo) => {
-    console.log(`收到来自 ${rinfo.address}:${rinfo.port} 的响应: ${msg.toString()}`);
-    // 收到响应后关闭 socket
-    client.close();
-  });
 
-  // 6. 错误处理
-  client.on('error', (err) => {
-    console.error(`socket 错误: ${err.stack}`);
-    client.close();
-  });
-};
-export const createWebRtcConn = (host:string="127.0.0.1:9003")=>{
-  const {id,pc} = pool.createConnection();
-  const outObj = {pc,
-    dc:{
-      send(db:string){
-        postWebRTCMsg({id,create:true,host});
-      }
-    }
-  };
-  pc.onnegotiationneeded=()=>{
-    createOffer(pc).then(sdp=>{
-      outObj.dc.send(JSON.stringify(sdp));
-    });
-  };
-  const dataChannel = pc.createDataChannel(id,{ordered:false,protocol:"json"});
-
-};
 function setupDataChannel(dc:RTCDataChannel,id:string) {   
   dc.onopen = () => console.log('✅ DataChannel 已打开，连接已建立！',dc.id) ;
   dc.onmessage = (event) => console.log(`📩 收到消息: ${event.data}`);
@@ -73,14 +31,7 @@ function setupDataChannel(dc:RTCDataChannel,id:string) {
     console.log('🔒 DataChannel 已关闭');
   };
 }
-const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
- 
-    const sdp  = await StreamConnection.createOffer() ;
-        //console.log(sdp)
-    await    StreamConnection.setLocalDescription(sdp);
-    return sdp;
- 
-};
+
 export const initWebRtcClient =async (back:(msg:{dataChannel: RTCDataChannel,signaling: signalingStruct,pc: RTCPeerConnection})=>void)=>{ 
   const {id,pc} = pool.createConnection();
   const dataChannel = pc.createDataChannel(id,{ordered:false,protocol:"json"});
