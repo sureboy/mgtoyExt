@@ -61,6 +61,7 @@ func RtcSSEHandle(w http.ResponseWriter, r *http.Request) {
 	}
 	//var chann chan string
 	write := func(db string) {
+
 		_, err := fmt.Fprintf(w, "data: %s\n\n", db)
 		if err != nil {
 			log.Printf("Write error: %v", err)
@@ -68,7 +69,7 @@ func RtcSSEHandle(w http.ResponseWriter, r *http.Request) {
 		}
 		flusher.Flush()
 	}
-	if query.Get("create") != "true" {
+	if query.Get("create") == "true" {
 
 		cache.Create = write
 	} else {
@@ -110,7 +111,11 @@ func RtcHttpHandle(w http.ResponseWriter, r *http.Request) {
 	if db.Id == "" {
 		db.Id = getClientIP(r)
 	}
+
 	c := db.HandleMsg()
+	if db.Create {
+		return
+	}
 	msglist, err := json.Marshal(c.Msg())
 	if err == nil && msglist != nil {
 		w.Write(msglist)

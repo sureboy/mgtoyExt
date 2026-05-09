@@ -20,7 +20,7 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 设置允许的来源（生产环境请替换为具体域名，不要用 "*"）
 		// 允许跨域的源（开发时可设为 *，生产务必指定具体域名）
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Cache-Control, Authorization") // 添加 cache-control
 

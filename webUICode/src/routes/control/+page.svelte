@@ -59,17 +59,44 @@ const init = (dataChannel: RTCDataChannel)=>{
     initDataChannelListener(dataChannel) 
     initDataChannelSender(dataChannel) 
 }
-const startRtcConn = (send:(db:string)=>void,obj={id:"test",create:true})=>{
-    const pc = createRtcTrack((ice)=>{
-        send(JSON.stringify(ice))
-    })
-    const dc = pc.createDataChannel(obj.id,{ordered:false})
-    pc.onnegotiationneeded = ()=>{
-        createOffer(pc).then(sdp=>{
-            send(JSON.stringify(sdp))
+const createRtcConn = (send:(iceOrSdp:string)=>void,obj={id:"test",create:true})=>{
+    const outOjb = {
+        pc:createRtcTrack((ice)=>{
+            outOjb.dc.send(JSON.stringify(ice))
+        }),
+        dc:{send}
+    }
+ 
+    const dc = outOjb.pc.createDataChannel(obj.id,{ordered:false})
+    dc.onopen=()=>{
+        outOjb.dc = dc
+        console.log("dc open")
+
+    }
+    dc.onmessage=(e)=>{
+            setRemoteRTCMsg(JSON.parse(e.data),outOjb)
+    }
+    outOjb.pc.onnegotiationneeded = ()=>{
+        createOffer(outOjb.pc).then(sdp=>{
+            outOjb.dc.send(JSON.stringify(sdp))
         })
     }
-    return {pc,dc}
+    return outOjb
+}
+const appendRtcConn = (send:(ice:string)=>void)=>{
+ 
+    const obj:{pc:RTCPeerConnection,dc:{send(data:string):void}} = {
+        pc: createRtcTrack((ice)=>{
+        obj.dc.send(JSON.stringify(ice))
+    }),dc:{send}}
+    obj.pc.ondatachannel = (e)=>{
+        obj.dc = e.channel
+        console.log("dc open")
+        e.channel.onmessage=(e)=>{
+            setRemoteRTCMsg(JSON.parse(e.data),obj)
+        }
+    }
+    return obj
 }
 const postWebRTCMsg = (obj={id:"",create:false},u:string="http://127.0.0.1:8088/")=>{
     return fetch(u,{
@@ -80,7 +107,7 @@ const postWebRTCMsg = (obj={id:"",create:false},u:string="http://127.0.0.1:8088/
         body: JSON.stringify(obj) 
     })
 }
-const getWebRTCMsg = (msg:(msg:string)=>void,obj={id:""},u:string="http://127.0.0.1:8088/")=>{
+const getWebRTCMsgFromSSE = (msg:(msg:any)=>void,obj={id:""},u:string="http://127.0.0.1:8088/")=>{
     u+="?" 
     for (const [k,v] of Object.entries(obj)){
         u+=`${k}=${v}&`
@@ -89,43 +116,66 @@ const getWebRTCMsg = (msg:(msg:string)=>void,obj={id:""},u:string="http://127.0.
         u ,
         {withCredentials:false}
     );
-    source.onmessage = function(event) {
-        //event.d
-        msg(decodeBase64(event.data))
-        
+    source.onmessage = function(event) { 
+        try{ 
+            msg(JSON.parse(atob(event.data)));
+        }catch(e){
+            console.log(e)
+            console.log(event.data )
+        } 
     };
+    source.onerror = (e)=>{
+        console.error(e)
+        source.close()
+    }
 }
-const createWebrtcConnFromCenterUrl = (obj={id:"",create:false},u:string="http://127.0.0.1:8088/")=>{
+const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc?:{send(data: string): void}})=>{
+    if (MsgObj.candidate){
+        try{
+            conn.pc.addIceCandidate(new RTCIceCandidate(MsgObj)).then(()=>{
+                console.log( MsgObj );
+            });
+        }catch(e){
+            console.error(e)
+        }
+        
+        return;
+    }
+    if (MsgObj.sdp){
+        try{
+            conn.pc.setRemoteDescription(new RTCSessionDescription(MsgObj)); 
+            if (MsgObj.type==="offer"){
+                conn.pc.createAnswer().then(sdp=>{
+                    conn.pc.setLocalDescription(sdp);
+                    conn.dc.send(JSON.stringify(sdp));                 
+                })
+            } 
+        }catch(e){
+            console.error(e)
+        }
+        return
+    }
+}
+const createWebrtcConnFromCenterUrl = (obj={id:"",create:true},u:string="http://127.0.0.1:8088/")=>{
 
     postWebRTCMsg(obj,u).then(r=>{
         if (r.ok){
             if (obj.create){ 
-                const conn = startRtcConn((msg)=>{
-                    postWebRTCMsg(Object.assign({msg},obj),u)
-                },obj)
-                getWebRTCMsg((msg)=>{
-                    const MsgObj = JSON.parse(msg);
-                     if (MsgObj.candidate){
-                        conn.pc.addIceCandidate(new RTCIceCandidate(MsgObj.candidate)).then(()=>{
-                            console.log(JSON.stringify(MsgObj.candidate));
-                        });
-                        return;
-                    }
-                    if (MsgObj.sdp){
-                        conn.pc.setRemoteDescription(new RTCSessionDescription(MsgObj));
-                        /*
-                        if (obj.type==="offer"){
-                            conn.pc.createAnswer().then(sdp=>{
-                                conn.pc.setLocalDescription(sdp);
-                                conn.dc.send(JSON.stringify(sdp));
-                            })
-                        }*/
-                        return
-                    }
+                const conn = createRtcConn((msg)=>{
+                    postWebRTCMsg(Object.assign({msg:btoa(msg)},obj),u)
+                },obj) 
+                getWebRTCMsgFromSSE((MsgObj)=>{
+                    setRemoteRTCMsg(MsgObj,conn) 
                 } ,obj,u)
-            }else{
+            }else{ 
                 r.json().then(db=>{
-
+                    const conn = appendRtcConn((msg)=>{ 
+                        postWebRTCMsg(Object.assign({msg:btoa(msg)},obj),u)
+                    }); 
+                    (db as any[]).forEach(v=>{
+                        setRemoteRTCMsg(JSON.parse(atob(v)),conn)
+                        //console.log()
+                    });
                 })
             }
             
@@ -146,18 +196,19 @@ onMount(()=>{
                 })
                 return
             }catch(e){
-                console.log(e)
-                
+                console.log(e) 
             } 
         }
     }
     connWebRTC().then((res) =>{  
         init(res.dataChannel)
     }).catch(e=>{
-        infoData.sendBtn.addEventListener('click',(e)=>{
-            if (infoData.codeInput.value.startsWith("webrtc:"))
-        })
-        createWebrtcConnFromCenterUrl()
+        infoData.codeInput.value=JSON.stringify({id:Date.now().toString(32).slice(4),create:true})
+        infoData.sendBtn.onclick = (e)=>{
+            //if (infoData.codeInput.value.startsWith("webrtc:"))
+            createWebrtcConnFromCenterUrl(JSON.parse(infoData.codeInput.value))
+        }
+        
     })
 })
 </script>

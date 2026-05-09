@@ -79,22 +79,15 @@ export async function handleOffer(
             }
             return;
         }
-    };
-
-   
-    
-    //peerConnection.ontrack =track;
-
-    // 监听 Data Channel，接收消息
+    }; 
     peerConnection.ondatachannel = (event) => {
         const dataChannel = event.channel; 
         console.log("webrtc conn ok");
-        backDatachannel(dataChannel);
-        //receiveChannel.onmessage = msg;
+        backDatachannel(dataChannel); 
     };
     //return peerConnection;
 }
- 
+
 export const connWebRTC =()=>{
     return new Promise<{dataChannel:RTCDataChannel,peerConnection:RTCPeerConnection,signaling: signalingStruct}>((resolve,reject)=>{
         getOffer().then(signaling=>{

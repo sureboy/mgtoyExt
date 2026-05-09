@@ -1,6 +1,8 @@
 package room
 
-import "sync"
+import (
+	"sync"
+)
 
 type Room struct {
 }
@@ -33,6 +35,7 @@ func (db *PostDB) clean() {
 func (db *PostDB) HandleMsg() *MsgHandle {
 	defer db.clean()
 	c := ReadCache(db.Id)
+	//fmt.Println(c)
 	if c == nil {
 		if !db.Create {
 			return nil
@@ -40,11 +43,15 @@ func (db *PostDB) HandleMsg() *MsgHandle {
 		c = createMsgHandle(db.Id)
 		CacheRoom.write(db.Id, c)
 	}
+	if db.Msg == "" {
+		return c
+	}
 	if db.Create {
 		if c.Append != nil {
 			c.Append(db.Msg)
 		} else {
 			c.msg = append(c.msg, db.Msg)
+			//fmt.Println("add", c)
 		}
 	} else {
 		if c.Create != nil {
