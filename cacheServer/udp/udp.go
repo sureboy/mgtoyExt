@@ -4,68 +4,34 @@ import (
 	"cacheServer/room"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"sync"
-	"time"
 )
 
 var (
-	buffer = sync.Pool{
-		New: func() interface{} {
-			//buf := make([]byte, 20)
-			return &TaskPacket{len: 0, msg: make(chan []byte, 1)}
+	udpMsgbuffer = sync.Pool{
+		New: func() any {
+			return &SendMsg{}
 		},
 	}
-	workChan = make(chan *TaskPacket, 100)
 )
 
-type TaskPacket struct {
-	buf    [1472]byte
-	msg    chan []byte
-	addr   *net.UDPAddr
-	len    int
-	handle func()
+type SendMsg struct {
+	Time int    `json:"time"`
+	Msg  string `json:"msg"`
 }
 
-func NewTaskPacket() *TaskPacket {
-	t := buffer.Get().(*TaskPacket)
-	t.len = 0
-	t.addr = nil
-	t.handle = nil
-	//t.subTack = nil
-	//t.back = nil
-	//t.bufPool = &buffer
-	return t
+func createSendMsg(t int) *SendMsg {
+	v := udpMsgbuffer.Get().(*SendMsg)
+	v.Time = t
+	return v
 }
-func (t *TaskPacket) HandleMsg(conn *net.UDPConn) error {
-	defer t.Clean()
-	for {
-		select {
-		case res := <-t.msg:
-			_, err := conn.WriteToUDP(res, t.addr)
-			if err != nil {
-				return err
-			}
-			// 正常接收
-		case <-time.After(30 * time.Second):
-			// 超时退出
-			return fmt.Errorf("time out")
-		}
-	}
+func (s *SendMsg) clean() {
+	udpMsgbuffer.Put(s)
 }
-func (p *TaskPacket) AddWorkChan() {
-	workChan <- p
-}
-
-func (t *TaskPacket) Clean() {
-	//close(t.msg)
-	t.addr = nil
-	buffer.Put(t)
-}
-func (t *TaskPacket) getPostDB() *room.PostDB {
+func getPostDB(buf []byte) *room.PostDB {
 	db := room.NewPostDB()
-	json.Unmarshal(t.buf[:t.len], db)
+	json.Unmarshal(buf, db)
 	return db
 }
 func UDPServer(udpAddr string) error {
@@ -84,28 +50,35 @@ func UDPServer(udpAddr string) error {
 
 	fmt.Println("UDP server listening on", addr)
 	//synchandleWorker(conn)
+	var buf [1472]byte
+
+	//json.NewDecoder()
 	for {
-		// 读取数据
-		//ptr := buffer.Get().(*[]byte)
-		packet := NewTaskPacket()
-		//packet := buffer.Get().(*TaskPacket)
-		len, addr, err := conn.ReadFromUDP(packet.buf[:])
-		packet.len = len
-		packet.addr = addr
+
+		len, addr, err := conn.ReadFromUDP(buf[:])
 		if err != nil {
-			packet.Clean()
-			//buffer.Put(packet)
 			fmt.Println("Error reading:", err)
 			continue
 		}
-		db := packet.getPostDB()
+		db := getPostDB(buf[:len])
 		if db.Id == "" {
-			db.Id = packet.addr.IP.String()
+			db.Id = addr.IP.String()
 		}
+		t := db.Time
+
 		write := func(m string) {
-			_, err := conn.WriteToUDP([]byte(m), addr)
+			sendMsg := createSendMsg(t)
+			defer sendMsg.clean()
+			sendMsg.Msg = m
+			data, err := json.Marshal(sendMsg)
 			if err != nil {
-				log.Println(m, err)
+				panic(err)
+			}
+			//fmt.Println(string(data))
+			_, err = conn.WriteToUDP(data, addr)
+			if err != nil {
+				panic(err)
+				//log.Println(m, err)
 			}
 		}
 		c := db.HandleMsg()
@@ -115,19 +88,14 @@ func UDPServer(udpAddr string) error {
 				if c.Create == nil {
 					c.Create = write
 				}
-
 			} else {
 				if c.Append == nil {
 					c.SetAppend(write)
-					//c.Append = write
 				}
 			}
 		}
-
-		//write("{}")
-		packet.Clean()
+		write("")
+		//packet.Clean()
 		db.Clean()
-		//handleUDPMsg(buf, n, clientAddr)
-
 	}
 }

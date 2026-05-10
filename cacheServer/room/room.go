@@ -25,6 +25,7 @@ type PostDB struct {
 	Id     string `json:"id"`
 	Msg    string `json:"msg"`
 	Create bool   `json:"create"`
+	Time   int    `json:"time"`
 	//Ip    string `json:"ip"`
 	//cache any
 }
