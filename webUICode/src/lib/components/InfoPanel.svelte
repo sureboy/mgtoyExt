@@ -19,18 +19,21 @@ const getConnHostJsonStr = ()=>{
 }
 onMount(()=>{
     infoData.codeInput.addEventListener('blur',e=>{
-        console.log(e)
+        //console.log(e)
         //inputStyle = infoData.codeInput.style
-        infoData.codeInput.style=""
-        info_panel.style.right=""
-        //info=false
-        infoData.sendBtn.style.display=""
-        //infoData.sendBtn.click()
+        setTimeout(()=>{
+            infoData.codeInput.style=""
+            info_panel.style.right="" 
+            infoData.sendBtn.style.display="" 
+        },100)
+
     })
     infoData.codeInput.addEventListener('focus',e=>{
-        console.log(e)
+        //console.log(e)
         //showInfo=true
         infoData.sendBtn.style.display="none"
+        infoData.codeInput.style.height = 'auto'; // 先重置高度，以便根据内容重新计算
+        infoData.codeInput.style.height = (infoData.codeInput.scrollHeight) + 'px'; // 设置高度为滚动高度 
         info_panel.style.right="10px"
 
     })
@@ -82,7 +85,7 @@ onMount(()=>{
 
 </script>
 
-<div class="info-panel"  bind:this={info_panel}>
+<div class="info-panel" id="info_panel" bind:this={info_panel}>
     <div class="command-area">
         <textarea   bind:this={infoData.codeInput} 
           id="cmdInput" 
@@ -93,17 +96,13 @@ onMount(()=>{
     </div>
      
     <div class="code-section" id="info" bind:this={infoData.info}>
-        <a class="code-label" href="#cmdInput" onclick={(e)=>{
-            infoData.codeInput.value = JSON.stringify({connUrl},null,2)
-            infoData.codeInput.style.height = 'auto'; // 先重置高度，以便根据内容重新计算
-            infoData.codeInput.style.height = (infoData.codeInput.scrollHeight) + 'px'; // 设置高度为滚动高度
-            infoData.codeInput.focus()
+        <a class="code-label" href="#info_panel" onclick={(e)=>{ 
+            infoData.codeInput.value = JSON.stringify({connUrl},null,2) 
+            setTimeout(()=>infoData.codeInput.focus(),100)
         }} >自建信令交换服务</a> 
-        <a class="code-label" href="#cmdInput" onclick={(e)=>{
-            infoData.codeInput.value = getConnHostJsonStr()
-            infoData.codeInput.style.height = 'auto'; // 先重置高度，以便根据内容重新计算
-            infoData.codeInput.style.height = (infoData.codeInput.scrollHeight) + 'px'; // 设置高度为滚动高度
-            infoData.codeInput.focus()
+        <a class="code-label" href="#info_panel" onclick={(e)=>{ 
+            infoData.codeInput.value = getConnHostJsonStr() 
+            setTimeout(()=>infoData.codeInput.focus(),100)
         }} >公共信令交换服务</a> 
     </div>
    
