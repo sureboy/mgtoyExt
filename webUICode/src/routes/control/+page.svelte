@@ -12,7 +12,7 @@ import {createCmdSender} from "$lib/utils/wheelCmdSender"
 //let canvas:HTMLCanvasElement
 let sender:(n:number)=>void = undefined
 const infoData:infoStruct= {cars:[]}
- 
+
 
 const initDataChannelListener = (dataChannel: RTCDataChannel)=>{
     dataChannel.addEventListener("message",(e)=>{
@@ -135,15 +135,20 @@ const getWebRTCMsgFromSSE = (msg:(msg:any)=>void,obj={id:"",host:"http://127.0.0
         source.close()
     }
 }
-const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: string): void}})=>{
+const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: string): void}},maxNum=10)=>{
     console.log(MsgObj)
     if (MsgObj.candidate){
+        
         conn.pc.addIceCandidate(new RTCIceCandidate(MsgObj)).then(()=>{
             //console.log( MsgObj );
         }).catch(e=>{
-            //setTimeout(()=>{
-            //    setRemoteRTCMsg(MsgObj,conn)
-            //},2000)
+            maxNum--
+            if (maxNum>0){
+                setTimeout(()=>{
+                setRemoteRTCMsg(MsgObj,conn,maxNum)
+            },2000)
+            }
+            
             console.error(e)
         }) 
         return;
@@ -167,7 +172,6 @@ const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: s
     }
 }
 const createWebrtcConnFromCenterUrl = (obj={id:"",create:true,host:"http://127.0.0.1:8088/"})=>{
-
     postWebRTCMsg(obj ).then(r=>{
         if (r.ok){
             if (obj.create){ 
@@ -221,7 +225,7 @@ onMount(()=>{
         infoData.codeInput.value=JSON.stringify({
             id:Date.now().toString(32).slice(4),
             create:false,
-            host:"http://127.0.0.1:8088/"})
+            host:"https://www.zaddone.com/rtc"})
         infoData.sendBtn.onclick = (e)=>{
             //if (infoData.codeInput.value.startsWith("webrtc:"))
             createWebrtcConnFromCenterUrl(JSON.parse(infoData.codeInput.value))

@@ -91,10 +91,20 @@ func RtcSSEHandle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+
 func RtcHttpHandle(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Cache-Control, Authorization") // 添加 cache-control
+
+	// 如果是预检请求（OPTIONS），直接返回 204 并结束
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	if r.Method == http.MethodGet {
 		RtcSSEHandle(w, r)
-		fmt.Println("sse end")
+		//fmt.Println("sse end")
 		return
 	}
 	if r.Method != http.MethodPost {

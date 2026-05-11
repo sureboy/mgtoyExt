@@ -2,6 +2,7 @@ package main
 
 import (
 	"cacheServer/WebRtc"
+	"cacheServer/udp"
 	"context"
 	"encoding/json"
 	"flag"
@@ -18,10 +19,11 @@ import (
 )
 
 var (
-	unixAddr = flag.String("addr", "car-unix-socket", "The unix socket address")
-	udpAddr  = flag.String("post", ":9002", "udp address ")
-	cacheLen = flag.Int("len", 100, "cacheLen")
-	cacheMap = NewSafeMap(10)
+	unixAddr   = flag.String("addr", "car-unix-socket", "The unix socket address")
+	udpAddr    = flag.String("post", ":9002", "udp address ")
+	rtcUdpAddr = flag.String("rtc_post", ":9003", "udp address ")
+	cacheLen   = flag.Int("len", 100, "cacheLen")
+	cacheMap   = NewSafeMap(10)
 	//ServerList = []Servers{}
 	ApiStructPool = sync.Pool{
 		New: func() interface{} {
@@ -249,7 +251,13 @@ func main() {
 		return err
 	})
 	// 解析UDP地址
-
+	g.Go(func() error {
+		err := udp.UDPServer(*rtcUdpAddr)
+		if err != nil {
+			log.Println("err", err)
+		}
+		return err
+	})
 	if err := g.Wait(); err != nil {
 		log.Printf("服务器错误: %v", err)
 	}

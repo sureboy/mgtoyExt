@@ -4,6 +4,7 @@ import (
 	"cacheServer/room"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 )
@@ -72,12 +73,15 @@ func UDPServer(udpAddr string) error {
 			sendMsg.Msg = m
 			data, err := json.Marshal(sendMsg)
 			if err != nil {
-				panic(err)
+				log.Println(err)
+				return
+				//panic(err)
 			}
 			//fmt.Println(string(data))
 			_, err = conn.WriteToUDP(data, addr)
 			if err != nil {
-				panic(err)
+				log.Println(err)
+				return
 				//log.Println(m, err)
 			}
 		}

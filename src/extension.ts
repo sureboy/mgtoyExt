@@ -11,7 +11,7 @@ import {createWebRtcConn} from './webRtcHost';
 export function activate(context: vscode.ExtensionContext) { 
 	//console.log('Congratulations, your extension "mgtoy" is now active!'); 
 	const conn = vscode.commands.registerCommand('mgtoy.conn', () => { 
-		createWebRtcConn();
+		createWebRtcConn(true,"zaddone.com:9003");
 	});  
 	const stop =  vscode.commands.registerCommand('mgtoy.stop', () => { 
 		stopServer();
