@@ -1,9 +1,7 @@
 <script lang="ts"  >
 import { onMount } from "svelte";
-import type {infoStruct} from "$lib/utils/mainDataStruct"
-//    import { info } from "node:console";
-//    import { info } from "node:console";
-//import type {infoStruct} from "../utils/mainDataStruct.ts"
+import type {infoStruct} from "$lib/utils/mainDataStruct"  
+import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 const {infoData}:{infoData:infoStruct} = $props()
 
 //let codeInput:HTMLInputElement
@@ -11,8 +9,14 @@ const {infoData}:{infoData:infoStruct} = $props()
 //let showInfo=$state(true)
 //let datalist:HTMLDataListElement
 let info_panel:HTMLDivElement
-const defaultUrl = "http://192.168.1.8:3000/conn.html"
+const connUrl = "http://192.168.1.8:3000/conn.html"
 //let inputStyle:any
+const getConnHostJsonStr = ()=>{
+    return JSON.stringify({
+            id:Date.now().toString(32).slice(4),
+            create:false,
+            host:"https://www.zaddone.com/rtc"},null,2)
+}
 onMount(()=>{
     infoData.codeInput.addEventListener('blur',e=>{
         console.log(e)
@@ -20,27 +24,60 @@ onMount(()=>{
         infoData.codeInput.style=""
         info_panel.style.right=""
         //info=false
+        infoData.sendBtn.style.display=""
+        //infoData.sendBtn.click()
     })
     infoData.codeInput.addEventListener('focus',e=>{
         console.log(e)
         //showInfo=true
+        infoData.sendBtn.style.display="none"
         info_panel.style.right="10px"
 
     })
-    infoData.codeInput.addEventListener('click',e=>{
+    infoData.codeInput.addEventListener('keydown',e=>{
         //console.log(e)
         // alert("test")
-    })
-    infoData.sendBtn.addEventListener("click",(e)=>{
-        if (infoData.codeInput.value.startsWith("http")){
-            const src = encodeURIComponent(window.location.origin+window.location.pathname)
-            const connButton = document.createElement("a")
-            connButton.href = infoData.codeInput.value + "#" + src
-            connButton.textContent="连接"
-            infoData.info.append(connButton) 
-            connButton.click()
+        e.key
+        if (e.key === 'Enter') {
+            // 检测 shiftKey: 如果按下了 Shift 键，执行换行（默认行为）
+            if (e.shiftKey) {
+                // Shift + Enter: 不做任何拦截，让 textarea 默认插入换行符
+                // 注意: 不要调用 preventDefault，让原生行为触发换行即可
+                return;
+            } else {
+                // 纯 Enter (没有 Shift) → 触发发送消息
+                e.preventDefault();   // 阻止默认插入换行符
+                e.stopPropagation();  // 避免冒泡干扰
+                infoData.sendBtn.click();
+                //infoData.codeInput.blur()
+            }
         }
     })
+    infoData.sendBtn.onclick = (e)=>{
+        if (!infoData.codeInput.value){
+            return
+        }
+        try{
+            const db = JSON.parse(infoData.codeInput.value)
+            if (db.connUrl){
+                const src = encodeURIComponent(window.location.origin+window.location.pathname)
+                const connButton = document.createElement("a")
+                connButton.href = infoData.codeInput.value + "#" + src
+                connButton.textContent="连接"
+                infoData.info.append(connButton) 
+                connButton.click()
+                return
+            }
+            
+            if (db.host){
+                createWebrtcConnFromCenterUrl(db)
+                return
+            }
+            
+        }catch(e){
+            console.error(e)
+        }
+    }
 })
 
 </script>
@@ -51,16 +88,23 @@ onMount(()=>{
           id="cmdInput" 
           
         class="command-input" 
-        placeholder="指令 (1-8 / 0)" autocomplete="off"></textarea>
+        placeholder={`按 Enter 发送,Shift+Enter 换行`} autocomplete="off"></textarea>
         <button  bind:this={infoData.sendBtn}   class="send-btn">确定</button>
     </div>
      
     <div class="code-section" id="info" bind:this={infoData.info}>
-    
         <a class="code-label" href="#conn" onclick={(e)=>{
-            infoData.codeInput.value = defaultUrl
-            //infoData.codeInput.focus()
-        }} >webrtc连接</a> 
+            infoData.codeInput.value = JSON.stringify({connUrl},null,2)
+            infoData.codeInput.style.height = 'auto'; // 先重置高度，以便根据内容重新计算
+            infoData.codeInput.style.height = (infoData.codeInput.scrollHeight) + 'px'; // 设置高度为滚动高度
+            infoData.codeInput.focus()
+        }} >自建信令交换服务</a> 
+        <a class="code-label" href="#conn" onclick={(e)=>{
+            infoData.codeInput.value = getConnHostJsonStr()
+            infoData.codeInput.style.height = 'auto'; // 先重置高度，以便根据内容重新计算
+            infoData.codeInput.style.height = (infoData.codeInput.scrollHeight) + 'px'; // 设置高度为滚动高度
+            infoData.codeInput.focus()
+        }} >公共信令交换服务</a> 
     </div>
    
 </div>
