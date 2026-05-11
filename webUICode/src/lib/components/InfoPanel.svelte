@@ -82,9 +82,9 @@ onMount(()=>{
 
 </script>
 
-<div class="info-panel" bind:this={info_panel}>
+<div class="info-panel"  bind:this={info_panel}>
     <div class="command-area">
-        <textarea bind:this={infoData.codeInput} 
+        <textarea   bind:this={infoData.codeInput} 
           id="cmdInput" 
           
         class="command-input" 
@@ -93,13 +93,13 @@ onMount(()=>{
     </div>
      
     <div class="code-section" id="info" bind:this={infoData.info}>
-        <a class="code-label" href="#conn" onclick={(e)=>{
+        <a class="code-label" href="#cmdInput" onclick={(e)=>{
             infoData.codeInput.value = JSON.stringify({connUrl},null,2)
             infoData.codeInput.style.height = 'auto'; // 先重置高度，以便根据内容重新计算
             infoData.codeInput.style.height = (infoData.codeInput.scrollHeight) + 'px'; // 设置高度为滚动高度
             infoData.codeInput.focus()
         }} >自建信令交换服务</a> 
-        <a class="code-label" href="#conn" onclick={(e)=>{
+        <a class="code-label" href="#cmdInput" onclick={(e)=>{
             infoData.codeInput.value = getConnHostJsonStr()
             infoData.codeInput.style.height = 'auto'; // 先重置高度，以便根据内容重新计算
             infoData.codeInput.style.height = (infoData.codeInput.scrollHeight) + 'px'; // 设置高度为滚动高度
