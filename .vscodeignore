@@ -11,5 +11,7 @@ vsc-extension-quickstart.md
 **/eslint.config.mjs
 **/*.map
 **/*.ts
+**/*.mp4
 **/.vscode-test.*
 webUICode/**
+cacheServer/**

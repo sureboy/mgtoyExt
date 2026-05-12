@@ -18,44 +18,33 @@ const getConnHostJsonStr = ()=>{
             host:"https://www.zaddone.com/rtc"},null,2)
 }
 onMount(()=>{
+    //infoData.sendBtn.classList.remove("btn-focus")
     infoData.codeInput.addEventListener('blur',e=>{
         //console.log(e)
         //inputStyle = infoData.codeInput.style
         setTimeout(()=>{
             infoData.codeInput.style=""
             info_panel.style.right="" 
-            infoData.sendBtn.style.display="" 
+            //infoData.sendBtn.classList.remove("btn-focus")
+            //infoData.codeInput.innerHTML=""
+            //infoData.sendBtn.style.display="" 
         },100)
 
     })
     infoData.codeInput.addEventListener('focus',e=>{
         //console.log(e)
         //showInfo=true
-        infoData.sendBtn.style.display="none"
+        
         infoData.codeInput.style.height = 'auto'; // 先重置高度，以便根据内容重新计算
         infoData.codeInput.style.height = (infoData.codeInput.scrollHeight) + 'px'; // 设置高度为滚动高度 
+        //const enter = infoData.sendBtn.cloneNode(true)
+        //infoData.sendBtn.style.display="none"
+        //infoData.codeInput.append(enter)
+        //infoData.sendBtn.classList.add("btn-focus")
         info_panel.style.right="10px"
 
     })
-    infoData.codeInput.addEventListener('keydown',e=>{
-        //console.log(e)
-        // alert("test")
-        e.key
-        if (e.key === 'Enter') {
-            // 检测 shiftKey: 如果按下了 Shift 键，执行换行（默认行为）
-            if (e.shiftKey) {
-                // Shift + Enter: 不做任何拦截，让 textarea 默认插入换行符
-                // 注意: 不要调用 preventDefault，让原生行为触发换行即可
-                return;
-            } else {
-                // 纯 Enter (没有 Shift) → 触发发送消息
-                e.preventDefault();   // 阻止默认插入换行符
-                e.stopPropagation();  // 避免冒泡干扰
-                infoData.sendBtn.click();
-                //infoData.codeInput.blur()
-            }
-        }
-    })
+     
     infoData.sendBtn.onclick = (e)=>{
         if (!infoData.codeInput.value){
             return
@@ -87,12 +76,12 @@ onMount(()=>{
 
 <div class="info-panel" id="info_panel" bind:this={info_panel}>
     <div class="command-area">
-        <textarea   bind:this={infoData.codeInput} 
+    <textarea   bind:this={infoData.codeInput} 
           id="cmdInput" 
-          
         class="command-input" 
-        placeholder={`按 Enter 发送,Shift+Enter 换行`} autocomplete="off"></textarea>
-        <button  bind:this={infoData.sendBtn}   class="send-btn">确定</button>
+        placeholder={`按 Shift+Enter 确定`} autocomplete="off"></textarea>
+    <button  bind:this={infoData.sendBtn} class="send-btn ">确定</button>
+ 
     </div>
      
     <div class="code-section" id="info" bind:this={infoData.info}>
@@ -151,10 +140,7 @@ onMount(()=>{
     display: flex;
     gap: 10px;
     align-items: center;
-    background: rgba(20, 30, 40, 0.6);
-    border-radius: 15px;
-    padding: 5px 12px 5px 20px;
-    backdrop-filter: blur(4px);
+ 
     justify-content: space-between;
 }
 
@@ -188,8 +174,8 @@ onMount(()=>{
 .send-btn {
     background: rgba(80, 140, 200, 0.85);
     border: none;
-    border-radius: 40px;
-    padding: 8px 20px;
+     
+    padding: 4px 20px;
     font-size: 14px;
     font-weight: bold;
     color: white;
@@ -197,6 +183,10 @@ onMount(()=>{
     backdrop-filter: blur(4px);
     transition: 0.2s;
     box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    position: absolute;
+    top: 12px;
+    right: 25px;
+     border-radius: 10px;
 }
 
 .send-btn:active {

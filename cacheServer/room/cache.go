@@ -2,6 +2,7 @@ package room
 
 import (
 	"sync"
+	"time"
 )
 
 var (
@@ -25,7 +26,11 @@ func createMsgHandle(id string) *MsgHandle {
 
 }
 func (db *MsgHandle) clean() {
-
+	if db.endTimer == nil {
+		return
+	}
+	db.endTimer.Stop()
+	db.endTimer = nil
 	db.msg = db.msg[:]
 	chanbuffer.Put(db)
 }
@@ -46,11 +51,11 @@ func (db *MsgHandle) Msg() []string {
 
 // var CacheIP = CacheDB{}
 type MsgHandle struct {
-	id  string
-	msg []string
-
-	Create func(string)
-	Append func(string)
+	id       string
+	msg      []string
+	endTimer *time.Timer
+	Create   func(string)
+	Append   func(string)
 }
 type cacheDB struct {
 	db map[string]*MsgHandle
@@ -59,6 +64,8 @@ type cacheDB struct {
 
 func (c *cacheDB) clean(dbc *MsgHandle) {
 	c.Lock()
+	//defer c.Unlock()
+
 	delete(c.db, dbc.id)
 	c.Unlock()
 	dbc.clean()
@@ -73,4 +80,10 @@ func (c *cacheDB) write(k string, v *MsgHandle) {
 	c.Lock()
 	c.db[k] = v
 	c.Unlock()
+	v.endTimer = time.AfterFunc(30*time.Minute, func() {
+		if c.read(k) == nil {
+			return
+		}
+		c.clean(v)
+	})
 }

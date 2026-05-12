@@ -3,15 +3,20 @@
 import * as vscode from 'vscode';
 import {stopServer,startServer} from './init';
 import {createWebRtcConn} from './webRtcHost';
-
+//import {SerialPortTest} from './serial';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 
 export function activate(context: vscode.ExtensionContext) { 
 	//console.log('Congratulations, your extension "mgtoy" is now active!'); 
+ 
 	const conn = vscode.commands.registerCommand('mgtoy.conn', () => { 
-		createWebRtcConn(true,"zaddone.com:9003");
+		vscode.window.showQuickPick(['create','append']).then(value=>{
+		 
+			createWebRtcConn(value==="create","zaddone.com:9003");
+		});
+		
 	});  
 	const stop =  vscode.commands.registerCommand('mgtoy.stop', () => { 
 		stopServer();
