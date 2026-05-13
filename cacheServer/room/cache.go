@@ -80,7 +80,7 @@ func (c *cacheDB) write(k string, v *MsgHandle) {
 	c.Lock()
 	c.db[k] = v
 	c.Unlock()
-	v.endTimer = time.AfterFunc(30*time.Minute, func() {
+	v.endTimer = time.AfterFunc(3*time.Minute, func() {
 		if c.read(k) == nil {
 			return
 		}

@@ -149,6 +149,8 @@
 <div class="blink-container">
   <div class="eyes">
     <!-- 左眼：绑定点击事件和临时眨眼类 -->
+     <!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="eye"
       class:blink-now={triggerBlink}
@@ -158,6 +160,8 @@
       <div class="highlight"></div>
     </div>
     <!-- 右眼：同样支持点击眨眼 -->
+     <!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="eye"
       class:blink-now={triggerBlink}

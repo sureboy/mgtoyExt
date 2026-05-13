@@ -4,14 +4,16 @@ import InfoPanel from "$lib/components/InfoPanel.svelte";
 import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
 import {connWebRTC ,createRtcTrack,createOffer} from '$lib/webrtc'
-import ConnWebrtc,{ startWebRTC,dialogConfig} from '$lib/ConnWebrtc.svelte'; 
+import ConnWebrtc,{ startWebRTC} from '$lib/ConnWebrtc.svelte'; 
 import type {infoStruct,signalingStruct} from "$lib/utils/mainDataStruct" 
 import {createCmdSender} from "$lib/utils/wheelCmdSender"
+
 //import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 //    import { clearInterval } from 'node:timers';
 //let canvas:HTMLCanvasElement
 let sender:(n:number)=>void = undefined
 const infoData:infoStruct= {cars:[]}
+let mainArea:HTMLDivElement
 
 
 const initDataChannelListener = (dataChannel: RTCDataChannel)=>{
@@ -79,26 +81,23 @@ onMount(()=>{
     connWebRTC().then((res) =>{  
         init(res.dataChannel)
     }).catch(e=>{
-        /*
-        infoData.codeInput.value=JSON.stringify({
-            id:Date.now().toString(32).slice(4),
-            create:false,
-            host:"https://www.zaddone.com/rtc"},null,2)
+      
         infoData.sendBtn.addEventListener('click', (e)=>{
             //if (infoData.codeInput.value.startsWith("webrtc:"))
-            try{
-                createWebrtcConnFromCenterUrl(JSON.parse(infoData.codeInput.value))
-            }catch(e){
-                console.error(e)
+            if (!infoData.codeInput.value){
+                return
             }
+            mainArea.innerHTML = infoData.codeInput.value
+
             
         })
-        */
+        
     })
 })
 </script>
 <svelte:head><title  >mgtoy</title></svelte:head> 
-<div class="bg"><BlinkEyes></BlinkEyes></div>
+<div class="bg" bind:this={mainArea} ><BlinkEyes></BlinkEyes></div>
+ 
 <Joystick clickEvent={createCmdSender((n)=>{
     //console.log( n]]);
     if (sender)sender(n)
@@ -110,6 +109,7 @@ onMount(()=>{
         <p id="camera"> </p>
         <p id="video" > </p>
     </ConnWebrtc>
+
 <style>
 footer {
     position: fixed;
@@ -136,7 +136,7 @@ footer {
     height: 100%;
     object-fit: cover;   /* 覆盖全屏，保持比例裁剪 */
     z-index: 1;
-    background: #000;
+    
 }
 
  
