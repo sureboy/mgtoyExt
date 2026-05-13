@@ -3,6 +3,7 @@
  export type dialogStruct =  {
     dialogEl?:HTMLDialogElement,
     title?:string,
+    content?:HTMLDivElement,
     closeOnBackdrop:boolean,
     closeOnEsc:boolean,
     closeHandle?:()=>void

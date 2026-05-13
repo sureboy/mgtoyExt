@@ -1,10 +1,11 @@
 <script lang="ts">  
 import BlinkEyes from '$lib/components/BlinkEyes.svelte';
-import InfoPanel from "$lib/components/InfoPanel.svelte";
+import InfoPanel,{dialogConfig} from "$lib/components/InfoPanel.svelte";
 import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
-import {connWebRTC ,createRtcTrack,createOffer} from '$lib/webrtc'
-import ConnWebrtc,{ startWebRTC} from '$lib/ConnWebrtc.svelte'; 
+import {handleOffer,configuration} from '$lib/webrtc' 
+//import {connWebRTC ,createRtcTrack,createOffer} from '$lib/webrtc'
+//import ConnWebrtc,{ startWebRTC} from '$lib/ConnWebrtc.svelte'; 
 import type {infoStruct,signalingStruct} from "$lib/utils/mainDataStruct" 
 import {createCmdSender} from "$lib/utils/wheelCmdSender"
 
@@ -13,9 +14,7 @@ import {createCmdSender} from "$lib/utils/wheelCmdSender"
 //let canvas:HTMLCanvasElement
 let sender:(n:number)=>void = undefined
 const infoData:infoStruct= {cars:[]}
-let mainArea:HTMLDivElement
-
-
+let mainArea:HTMLDivElement 
 const initDataChannelListener = (dataChannel: RTCDataChannel)=>{
     dataChannel.addEventListener("message",(e)=>{
         //console.log(e)
@@ -61,7 +60,23 @@ const init = (dataChannel: RTCDataChannel)=>{
     initDataChannelListener(dataChannel) 
     initDataChannelSender(dataChannel) 
 }
- 
+const startWebRTC = (sign:signalingStruct,conn:(dc:RTCDataChannel)=>void)=>{
+    const peerConnection = new RTCPeerConnection(configuration); 
+    const link = document.createElement("a")
+    handleOffer(sign,peerConnection,(answer)=>{ 
+        link.target="_blank"
+        link.textContent = "确定"
+        link.rel = "opener"
+        link.onclick=()=>{link.textContent="..."}
+        link.href=sign.backUrl+"#"+encodeURIComponent(JSON.stringify(answer))
+        dialogConfig.content.appendChild(link)
+        dialogConfig.dialogEl?.showModal()
+        //link.click()
+    },(receiveChannel)=>{ 
+        dialogConfig.content.innerHTML="" 
+        conn(receiveChannel) 
+    })
+}
 onMount(()=>{ 
     if (window.location.hash){
         const hashdb = window.location.hash.slice(1)
@@ -78,21 +93,6 @@ onMount(()=>{
             } 
         }
     }
-    connWebRTC().then((res) =>{  
-        init(res.dataChannel)
-    }).catch(e=>{
-      
-        infoData.sendBtn.addEventListener('click', (e)=>{
-            //if (infoData.codeInput.value.startsWith("webrtc:"))
-            if (!infoData.codeInput.value){
-                return
-            }
-            mainArea.innerHTML = infoData.codeInput.value
-
-            
-        })
-        
-    })
 })
 </script>
 <svelte:head><title  >mgtoy</title></svelte:head> 
@@ -102,14 +102,8 @@ onMount(()=>{
     //console.log( n]]);
     if (sender)sender(n)
 })}></Joystick>
-<InfoPanel {infoData} ></InfoPanel>
-<footer>🎥 摄像头视频背景 | 半透明摇杆 | 拖拽右下角 → 8方向 + 中心停止</footer>
-    <ConnWebrtc>
-        <p id="init">   </p>
-        <p id="camera"> </p>
-        <p id="video" > </p>
-    </ConnWebrtc>
-
+<InfoPanel  ></InfoPanel>
+<footer>🎥 摄像头视频背景 | 半透明摇杆 | 拖拽右下角 → 8方向 + 中心停止</footer> 
 <style>
 footer {
     position: fixed;
