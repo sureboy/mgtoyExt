@@ -1,6 +1,6 @@
 <script lang="ts">  
 import BlinkEyes from '$lib/components/BlinkEyes.svelte';
-import InfoPanel,{dialogConfig} from "$lib/components/InfoPanel.svelte";
+import InfoPanel,{dialogConfig,InfoPanelMenu} from "$lib/components/InfoPanel.svelte";
 import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
 import {handleOffer,configuration} from '$lib/webrtc' 
@@ -57,6 +57,9 @@ const initDataChannelSender = (dataChannel: RTCDataChannel)=>{
     } 
 }
 const init = (dataChannel: RTCDataChannel)=>{
+    InfoPanelMenu.conn=false
+    dialogConfig.dialogEl?.close()
+    //console.log(InfoPanelMenu)
     initDataChannelListener(dataChannel) 
     initDataChannelSender(dataChannel) 
 }
@@ -74,10 +77,12 @@ const startWebRTC = (sign:signalingStruct,conn:(dc:RTCDataChannel)=>void)=>{
         //link.click()
     },(receiveChannel)=>{ 
         dialogConfig.content.innerHTML="" 
+
         conn(receiveChannel) 
     })
 }
 onMount(()=>{ 
+ 
     if (window.location.hash){
         const hashdb = window.location.hash.slice(1)
         if (hashdb){

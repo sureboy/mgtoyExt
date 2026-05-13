@@ -7,6 +7,10 @@ export const dialogConfig:dialogStruct = {
     closeOnBackdrop:false,
     closeOnEsc:false,
 } ;
+export const InfoPanelMenu= $state({
+    conn:true,
+    video:false,
+})
 </script>
 <script lang="ts"  >
 //import { onMount } from "svelte";
@@ -15,18 +19,8 @@ import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 import Dialog  from '$lib/components/Dialog.svelte'
 
 import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm'
-
  
-//const {infoData}:{infoData:infoStruct} = $props()
-
-//let codeInput:HTMLInputElement
-//let sendBtn:HTMLButtonElement
-//let showInfo=$state(true)
-//let datalist:HTMLDataListElement
-//let info_panel:HTMLDivElement
-//let jsonForm:HTMLDivElement
-const connUrl = "http://192.168.1.8:3000/conn.html"
-//let inputStyle:any
+const connUrl = "http://192.168.1.8:3000/conn.html" 
 const getConnHostJsonStr = ()=>{
     return  {
         _comment:"跨网信令交换服务",
@@ -35,14 +29,11 @@ const getConnHostJsonStr = ()=>{
         create:false,
         create_comment:"[生成/加入]WebRtc会话",
         host_comment:"信令交换服务公共网址",
-        host:"https://www.zaddone.com/rtc"} 
-
+        host:"https://www.zaddone.com/rtc"
+    }  
 }
-const ShowSubmit = (db:any,hand:(db:any)=>void)=>{
-
-    jsonToForm(db ,dialogConfig.content) 
-    //const btn = submit();
-   
+const ShowSubmit = (db:any,hand:(db:any)=>void)=>{ 
+    jsonToForm(db ,dialogConfig.content)  
     const btn = document.createElement('button');
     btn.textContent = '确定';
     Object.assign(btn.style, {
@@ -54,24 +45,15 @@ const ShowSubmit = (db:any,hand:(db:any)=>void)=>{
         borderRadius: '4px',
         cursor: 'pointer'
     });
-     btn.onclick = () => {
-        //const db = collectFormData(jsonForm);
-        hand(collectFormData(dialogConfig.content))
-         
+    btn.onclick = () => { 
+        hand(collectFormData(dialogConfig.content)) 
     };
-    dialogConfig.content.appendChild(btn);
-    //return btn
-    /*
-    btn.onclick = () => {
-        const updated = collectFormData(jsonForm);
-        console.log(updated);
-        alert(JSON.stringify(updated, null, 2));
-    };
-    jsonForm.appendChild(btn);*/
+    dialogConfig.content.appendChild(btn); 
 }
 </script>
 
 <div class="info-panel" id="info_panel"  >
+{#if InfoPanelMenu.conn}
 <details    >
     <summary   style="cursor: pointer;height:48px;text-align: left;line-height: 48px;"  >
 webRTC conn
@@ -102,7 +84,13 @@ webRTC conn
         }} >跨网信令交换服务</a>  
     </div> 
 </details>
- 
+ {:else}
+<details    >
+     <summary   style="cursor: pointer;height:48px;text-align: left;line-height: 48px;"  >
+        Function
+     </summary>
+</details>
+ {/if}
    
 </div>
 <Dialog {dialogConfig}   > 
