@@ -1,6 +1,6 @@
 <script lang="ts">  
 import BlinkEyes from '$lib/components/BlinkEyes.svelte';
-import InfoPanel,{dialogConfig,InfoPanelMenu} from "$lib/components/InfoPanel.svelte";
+import InfoPanel,{dialogConfig,meshList} from "$lib/components/InfoPanel.svelte";
 import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
 import {handleOffer,configuration} from '$lib/webrtc' 
@@ -17,7 +17,8 @@ const infoData:infoStruct= {cars:[]}
 let mainArea:HTMLDivElement 
 const initDataChannelListener = (dataChannel: RTCDataChannel)=>{
     dataChannel.addEventListener("message",(e)=>{
-        //console.log(e)
+        console.log(e)
+        return
         const db = JSON.parse(e.data)
         if (db.DB && db.DB.Carname){
             const car = {name:db.DB.Carname}
@@ -47,6 +48,7 @@ const initDataChannelSender = (dataChannel: RTCDataChannel)=>{
         name:"local" ,
         msg: 0
     }))
+    return
     sender= n=>{ 
         dataChannel.send(JSON.stringify(
             Object.assign(
@@ -57,11 +59,39 @@ const initDataChannelSender = (dataChannel: RTCDataChannel)=>{
     } 
 }
 const init = (dataChannel: RTCDataChannel)=>{
-    InfoPanelMenu.conn=false
+    //InfoPanelMenu.conn=false
     dialogConfig.dialogEl?.close()
-    //console.log(InfoPanelMenu)
     initDataChannelListener(dataChannel) 
     initDataChannelSender(dataChannel) 
+    const dcconfig = {
+        id:dataChannel.label,
+        children:[], 
+        dataChannel, 
+        setSender:(db:any)=>{
+            sender = msg=>{
+                //console.log(msg)
+                dataChannel.send(JSON.stringify(Object.assign({msg},db)))
+            }        
+        }        
+    }
+    dataChannel.addEventListener("message",(e)=>{
+        const db = JSON.parse(e.data)
+        if (db.DB && db.DB.Carname){
+            dcconfig.children.push({name:db.DB.Carname})
+        }
+        
+    })
+    for (let i=0;i<meshList.length;i++){
+        const v = meshList[i]
+        if (v.id ===dcconfig.id){
+            meshList[i] = dcconfig
+            return
+        }
+    }
+    meshList.push(dcconfig)
+ 
+    //console.log(InfoPanelMenu)
+
 }
 const startWebRTC = (sign:signalingStruct,conn:(dc:RTCDataChannel)=>void)=>{
     const peerConnection = new RTCPeerConnection(configuration); 
@@ -89,9 +119,7 @@ onMount(()=>{
             try{
                 const sign = JSON.parse(decodeURIComponent(window.location.hash.slice(1))) as signalingStruct
                 location.hash = ''; 
-                startWebRTC(sign,(receiveChannel)=>{ 
-                    init (receiveChannel)  
-                })
+                startWebRTC(sign,init)
                 return
             }catch(e){
                 console.log(e) 

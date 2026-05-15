@@ -1,5 +1,7 @@
 <script lang="ts" module>
 import type {dialogStruct} from '$lib/components/Dialog.svelte'
+import { SvelteMap } from 'svelte/reactivity';
+import {fromMessageEvent} from '$lib/utils/fromMessageEvent'
 export const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
@@ -7,19 +9,16 @@ export const dialogConfig:dialogStruct = {
     closeOnBackdrop:false,
     closeOnEsc:false,
 } ;
-export const InfoPanelMenu= $state({
-    conn:true,
-    video:false,
-})
+export const meshMap =new SvelteMap<string,any>()
+export const meshList:{[key:string]:any}[] =$state([])
 </script>
 <script lang="ts"  >
 //import { onMount } from "svelte";
 //import type {infoStruct} from "$lib/utils/mainDataStruct"  
 import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 import Dialog  from '$lib/components/Dialog.svelte'
+import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm' 
 
-import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm'
- 
 const connUrl = "http://192.168.1.8:3000/conn.html" 
 const getConnHostJsonStr = ()=>{
     return  {
@@ -50,51 +49,75 @@ const ShowSubmit = (db:any,hand:(db:any)=>void)=>{
     };
     dialogConfig.content.appendChild(btn); 
 }
+//Object.assign()
 </script>
-
-<div class="info-panel" id="info_panel"  >
-{#if InfoPanelMenu.conn}
+{#snippet mesh(obj:{[key:string]:any})}
 <details    >
     <summary   style="cursor: pointer;height:48px;text-align: left;line-height: 48px;"  >
-webRTC conn
+        {obj.id}
     </summary>
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div  style="color:white;text-align: center;" id="module_list" > 
-        <a class="code-label" href="#info_panel" onclick={(e)=>{  
-            ShowSubmit({connUrl,_comment:"自建服务器地址"},(db)=>{            
-                const src = encodeURIComponent(window.location.origin+window.location.pathname)
-                const connButton = document.createElement("a")
-                connButton.href = db.connUrl + "#" + src
-                connButton.textContent="连接"
-                //jsonForm.append(connButton) 
-                connButton.click() 
-            } );
-            dialogConfig.dialogEl.showModal()
-            //infoData.codeInput.value = JSON.stringify({connUrl},null,2) 
-            //setTimeout(()=>infoData.codeInput.focus(),100)
-        }} >自建信令交换服务</a> 
-        <a class="code-label" href="#info_panel" onclick={(e)=>{ 
- 
-            ShowSubmit(getConnHostJsonStr(),createWebrtcConnFromCenterUrl);
+    <div {@attach (element)=>{
+        console.log(`${element.tagName} 已挂载`); 
+        obj.dataChannel.addEventListener("message",(e)=>{
+            const db = JSON.parse(e.data)
+            if (db.DB && db.DB.Carname){
+                const c = document.createElement("a")
+                element.append(c)
+                c.innerHTML = db.DB.Carname
+                //dcconfig.children.push({name:db.DB.Carname})
+            }
             
-            dialogConfig.dialogEl.showModal()
-            //infoData.codeInput.value =JSON.stringify( getConnHostJsonStr() ,null,2) 
-            //setTimeout(()=>infoData.codeInput.focus(),100)
-        }} >跨网信令交换服务</a>  
-    </div> 
+        })
+        return () => {
+            console.log(`${element.tagName} 即将卸载`);
+        };
+    }}  style="color:white;text-align: center;" id="module_list" >
+        <button onclick={()=>{
+            obj.setSender({})
+        }}>Sender </button>
+           
+         
+    </div>
 </details>
- {:else}
-<details    >
-     <summary   style="cursor: pointer;height:48px;text-align: left;line-height: 48px;"  >
-        Function
-     </summary>
+{/snippet}
+
+<div class="info-panel" id="info_panel"  >
+<details open={meshMap.size==0}   >
+    <summary   style="cursor: pointer;height:48px;text-align: left;line-height: 48px;"  >
+        连接
+    </summary>
+    <div  style="color:white;text-align: center;" id="conn_list" >
+    <a class="code-label" href="#info_panel" onclick={(e)=>{  
+        ShowSubmit({
+            connUrl,
+            _comment:"自建服务器地址",
+            connUrl_comment:""
+        },(db)=>{            
+            const src = encodeURIComponent(window.location.origin+window.location.pathname)
+            const connButton = document.createElement("a")
+            connButton.href = db.connUrl + "#" + src
+            connButton.textContent="连接" 
+            connButton.click() 
+        } );
+        dialogConfig.dialogEl.showModal() 
+    }} >本地信令交换</a> 
+    <a class="code-label" href="#info_panel" onclick={(e)=>{
+        ShowSubmit(getConnHostJsonStr(),createWebrtcConnFromCenterUrl); 
+        dialogConfig.dialogEl.showModal() 
+    }} >跨网信令交换</a>  
+
+    </div>
 </details>
- {/if}
+{#each meshList as m}
+ 
+    {@render mesh( m  )}
+{/each}
+
+ 
    
 </div>
 <Dialog {dialogConfig}   > 
-     <div bind:this={dialogConfig.content} style="text-align:left" >
+    <div bind:this={dialogConfig.content} style="text-align:left" >
  
     </div>
 </Dialog>
