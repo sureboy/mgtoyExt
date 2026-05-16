@@ -83,6 +83,8 @@ const isStatusOnline = (updatetime:number)=>{
                     const n = isStatusOnline(db.Update)
                     if (!n){
                         c.disabled=true
+                    }else{
+                        c.disabled=false
                     }
                     c.textContent = n+conf.name
                     
@@ -106,7 +108,7 @@ const isStatusOnline = (updatetime:number)=>{
     }}  style="color:white;text-align: center;" id="module_list" >
         <button onclick={()=>{
             obj.setSender({name:"local"})
-        }}>Sender </button>
+        }}>reload </button>
            
          
     </div>
