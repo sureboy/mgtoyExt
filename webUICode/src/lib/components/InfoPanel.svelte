@@ -18,6 +18,7 @@ export const meshList:{[key:string]:any}[] =$state([])
 import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 import Dialog  from '$lib/components/Dialog.svelte'
 import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm' 
+ //   import { isStatusOnline } from '$lib/ControlExt.svelte';
 
 const connUrl = "http://192.168.1.8:3000/conn.html" 
 const getConnHostJsonStr = ()=>{
@@ -49,6 +50,16 @@ const ShowSubmit = (db:any,hand:(db:any)=>void)=>{
     };
     dialogConfig.content.appendChild(btn); 
 }
+
+const isStatusOnline = (updatetime:number)=>{
+    const timeOut = Date.now() - updatetime 
+    console.log(timeOut)
+    if ((6000-timeOut)<=0){
+        return '' 
+    }else{ 
+        return '('+(100-timeOut /6000 *100).toFixed(0) +"%)" 
+    }
+}
 //Object.assign()
 </script>
 {#snippet mesh(obj:{[key:string]:any})}
@@ -58,12 +69,33 @@ const ShowSubmit = (db:any,hand:(db:any)=>void)=>{
     </summary>
     <div {@attach (element)=>{
         console.log(`${element.tagName} 已挂载`); 
+        obj.dataChannel.send(JSON.stringify({  
+            name:"local" ,
+            msg: 0
+        }))
         obj.dataChannel.addEventListener("message",(e)=>{
             const db = JSON.parse(e.data)
-            if (db.DB && db.DB.Carname){
-                const c = document.createElement("a")
+            console.log(db)
+            if (db.DB && db.DB.Carname ){
+                const conf = {name:db.DB.Carname}
+                let c = document.getElementById(conf.name)  as HTMLButtonElement
+                if (c){
+                    const n = isStatusOnline(db.Update)
+                    if (!n){
+                        c.disabled=true
+                    }
+                    c.textContent = n+conf.name
+                    
+                    return
+                }
+                //document.createElement('button')
+                c =element.firstChild.cloneNode() as  HTMLButtonElement
+                c.onclick=()=>{
+                    obj.setSender(conf)
+                }
+                c.id = conf.name
                 element.append(c)
-                c.innerHTML = db.DB.Carname
+                c.textContent =conf.name
                 //dcconfig.children.push({name:db.DB.Carname})
             }
             
@@ -73,7 +105,7 @@ const ShowSubmit = (db:any,hand:(db:any)=>void)=>{
         };
     }}  style="color:white;text-align: center;" id="module_list" >
         <button onclick={()=>{
-            obj.setSender({})
+            obj.setSender({name:"local"})
         }}>Sender </button>
            
          
