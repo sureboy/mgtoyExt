@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html  lang="zh-cn">
+    <head>
+        <meta charset="utf-8" />
+        <title>绘图测试</title>
+    </head>
+    <body>
+        <canvas id="draw""></canvas>
+        <br>
+        <button id="enter" type="button" >重画</button>
+        <script>
+            document.getElementById("enter").addEventListener('click',()=>{
+                Draw()
+            })
+            function Draw(){
+                let z = 5
+                var a = document.getElementById("draw")
+                var b = a.getContext("2d")
+                let color = ['red','blue','black','lightblue','green','yellow']
+                b.clearRect(0,0,2000,1000)
+                for(let i = 0;i <= 20;i++){
+                    b.fillStyle = color[Math.floor(Math.random()*5)]
+                    b.fillRect(Math.floor(Math.random()*200),Math.floor(Math.random()*100),z,z)
+                }
+            }
+        </script>
+    </body>
+</html>

@@ -1,4 +1,9 @@
-import  { RTCPeerConnection ,RTCDataChannel } from 'werift';
+import  {
+  RTCPeerConnection ,
+  RTCDataChannel ,
+  RTCIceCandidate,
+  RTCSessionDescription
+  } from 'werift';
 import {ConnectionPool} from './webRTCPool'; 
 //import dgram from 'dgram';
 //import readline from 'readline';
@@ -83,7 +88,42 @@ const webRtcVideoList = (dataChannel: RTCDataChannel)=>{
   }));
      // return true;
 };
+export const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: string): void}},maxNum=10)=>{
+    //console.log(MsgObj);
+    if (MsgObj.candidate){
+        
+        conn.pc.addIceCandidate(new RTCIceCandidate(MsgObj)).then(()=>{
+            console.log( MsgObj );
+        }).catch(e=>{
+            maxNum--;
+            if (maxNum>0){
+                setTimeout(()=>{
+                setRemoteRTCMsg(MsgObj,conn,maxNum);
+            },2000);
+            }
+            
+            console.error(e);
+        }) ;
+        return;
+    }
+    if (MsgObj.sdp){ 
+        conn.pc.setRemoteDescription(new RTCSessionDescription(MsgObj.sdp,MsgObj.type)).then(()=>{
+          console.log(MsgObj);
+            if (MsgObj.type==="offer"){
+                conn.pc.createAnswer().then(sdp=>{
+                    conn.pc.setLocalDescription(sdp);
+                    conn.dc.send(JSON.stringify(sdp));                 
+                });
+            } 
+        }).catch(e=>{
+            console.error(e);
+        });  
+        return;
+    }
+ 
+};
 export const webRtcRouterHandle = (obj:any,dataChannel: RTCDataChannel) =>{
+
   if (obj.video){
     webRtcVideoList(dataChannel);
     return true;

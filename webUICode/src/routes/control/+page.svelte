@@ -3,84 +3,37 @@ import BlinkEyes from '$lib/components/BlinkEyes.svelte';
 import InfoPanel,{dialogConfig,meshList} from "$lib/components/InfoPanel.svelte";
 import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
-import {handleOffer,configuration} from '$lib/webrtc' 
+import {handleOffer,configuration,createOffer} from '$lib/webrtc' 
 //import {connWebRTC ,createRtcTrack,createOffer} from '$lib/webrtc'
 //import ConnWebrtc,{ startWebRTC} from '$lib/ConnWebrtc.svelte'; 
 import type {infoStruct,signalingStruct} from "$lib/utils/mainDataStruct" 
 import {createCmdSender} from "$lib/utils/wheelCmdSender"
-
-//import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
+import type {InfoType} from '$lib/components/InfoPanel.svelte'
+import {setRemoteRTCMsg} from "$lib/utils/postAndSSEWebrtc"
 //    import { clearInterval } from 'node:timers';
 //let canvas:HTMLCanvasElement
 let sender:(n:number)=>void = undefined
 const infoData:infoStruct= {cars:[]}
 let mainArea:HTMLDivElement 
-const initDataChannelListener = (dataChannel: RTCDataChannel)=>{
-    dataChannel.addEventListener("message",(e)=>{
-        console.log(e)
-        return
-        const db = JSON.parse(e.data)
-        if (db.DB && db.DB.Carname){
-            const car = {name:db.DB.Carname}
-            const timeOut = (Date.now() - db.Update)/6000
-            let car_ = document.getElementById(db.DB.Carname) as HTMLAnchorElement
-            if (!car_){
-                car_=infoData.info.firstChild.cloneNode() as HTMLAnchorElement;// document.createElement('a')
-                car_.href="#"+car.name
-                car_.id = car.name
-                car_.onclick = ()=>{
-                    infoData.codeInput.value = JSON.stringify(car)
-                }
-                infoData.info.append(car_)
-            }
-            console.log(timeOut)
-            if (timeOut>=1){
-                car_.textContent = car.name
-            }else{
-                car_.textContent=car.name+":"+(100-timeOut  *100).toFixed(0) +"%"
-            } 
-        }
-        console.log(db,infoData.info) 
-    }) 
-}
-const initDataChannelSender = (dataChannel: RTCDataChannel)=>{
-    dataChannel.send(JSON.stringify({  
-        name:"local" ,
-        msg: 0
-    }))
-    return
-    sender= n=>{ 
-        dataChannel.send(JSON.stringify(
-            Object.assign(
-                {msg:n},
-                JSON.parse(infoData.codeInput.value)
-            )   
-        ))
-    } 
-}
-const init = (dataChannel: RTCDataChannel)=>{
+ 
+const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
     //InfoPanelMenu.conn=false
-    dialogConfig.dialogEl?.close()
-    initDataChannelListener(dataChannel) 
-    initDataChannelSender(dataChannel) 
-    const dcconfig = {
-        id:dataChannel.label,
-        children:[], 
-        dataChannel, 
+    //dialogConfig.dialogEl?.close()
+    //initDataChannelListener(dataChannel) 
+    //initDataChannelSender(dataChannel) 
+    const dcconfig:InfoType = {
+        id:dc.label,
+        //localStream:new MediaStream(),
+        //children:[], 
+        pc,
+        dc, 
         setSender:(db:any)=>{
-            sender = msg=>{
-                //console.log(msg)
-                dataChannel.send(JSON.stringify(Object.assign({msg},db)))
+            sender = msg=>{ 
+                dc.send(JSON.stringify(Object.assign({msg},db)))
             }        
         }        
     }
-    dataChannel.addEventListener("message",(e)=>{
-        const db = JSON.parse(e.data)
-        if (db.DB && db.DB.Carname){
-            dcconfig.children.push({name:db.DB.Carname})
-        }
-        
-    })
+ 
     for (let i=0;i<meshList.length;i++){
         const v = meshList[i]
         if (v.id ===dcconfig.id){
@@ -93,7 +46,9 @@ const init = (dataChannel: RTCDataChannel)=>{
     //console.log(InfoPanelMenu)
 
 }
-const startWebRTC = (sign:signalingStruct,conn:(dc:RTCDataChannel)=>void)=>{
+const startWebRTC = (sign:signalingStruct,conn:(
+    dc:RTCDataChannel,
+    pc: RTCPeerConnection)=>void)=>{
     const peerConnection = new RTCPeerConnection(configuration); 
     const link = document.createElement("a")
     handleOffer(sign,peerConnection,(answer)=>{ 
@@ -106,9 +61,21 @@ const startWebRTC = (sign:signalingStruct,conn:(dc:RTCDataChannel)=>void)=>{
         dialogConfig.dialogEl?.showModal()
         //link.click()
     },(receiveChannel)=>{ 
-        dialogConfig.content.innerHTML="" 
-
-        conn(receiveChannel) 
+        dialogConfig.content.innerHTML=""  
+        dialogConfig.dialogEl?.close()
+        peerConnection.onnegotiationneeded = ()=>{
+            createOffer(peerConnection).then(sdp=>{
+                receiveChannel.send(JSON.stringify(sdp));
+            });
+        }
+        receiveChannel.addEventListener('message',(ev)=>{
+            try{
+                setRemoteRTCMsg(JSON.parse(ev.data),{pc:peerConnection,dc:receiveChannel})
+            }catch(e){
+                console.error(e)
+            }            
+        })
+        conn(receiveChannel,peerConnection) 
     })
 }
 onMount(()=>{ 
@@ -128,7 +95,7 @@ onMount(()=>{
     }
 })
 </script>
-<svelte:head><title  >mgtoy</title></svelte:head> 
+ 
 <div class="bg" bind:this={mainArea} ><BlinkEyes></BlinkEyes></div>
  
 <Joystick clickEvent={createCmdSender((n)=>{

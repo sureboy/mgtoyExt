@@ -2,24 +2,20 @@ import * as http from 'http';
 import * as path from 'path'; 
 //import {RTCDataChannel} from 'werift';
 //import * as   WebSocket  from 'ws' ;
-import {initWebRtcClient,addRemoteAnswer,webRtcRouterHandle } from './webrtc';
-//import type {signalingStruct} from './webrtc';
+import {
+    initWebRtcClient,
+    addRemoteAnswer,
+    webRtcRouterHandle,
+//setRemoteRTCMsg
+} from './webrtc'; 
 import * as fs from "fs";
 
-import {addrMap,nameMap} from './cache'; 
+import {nameMap} from './cache';  
 
-//const routerSignaling = new Map<string,{answerDataChannel?:RTCDataChannel,offerDataChannel:RTCDataChannel,msg:any[]}>();
-//import { buffer } from 'stream/consumers';
-export type HttpConfigType = {
-    //src:string, 
-    //udpPort:number,
-    port:number,
-    //http.Server
+export type HttpConfigType = { 
+    port:number, 
     rootPath:string,
-    callBack:(obj:any)=>any
-    //srcPath:string,
-    //serverIP:string[]
-    //includeImport:{ [key: string]: string }
+    callBack:(obj:any)=>any 
 } 
 export type SerConfig = {
     //clientwsMap:Set< WS.WebSocket >,
@@ -149,9 +145,10 @@ function createHttpServer   (conf: HttpConfigType   ) {
                             res.end(JSON.stringify(signaling));
                             isSend=true;
                         }                        
-                    }).then(({signaling,dataChannel})=>{
+                    }).then(({signaling,dataChannel,pc})=>{
                         dataChannel.onmessage = (e)=>{
                             const obj = JSON.parse(e.data as string);
+                            //setRemoteRTCMsg(obj,{pc,dc:dataChannel});
                             if (webRtcRouterHandle(obj,dataChannel)){ 
                                 return;
                             } 

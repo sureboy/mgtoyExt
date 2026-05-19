@@ -453,8 +453,7 @@ const checkUrlHashErr = ()=>{
 }
 handCmdList.unshift((v)=>{
     if (v==="video"){
-        if (!dialogConfig.dialogEl?.open){
-
+        if (!dialogConfig.dialogEl?.open){ 
             showDialog()
         }
         return true

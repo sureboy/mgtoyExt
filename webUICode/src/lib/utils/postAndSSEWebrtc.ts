@@ -56,7 +56,7 @@ const getWebRTCMsgFromSSE = (msg:(msg:any)=>void,inputConfig={id:"",host:"http:/
         source.close();
     };
 };
-const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: string): void}},maxNum=10)=>{
+export const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: string): void}},maxNum=10)=>{
     //console.log(MsgObj);
     if (MsgObj.candidate){
         

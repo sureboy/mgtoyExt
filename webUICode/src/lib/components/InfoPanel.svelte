@@ -1,7 +1,7 @@
 <script lang="ts" module>
 import type {dialogStruct} from '$lib/components/Dialog.svelte'
 import { SvelteMap } from 'svelte/reactivity';
-import {fromMessageEvent} from '$lib/utils/fromMessageEvent'
+import {getLocalStream} from '$lib/utils/getLocalStream'
 export const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
@@ -9,8 +9,9 @@ export const dialogConfig:dialogStruct = {
     closeOnBackdrop:false,
     closeOnEsc:false,
 } ;
+export type InfoType ={dc: RTCDataChannel,pc: RTCPeerConnection,localStream?: MediaStream,[key:string]:any}
 export const meshMap =new SvelteMap<string,any>()
-export const meshList:{[key:string]:any}[] =$state([])
+export const meshList:InfoType[] =$state([])
 </script>
 <script lang="ts"  >
 //import { onMount } from "svelte";
@@ -19,7 +20,7 @@ import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 import Dialog  from '$lib/components/Dialog.svelte'
 import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm' 
  //   import { isStatusOnline } from '$lib/ControlExt.svelte';
-
+let mgtoyTitle = $state("mgtoy")
 const connUrl = "http://192.168.1.8:3000/conn.html" 
 const getConnHostJsonStr = ()=>{
     return  {
@@ -60,64 +61,147 @@ const isStatusOnline = (updatetime:number)=>{
         return '('+(100-timeOut /6000 *100).toFixed(0) +"%)" 
     }
 }
-//Object.assign()
-</script>
-{#snippet mesh(obj:{[key:string]:any})}
-<details    >
-    <summary   style="cursor: pointer;height:48px;text-align: left;line-height: 48px;"  >
-        {obj.id}
-    </summary>
-    <div {@attach (element)=>{
-        console.log(`${element.tagName} 已挂载`); 
-        obj.dataChannel.send(JSON.stringify({  
-            name:"local" ,
-            msg: 0
-        }))
-        obj.dataChannel.addEventListener("message",(e)=>{
-            const db = JSON.parse(e.data)
-            console.log(db)
-            if (db.DB && db.DB.Carname ){
-                const conf = {name:db.DB.Carname}
-                let c = document.getElementById(conf.name)  as HTMLButtonElement
-                if (c){
-                    const n = isStatusOnline(db.Update)
-                    if (!n){
-                        c.disabled=true
-                    }else{
-                        c.disabled=false
+const attachElement = (
+    element: HTMLDivElement,
+    obj:InfoType)=>{
+    //(element.firstChild as HTMLButtonElement).click();
+    obj.dc.send(JSON.stringify({  
+                name:"local" ,
+                msg: 0,
+            }))
+    obj.dc.addEventListener("message",(e)=>{
+        const db = JSON.parse(e.data)
+        console.log(db)
+        if (db.DB && db.DB.Carname ){
+            const conf = {name:db.DB.Carname}
+            let c = document.getElementById(conf.name)  as HTMLButtonElement
+            if (c){
+                const n = isStatusOnline(db.Update)
+                if (!n){
+                    c.disabled=true
+                }else{
+                    c.disabled=false
+                }
+                c.textContent = n+conf.name
+                
+                return
+            }
+            //document.createElement('button')
+            c =element.firstChild.cloneNode() as  HTMLButtonElement
+            c.onclick=()=>{
+                mgtoyTitle=conf.name+"-"+"control"
+                obj.setSender(conf)
+            }
+            c.id = conf.name
+            element.append(c)
+            c.textContent =conf.name
+            //dcconfig.children.push({name:db.DB.Carname})
+        }
+        
+    })
+
+    obj.pc.addEventListener('track',(ev)=>{
+        if (ev.type===''){
+
+        }
+    })
+}
+const showVideo = (element: HTMLDivElement,
+    obj:InfoType)=>{
+     //obj.setSender({name:"local"})
+    //element.dataset.facing = "test"
+    //const facing = element.dataset.facing || { exact: "environment" }
+    //const senders = obj.pc.getSenders();
+    getLocalStream(element.dataset.facing || { exact: "environment" }).then(({localStream})=>{ 
+        obj.localStream = new MediaStream()
+        const c = element.firstChild.cloneNode() as  HTMLButtonElement
+        c.textContent = 'open video'
+        element.append(c)
+        c.onclick = ()=>{
+            obj.dc.send(JSON.stringify({   
+                hasVideo: true,
+            })) 
+            /*
+            const senders = obj.pc.getSenders();
+            localStream.getTracks().forEach(track => {
+                const videoSender = senders.find(
+                sender => sender.track 
+                && sender.track.kind === track.kind);
+                if (!videoSender) {
+                    obj.localStream.addTrack(track)
+                    obj.pc.addTrack(track, obj.localStream); 
+                }else{
+                    if (track.kind==="audio"){
+                        return
                     }
-                    c.textContent = n+conf.name
-                    
+                    obj.localStream.addTrack(track)
+                    videoSender.track.stop()
+                    videoSender.replaceTrack(track);
+                } 
+            })*/
+        }
+        /*
+        v.localStream.getTracks().forEach(track => {
+            const videoSender = senders.find(
+            sender => sender.track 
+            && sender.track.kind === track.kind);
+
+            if (!videoSender) {
+                obj.localStream.addTrack(track)
+                obj.pc.addTrack(track, obj.localStream); 
+            }else{
+                if (track.kind==="audio"){
                     return
                 }
-                //document.createElement('button')
-                c =element.firstChild.cloneNode() as  HTMLButtonElement
-                c.onclick=()=>{
-                    obj.setSender(conf)
-                }
-                c.id = conf.name
-                element.append(c)
-                c.textContent =conf.name
-                //dcconfig.children.push({name:db.DB.Carname})
-            }
-            
+                obj.localStream.addTrack(track)
+                videoSender.track.stop()
+                videoSender.replaceTrack(track);
+            } 
         })
+        
+        const self = (e.target as HTMLButtonElement);
+        const videoButton = self.cloneNode() as HTMLButtonElement;
+        videoButton.textContent = "video"
+        videoButton.onclick = ()=>{
+            obj.dc.send(JSON.stringify({  
+                id:obj.dc.label, 
+            }))
+        }
+        self.parentNode.append(videoButton)*/
+    }) 
+}
+//Object.assign()
+</script>
+{#snippet mesh(obj:InfoType)}
+<details    >
+    <summary   style="cursor: pointer; text-align: left;"  >
+        {obj.id}
+    </summary>
+    <div data-facing="user" {@attach (element)=>{
+        attachElement(element,obj)
+        showVideo(element,obj)
         return () => {
             console.log(`${element.tagName} 即将卸载`);
         };
     }}  style="color:white;text-align: center;" id="module_list" >
-        <button onclick={()=>{
-            obj.setSender({name:"local"})
+        <button onclick={(e)=>{
+            obj.dc.send(JSON.stringify({  
+                name:"local" ,
+                msg: 0,
+            }))
+
+            
         }}>reload </button>
            
          
     </div>
 </details>
 {/snippet}
-
-<div class="info-panel" id="info_panel"  >
+<svelte:head><title  >{mgtoyTitle}</title></svelte:head> 
+<div class="info-panel" id="info_panel"   >
+ 
 <details open={meshMap.size==0}   >
-    <summary   style="cursor: pointer;height:48px;text-align: left;line-height: 48px;"  >
+    <summary   style="cursor: pointer; text-align: left; "  >
         连接
     </summary>
     <div  style="color:white;text-align: center;" id="conn_list" >
