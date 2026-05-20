@@ -42,14 +42,7 @@ export async function handleOffer(
     backDatachannel:(dataChannel: RTCDataChannel)=>void,
     //track?:(track:RTCTrackEvent)=>void
 ) { 
-    peerConnection.onconnectionstatechange = ()=>{
-        if (peerConnection.connectionState === 'closed' 
-           || peerConnection.connectionState === 'failed' 
-            //|| peerConnection.connectionState==="disconnected"
-        ) {
-            peerConnection.close();
-        }
-    };
+ 
     await peerConnection.setRemoteDescription(new RTCSessionDescription({sdp:sign.offer,type:"offer"}));
  
     sign.ICEList.forEach(ice=>{

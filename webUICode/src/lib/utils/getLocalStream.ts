@@ -13,8 +13,8 @@ export async function getLocalStream(facingMode:ConstrainDOMString = "user" ) {
         console.log('使用摄像头'); 
         return {localStream };
     } catch (error) { 
-        alert(error);
-        //console.log(error)
+        //alert(error);
+        console.log(error);
         //return;
         //return undefined;
         //console.log( error);

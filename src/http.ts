@@ -6,7 +6,7 @@ import {
     initWebRtcClient,
     addRemoteAnswer,
     webRtcRouterHandle,
-//setRemoteRTCMsg
+    openDataChannelEvent
 } from './webrtc'; 
 import * as fs from "fs";
 
@@ -145,22 +145,23 @@ function createHttpServer   (conf: HttpConfigType   ) {
                             res.end(JSON.stringify(signaling));
                             isSend=true;
                         }                        
-                    }).then(({signaling,dataChannel,pc})=>{
-                        dataChannel.onmessage = (e)=>{
+                    }).then(({signaling,dc,pc})=>{
+                        openDataChannelEvent(dc);
+                        dc.onmessage = (e)=>{
                             const obj = JSON.parse(e.data as string);
                             //setRemoteRTCMsg(obj,{pc,dc:dataChannel});
-                            if (webRtcRouterHandle(obj,dataChannel)){ 
+                            if (webRtcRouterHandle(obj,dc)){ 
                                 return;
                             } 
                             const db = conf.callBack(obj);
                             if (db){
                                 if ( Array.isArray(db)){
                                     db.forEach(v=>{
-                                        dataChannel.send(JSON.stringify(v));
+                                        dc.send(JSON.stringify(v));
                                     });
                                     
                                 }else{
-                                    dataChannel.send(JSON.stringify(db));
+                                    dc.send(JSON.stringify(db));
                                 }                                
                             }
                         }; 

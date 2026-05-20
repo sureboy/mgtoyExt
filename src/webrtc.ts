@@ -37,9 +37,9 @@ function setupDataChannel(dc:RTCDataChannel,id:string) {
   };
 }
 
-export const initWebRtcClient =async (back:(msg:{dataChannel: RTCDataChannel,signaling: signalingStruct,pc: RTCPeerConnection})=>void)=>{ 
-  const {id,pc} = pool.createConnection();
-  const dataChannel = pc.createDataChannel(id,{ordered:false,protocol:"json"});
+export const initWebRtcClient =async (back:(msg:{dc: RTCDataChannel,signaling: signalingStruct,pc: RTCPeerConnection})=>void)=>{ 
+  const {id,pc,dc} = pool.createConnection();
+  //const dataChannel = pc.createDataChannel(id,{ordered:false,protocol:"json"});
 
   const signaling:signalingStruct = {ICEList:[],id };
   pc.onicecandidate = (e) => {
@@ -47,23 +47,23 @@ export const initWebRtcClient =async (back:(msg:{dataChannel: RTCDataChannel,sig
     if (e.candidate) { 
       signaling.ICEList.push(e.candidate.toJSON()); 
     } else {
-      back({dataChannel,signaling,pc});
+      back({dc,signaling,pc});
       //console.log(signaling.ICEList); 
     }
   }; 
-  setupDataChannel(dataChannel,id);     
+  setupDataChannel(dc,id);     
   signaling.offer =(await pc.setLocalDescription(await pc.createOffer())).toSdp().sdp;
-  return {dataChannel,signaling,pc};
+  return {dc,signaling,pc};
 };
 export const addRemoteAnswer =async (signaling:signalingStruct  ) =>{ 
-  const pc = pool.getConnection(signaling.id);
-  if (!pc){
+  const conn = pool.getConnection(signaling.id);
+  if (!conn?.pc){
     return {msg:"add anserr err"};
   }
   try{
-    await pc.setRemoteDescription({ type: 'answer', sdp: signaling["answer"]  });
+    await conn.pc.setRemoteDescription({ type: 'answer', sdp: signaling["answer"]  });
     for (const candidate of    signaling["ICEList"] ) {
-      await pc.addIceCandidate( candidate );
+      await conn.pc.addIceCandidate( candidate );
     }
     return {msg:"add anserr ok"}; 
   }catch(e){
@@ -122,12 +122,37 @@ export const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(
     }
  
 };
+export const openDataChannelEvent = (dataChannel:RTCDataChannel)=>{
+  dataChannel.onopen = ()=>{
+    pool.getAllConnectionIds().forEach(v=>{
+      if (v===dataChannel.label){
+        return;
+      }
+      dataChannel.send(JSON.stringify({name:v,type:'webrtc'}));
+      pool.getConnection(v)?.dc.send(JSON.stringify({name:dataChannel.label,type:'webrtc'}));
+    });
+  };
+  
+};
 export const webRtcRouterHandle = (obj:any,dataChannel: RTCDataChannel) =>{
+  if (obj.type){
+    switch (obj.type) {
+      case "passthrough":
+        const conn = pool.getConnection(obj.id);
+        if (conn){
+          obj.id = dataChannel.label;
+          conn.dc.send(JSON.stringify(obj));
+        }
+        return;
 
+    }
+    //return
+  }
   if (obj.video){
     webRtcVideoList(dataChannel);
     return true;
   }
+
   if (obj.id){
       //console.log(obj);
       let sig=pool.routerSignaling.get(obj.id);

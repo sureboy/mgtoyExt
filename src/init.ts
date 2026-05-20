@@ -26,7 +26,7 @@ const initConfCallBack = (udpServer: Socket)=>{
         if (msgObj.name==="local"){
             const list = [];
             for (const v of nameMap.entries()){
-                list.push(v[1]);
+                list.push({name:v[1].DB.Carname,update:v[1].Update,type:"udp"});
             }
             return list;
         }
@@ -45,7 +45,7 @@ const initConfCallBack = (udpServer: Socket)=>{
             
             //return db;
         }
-        return db;
+        return {name:db?.DB.Carname,update:db?.Update,type:"udp"};
     };    
 };
 const initRun = (ser:SerConfig)=>{

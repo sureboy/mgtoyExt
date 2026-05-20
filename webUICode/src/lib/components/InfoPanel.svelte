@@ -1,7 +1,9 @@
 <script lang="ts" module>
 import type {dialogStruct} from '$lib/components/Dialog.svelte'
-import { SvelteMap } from 'svelte/reactivity';
+import { setRemoteRTCMsg } from '$lib/utils/postAndSSEWebrtc';
 import {getLocalStream} from '$lib/utils/getLocalStream'
+import { createOffer} from '$lib/webrtc' 
+import {pool} from "$lib/utils/webRTCPool"
 export const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
@@ -9,8 +11,16 @@ export const dialogConfig:dialogStruct = {
     closeOnBackdrop:false,
     closeOnEsc:false,
 } ;
-export type InfoType ={dc: RTCDataChannel,pc: RTCPeerConnection,localStream?: MediaStream,[key:string]:any}
-export const meshMap =new SvelteMap<string,any>()
+export type InfoType = {
+    id:string
+    dc: RTCDataChannel,
+    pc: RTCPeerConnection,
+    setSender:(obj:any)=>void,
+    //localStream?: MediaStream,
+    //videoFacing:"user"| { exact: "environment" },
+    //[key:string]:any
+}
+//export const meshMap =new SvelteMap<string,any>()
 export const meshList:InfoType[] =$state([])
 </script>
 <script lang="ts"  >
@@ -21,6 +31,11 @@ import Dialog  from '$lib/components/Dialog.svelte'
 import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm' 
  //   import { isStatusOnline } from '$lib/ControlExt.svelte';
 let mgtoyTitle = $state("mgtoy")
+const localDevice : {
+    pc?: RTCPeerConnection
+    localStream?: MediaStream,
+    videoFacing:"user"| { exact: "environment" },
+}={videoFacing:"user"}
 const connUrl = "http://192.168.1.8:3000/conn.html" 
 const getConnHostJsonStr = ()=>{
     return  {
@@ -61,43 +76,105 @@ const isStatusOnline = (updatetime:number)=>{
         return '('+(100-timeOut /6000 *100).toFixed(0) +"%)" 
     }
 }
+
+const updateButtonUI = (
+    conf:{name:string,type:string,update:number},
+    element: HTMLDivElement,
+    obj:InfoType
+)=>{
+    if (!conf.name)return
+    let c = document.getElementById(conf.name)  as HTMLButtonElement
+    if (!c){
+        c =document.createElement('button') 
+        element.append(c)
+        c.id = conf.name 
+        c.textContent = conf.name
+        c.onclick=()=>{
+            mgtoyTitle=conf.name+"-"+conf.type
+            if (conf.type==="udp"){
+                obj.setSender(conf)
+                return
+            }
+            const conn = initWebRTC({id:conf.name,dc:obj.dc}) 
+            const dc = conn.pc.createDataChannel(conn.id,{ordered:false,protocol:"json"})
+            dc.onmessage = (e)=>{
+
+                JSON.parse(e.data)
+            }
+        }
+    }
+    if (conf.update){
+        const n = isStatusOnline(conf.update)
+        if (!n){
+            c.disabled=true
+        }else{
+            c.disabled=false
+        }
+        c.textContent = n+conf.name
+    }
+    //return c
+}
+const initWebRTC = (obj:{dc:{send:(db:string)=>void},id:string})=>{
+
+    const conn =  pool.createConnection(obj.id)
+    
+    const msg:{type:string,id:string,msg?:any} = {type:"passthrough",id:obj.id}
+    conn.pc.onnegotiationneeded = ()=>{
+        createOffer(conn.pc).then(sdp=>{
+            msg.msg = sdp
+            obj.dc.send(JSON.stringify(msg));
+        });
+    }
+    conn.pc.onicecandidate = event=>{ 
+        if (event.candidate) {
+            msg.msg = event.candidate.toJSON()
+            obj.dc.send(JSON.stringify(msg));
+        }
+    }
+    conn.pc.ondatachannel = (ev)=>{
+        console.log("open channel",ev.channel)
+        conn.dc = ev.channel
+        obj.dc = ev.channel
+    }
+    conn.pc.ontrack = (ev)=>{
+
+    }
+    //obj.dc.send(JSON.stringify()) 
+    return conn
+}
+const answerWebRTC = (obj:InfoType)=>{
+ 
+    obj.dc.addEventListener("message",(e)=>{
+        const conf = JSON.parse(e.data)
+        console.log(conf)
+        if (conf.type){
+            if (conf.type ==="passthrough"){
+                let conn = pool.getConnection(conf.id)
+                if (!conn){
+                    conn = initWebRTC({id:conf.id,dc:{send:(msg:string)=>{
+                        conf.msg = JSON.parse(msg)
+                        obj.dc.send( JSON.stringify(conf))
+                    }}}) 
+                }
+                setRemoteRTCMsg(conf.msg,{pc:conn.pc,dc:{send:(msg)=>{
+                    conf.msg = JSON.parse(msg)
+                    obj.dc.send(JSON.stringify(conf))
+                }}})
+                return
+            }
+        }        
+        //updateButtonUI(conf,element,obj) 
+    })
+}
 const attachElement = (
     element: HTMLDivElement,
     obj:InfoType)=>{
-    //(element.firstChild as HTMLButtonElement).click();
-    obj.dc.send(JSON.stringify({  
-                name:"local" ,
-                msg: 0,
-            }))
+    (element.firstChild as HTMLButtonElement).click();
+    answerWebRTC(obj)
     obj.dc.addEventListener("message",(e)=>{
-        const db = JSON.parse(e.data)
-        console.log(db)
-        if (db.DB && db.DB.Carname ){
-            const conf = {name:db.DB.Carname}
-            let c = document.getElementById(conf.name)  as HTMLButtonElement
-            if (c){
-                const n = isStatusOnline(db.Update)
-                if (!n){
-                    c.disabled=true
-                }else{
-                    c.disabled=false
-                }
-                c.textContent = n+conf.name
-                
-                return
-            }
-            //document.createElement('button')
-            c =element.firstChild.cloneNode() as  HTMLButtonElement
-            c.onclick=()=>{
-                mgtoyTitle=conf.name+"-"+"control"
-                obj.setSender(conf)
-            }
-            c.id = conf.name
-            element.append(c)
-            c.textContent =conf.name
-            //dcconfig.children.push({name:db.DB.Carname})
-        }
-        
+        const conf = JSON.parse(e.data)
+               
+        updateButtonUI(conf,element,obj) 
     })
 
     obj.pc.addEventListener('track',(ev)=>{
@@ -106,80 +183,17 @@ const attachElement = (
         }
     })
 }
-const showVideo = (element: HTMLDivElement,
-    obj:InfoType)=>{
-     //obj.setSender({name:"local"})
-    //element.dataset.facing = "test"
-    //const facing = element.dataset.facing || { exact: "environment" }
-    //const senders = obj.pc.getSenders();
-    getLocalStream(element.dataset.facing || { exact: "environment" }).then(({localStream})=>{ 
-        obj.localStream = new MediaStream()
-        const c = element.firstChild.cloneNode() as  HTMLButtonElement
-        c.textContent = 'open video'
-        element.append(c)
-        c.onclick = ()=>{
-            obj.dc.send(JSON.stringify({   
-                hasVideo: true,
-            })) 
-            /*
-            const senders = obj.pc.getSenders();
-            localStream.getTracks().forEach(track => {
-                const videoSender = senders.find(
-                sender => sender.track 
-                && sender.track.kind === track.kind);
-                if (!videoSender) {
-                    obj.localStream.addTrack(track)
-                    obj.pc.addTrack(track, obj.localStream); 
-                }else{
-                    if (track.kind==="audio"){
-                        return
-                    }
-                    obj.localStream.addTrack(track)
-                    videoSender.track.stop()
-                    videoSender.replaceTrack(track);
-                } 
-            })*/
-        }
-        /*
-        v.localStream.getTracks().forEach(track => {
-            const videoSender = senders.find(
-            sender => sender.track 
-            && sender.track.kind === track.kind);
-
-            if (!videoSender) {
-                obj.localStream.addTrack(track)
-                obj.pc.addTrack(track, obj.localStream); 
-            }else{
-                if (track.kind==="audio"){
-                    return
-                }
-                obj.localStream.addTrack(track)
-                videoSender.track.stop()
-                videoSender.replaceTrack(track);
-            } 
-        })
-        
-        const self = (e.target as HTMLButtonElement);
-        const videoButton = self.cloneNode() as HTMLButtonElement;
-        videoButton.textContent = "video"
-        videoButton.onclick = ()=>{
-            obj.dc.send(JSON.stringify({  
-                id:obj.dc.label, 
-            }))
-        }
-        self.parentNode.append(videoButton)*/
-    }) 
-}
+ 
 //Object.assign()
 </script>
 {#snippet mesh(obj:InfoType)}
 <details    >
-    <summary   style="cursor: pointer; text-align: left;"  >
+    <summary   style="cursor: pointer; text-align: left;height:48px; line-height: 48px;"  >
         {obj.id}
     </summary>
     <div data-facing="user" {@attach (element)=>{
         attachElement(element,obj)
-        showVideo(element,obj)
+        //showVideo(element,obj)
         return () => {
             console.log(`${element.tagName} 即将卸载`);
         };
@@ -188,24 +202,56 @@ const showVideo = (element: HTMLDivElement,
             obj.dc.send(JSON.stringify({  
                 name:"local" ,
                 msg: 0,
-            }))
-
-            
+                hasVideo:localDevice.localStream?true:false
+            })) 
         }}>reload </button>
-           
+        
          
     </div>
 </details>
 {/snippet}
 <svelte:head><title  >{mgtoyTitle}</title></svelte:head> 
 <div class="info-panel" id="info_panel"   >
- 
-<details open={meshMap.size==0}   >
-    <summary   style="cursor: pointer; text-align: left; "  >
-        连接
+    <button  onclick={(e)=>{
+        getLocalStream(localDevice.videoFacing).then(({localStream})=>{ 
+            //console.log(1)
+            if (!localDevice.pc){
+                localDevice.localStream = localStream; 
+                //const b = (e.target as HTMLButtonElement)
+                (e.target as HTMLButtonElement).textContent = "Change video"
+                return
+            } 
+            if (localDevice.videoFacing==="user"){
+                localDevice.videoFacing = { exact: "environment" }
+            }else{
+                localDevice.videoFacing = "user"
+            }          
+            const senders = localDevice.pc.getSenders(); 
+            localStream.getTracks().forEach(track => {
+                const videoSender = senders.find(sender => sender.track && sender.track.kind === track.kind);
+                if (!videoSender) {
+                    localDevice.localStream.addTrack(track)
+                    localDevice.pc.addTrack(track, localDevice.localStream); 
+                }else{ 
+                    //const tr = localDevice.localStream.getTracks().find(t =>   t.kind === track.kind);
+                    //tr.stop()
+                    videoSender.track.stop()
+                    localDevice.localStream.removeTrack(videoSender.track)
+                    localDevice.localStream.addTrack(track)
+                    
+                    videoSender.replaceTrack(track);
+                } 
+            })                    
+                
+            
+        })
+    }}>local Video</button>
+<details open    >
+    <summary   style="cursor: pointer; text-align: left; height:48px; line-height: 48px;"  >
+        webRTC连接
     </summary>
     <div  style="color:white;text-align: center;" id="conn_list" >
-    <a class="code-label" href="#info_panel" onclick={(e)=>{  
+    <button   onclick={(e)=>{  
         ShowSubmit({
             connUrl,
             _comment:"自建服务器地址",
@@ -218,11 +264,11 @@ const showVideo = (element: HTMLDivElement,
             connButton.click() 
         } );
         dialogConfig.dialogEl.showModal() 
-    }} >本地信令交换</a> 
-    <a class="code-label" href="#info_panel" onclick={(e)=>{
+    }} >本地连接</button> 
+    <button   onclick={(e)=>{
         ShowSubmit(getConnHostJsonStr(),createWebrtcConnFromCenterUrl); 
         dialogConfig.dialogEl.showModal() 
-    }} >跨网信令交换</a>  
+    }} >跨网连接</button>  
 
     </div>
 </details>

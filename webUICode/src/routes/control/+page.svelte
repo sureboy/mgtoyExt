@@ -3,18 +3,20 @@ import BlinkEyes from '$lib/components/BlinkEyes.svelte';
 import InfoPanel,{dialogConfig,meshList} from "$lib/components/InfoPanel.svelte";
 import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
-import {handleOffer,configuration,createOffer} from '$lib/webrtc' 
+import {handleOffer,createOffer} from '$lib/webrtc' 
 //import {connWebRTC ,createRtcTrack,createOffer} from '$lib/webrtc'
 //import ConnWebrtc,{ startWebRTC} from '$lib/ConnWebrtc.svelte'; 
 import type {infoStruct,signalingStruct} from "$lib/utils/mainDataStruct" 
 import {createCmdSender} from "$lib/utils/wheelCmdSender"
 import type {InfoType} from '$lib/components/InfoPanel.svelte'
 import {setRemoteRTCMsg} from "$lib/utils/postAndSSEWebrtc"
+import {pool} from "$lib/utils/webRTCPool"
 //    import { clearInterval } from 'node:timers';
 //let canvas:HTMLCanvasElement
 let sender:(n:number)=>void = undefined
 const infoData:infoStruct= {cars:[]}
 let mainArea:HTMLDivElement 
+
  
 const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
     //InfoPanelMenu.conn=false
@@ -23,17 +25,19 @@ const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
     //initDataChannelSender(dataChannel) 
     const dcconfig:InfoType = {
         id:dc.label,
+        //videoFacing:"user",
         //localStream:new MediaStream(),
         //children:[], 
         pc,
         dc, 
-        setSender:(db:any)=>{
+        setSender:function(db:any){  
             sender = msg=>{ 
                 dc.send(JSON.stringify(Object.assign({msg},db)))
-            }        
+            }  
         }        
     }
- 
+    
+
     for (let i=0;i<meshList.length;i++){
         const v = meshList[i]
         if (v.id ===dcconfig.id){
@@ -49,9 +53,9 @@ const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
 const startWebRTC = (sign:signalingStruct,conn:(
     dc:RTCDataChannel,
     pc: RTCPeerConnection)=>void)=>{
-    const peerConnection = new RTCPeerConnection(configuration); 
+    const {pc} =pool.createConnection()// new RTCPeerConnection(configuration); 
     const link = document.createElement("a")
-    handleOffer(sign,peerConnection,(answer)=>{ 
+    handleOffer(sign,pc,(answer)=>{ 
         link.target="_blank"
         link.textContent = "确定"
         link.rel = "opener"
@@ -63,19 +67,19 @@ const startWebRTC = (sign:signalingStruct,conn:(
     },(receiveChannel)=>{ 
         dialogConfig.content.innerHTML=""  
         dialogConfig.dialogEl?.close()
-        peerConnection.onnegotiationneeded = ()=>{
-            createOffer(peerConnection).then(sdp=>{
+        pc.onnegotiationneeded = ()=>{
+            createOffer(pc).then(sdp=>{
                 receiveChannel.send(JSON.stringify(sdp));
             });
         }
         receiveChannel.addEventListener('message',(ev)=>{
             try{
-                setRemoteRTCMsg(JSON.parse(ev.data),{pc:peerConnection,dc:receiveChannel})
+                setRemoteRTCMsg(JSON.parse(ev.data),{pc,dc:receiveChannel})
             }catch(e){
                 console.error(e)
             }            
         })
-        conn(receiveChannel,peerConnection) 
+        conn(receiveChannel,pc) 
     })
 }
 onMount(()=>{ 
