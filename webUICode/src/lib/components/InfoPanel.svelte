@@ -1,9 +1,10 @@
 <script lang="ts" module>
 import type {dialogStruct} from '$lib/components/Dialog.svelte'
 import { setRemoteRTCMsg } from '$lib/utils/postAndSSEWebrtc';
-import {getLocalStream} from '$lib/utils/getLocalStream'
+
 import { createOffer} from '$lib/webrtc' 
 import {pool} from "$lib/utils/webRTCPool"
+import type {connType} from "$lib/utils/webRTCPool"
 export const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
@@ -22,20 +23,24 @@ export type InfoType = {
 }
 //export const meshMap =new SvelteMap<string,any>()
 export const meshList:InfoType[] =$state([])
+export const localDevice : {
+    //pc?: RTCPeerConnection
+    localStream?: MediaStream,
+    remoteStream:Map<string,MediaStream>,
+    videoFacing:"user"| { exact: "environment" },
+}={videoFacing:"user",remoteStream:new Map}
 </script>
 <script lang="ts"  >
 //import { onMount } from "svelte";
+import {getLocalStream} from '$lib/utils/getLocalStream'
 //import type {infoStruct} from "$lib/utils/mainDataStruct"  
 import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 import Dialog  from '$lib/components/Dialog.svelte'
 import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm' 
+    import Stream from 'stream';
  //   import { isStatusOnline } from '$lib/ControlExt.svelte';
 let mgtoyTitle = $state("mgtoy")
-const localDevice : {
-    pc?: RTCPeerConnection
-    localStream?: MediaStream,
-    videoFacing:"user"| { exact: "environment" },
-}={videoFacing:"user"}
+
 const connUrl = "http://192.168.1.8:3000/conn.html" 
 const getConnHostJsonStr = ()=>{
     return  {
@@ -76,7 +81,31 @@ const isStatusOnline = (updatetime:number)=>{
         return '('+(100-timeOut /6000 *100).toFixed(0) +"%)" 
     }
 }
-
+const webrtcBtn = (conn: connType )=>{
+    startLocalStream(m=>{
+        dialogConfig.dialogEl.showModal() 
+        const jsonTable = {
+            _comment:mgtoyTitle,
+            //data:true
+        }
+        if (m){
+            m.getTracks().forEach(v=>{
+                Object.assign(jsonTable,{[v.kind]:true})
+            })
+        }
+        ShowSubmit(jsonTable,(db)=>{            
+            console.log(db) 
+                
+            //const conn = initWebRTC(initConf)
+            m.getTracks().forEach(t=>{
+                if (db[t.kind]){
+                    conn.pc.addTrack(t,m)
+                }
+            })
+            
+        } );
+    }) 
+}
 const updateButtonUI = (
     conf:{name:string,type:string,update:number},
     element: HTMLDivElement,
@@ -89,18 +118,20 @@ const updateButtonUI = (
         element.append(c)
         c.id = conf.name 
         c.textContent = conf.name
-        c.onclick=()=>{
-            mgtoyTitle=conf.name+"-"+conf.type
-            if (conf.type==="udp"){
+       
+        if (conf.type==="udp"){
+            c.onclick=()=>{
+                //mgtoyTitle=conf.name+"-"+conf.type
                 obj.setSender(conf)
-                return
             }
-            const conn = initWebRTC({id:conf.name,dc:obj.dc}) 
-            const dc = conn.pc.createDataChannel(conn.id,{ordered:false,protocol:"json"})
-            dc.onmessage = (e)=>{
-
-                JSON.parse(e.data)
-            }
+        }else if(conf.type==="webrtc"){ 
+            c.onclick=()=>{
+                const conn = initWebRTC({id:conf.name,dc:obj.dc})
+                createWebRTCDataChannel(conn)
+                
+                webrtcBtn(conn)   
+            }      
+            
         }
     }
     if (conf.update){
@@ -114,6 +145,24 @@ const updateButtonUI = (
     }
     //return c
 }
+const createWebRTCDataChannel = (conn: connType)=>{
+    
+    const dc = conn.pc.createDataChannel(conn.id,
+        {ordered:false,protocol:"json"}
+    )
+    dc.onopen = (e)=>{
+        //c.disabled = true
+        conn.dc = dc
+        conn.dc.addEventListener('message',ev=>{
+            try{
+                setRemoteRTCMsg(JSON.parse(ev.data),{pc:conn.pc,dc})
+            }catch(e){
+                console.error(e)
+            }
+        })
+        //JSON.parse(e.data)
+    }
+}
 const initWebRTC = (obj:{dc:{send:(db:string)=>void},id:string})=>{
 
     const conn =  pool.createConnection(obj.id)
@@ -121,49 +170,66 @@ const initWebRTC = (obj:{dc:{send:(db:string)=>void},id:string})=>{
     const msg:{type:string,id:string,msg?:any} = {type:"passthrough",id:obj.id}
     conn.pc.onnegotiationneeded = ()=>{
         createOffer(conn.pc).then(sdp=>{
+            if (conn.dc){
+                conn.dc.send(JSON.stringify(sdp))
+                return
+            }
             msg.msg = sdp
             obj.dc.send(JSON.stringify(msg));
         });
     }
     conn.pc.onicecandidate = event=>{ 
         if (event.candidate) {
+            if (conn.dc){
+                conn.dc.send(JSON.stringify(event.candidate.toJSON()))
+                return
+            }
             msg.msg = event.candidate.toJSON()
             obj.dc.send(JSON.stringify(msg));
         }
     }
     conn.pc.ondatachannel = (ev)=>{
         console.log("open channel",ev.channel)
-        conn.dc = ev.channel
-        obj.dc = ev.channel
+        conn.dc = ev.channel;
+        (document.getElementById(conn.id) as HTMLButtonElement).disabled = true
+        //obj.dc = ev.channel
+        ev.channel.addEventListener('message',e=>{
+            try{
+                setRemoteRTCMsg(JSON.parse(e.data),{pc:conn.pc,dc:ev.channel})
+            }catch(e){
+                console.error(e)
+            }
+            
+        })
     }
     conn.pc.ontrack = (ev)=>{
-
+        console.log(ev)
     }
-    //obj.dc.send(JSON.stringify()) 
+     
     return conn
 }
 const answerWebRTC = (obj:InfoType)=>{
  
     obj.dc.addEventListener("message",(e)=>{
         const conf = JSON.parse(e.data)
-        console.log(conf)
-        if (conf.type){
-            if (conf.type ==="passthrough"){
-                let conn = pool.getConnection(conf.id)
-                if (!conn){
-                    conn = initWebRTC({id:conf.id,dc:{send:(msg:string)=>{
-                        conf.msg = JSON.parse(msg)
-                        obj.dc.send( JSON.stringify(conf))
-                    }}}) 
-                }
-                setRemoteRTCMsg(conf.msg,{pc:conn.pc,dc:{send:(msg)=>{
-                    conf.msg = JSON.parse(msg)
-                    obj.dc.send(JSON.stringify(conf))
-                }}})
-                return
-            }
-        }        
-        //updateButtonUI(conf,element,obj) 
+      
+        if (conf.type !=="passthrough"){
+            return
+        }
+        let conn = pool.getConnection(conf.id)
+        if (!conn){
+
+            conn = initWebRTC({id:conf.id,dc:{send:(msg:string)=>{
+                conf.msg = JSON.parse(msg)
+                obj.dc.send( JSON.stringify(conf))
+            }}}) 
+            webrtcBtn(conn)
+
+        }
+        setRemoteRTCMsg(conf.msg,{pc:conn.pc,dc:{send:(msg)=>{
+            conf.msg = JSON.parse(msg)
+            obj.dc.send(JSON.stringify(conf))
+        }}}) 
     })
 }
 const attachElement = (
@@ -175,15 +241,22 @@ const attachElement = (
         const conf = JSON.parse(e.data)
                
         updateButtonUI(conf,element,obj) 
-    })
+    }) 
+}
 
-    obj.pc.addEventListener('track',(ev)=>{
-        if (ev.type===''){
-
-        }
+const startLocalStream = (stream:(m?: MediaStream)=>void)=>{
+    if (localDevice.localStream){
+        stream(localDevice.localStream)
+        return
+    }
+    getLocalStream(localDevice.videoFacing).then((localStream)=>{
+        stream(localStream)
+        localDevice.localStream = localStream
+    }).catch(e=>{
+        stream()
+        console.log(e)
     })
 }
- 
 //Object.assign()
 </script>
 {#snippet mesh(obj:InfoType)}
@@ -213,9 +286,9 @@ const attachElement = (
 <svelte:head><title  >{mgtoyTitle}</title></svelte:head> 
 <div class="info-panel" id="info_panel"   >
     <button  onclick={(e)=>{
-        getLocalStream(localDevice.videoFacing).then(({localStream})=>{ 
+        getLocalStream(localDevice.videoFacing).then((localStream)=>{ 
             //console.log(1)
-            if (!localDevice.pc){
+            if (pool.getConnectionCount()===0){
                 localDevice.localStream = localStream; 
                 //const b = (e.target as HTMLButtonElement)
                 (e.target as HTMLButtonElement).textContent = "Change video"
@@ -225,24 +298,27 @@ const attachElement = (
                 localDevice.videoFacing = { exact: "environment" }
             }else{
                 localDevice.videoFacing = "user"
-            }          
-            const senders = localDevice.pc.getSenders(); 
-            localStream.getTracks().forEach(track => {
-                const videoSender = senders.find(sender => sender.track && sender.track.kind === track.kind);
-                if (!videoSender) {
-                    localDevice.localStream.addTrack(track)
-                    localDevice.pc.addTrack(track, localDevice.localStream); 
-                }else{ 
-                    //const tr = localDevice.localStream.getTracks().find(t =>   t.kind === track.kind);
-                    //tr.stop()
-                    videoSender.track.stop()
-                    localDevice.localStream.removeTrack(videoSender.track)
-                    localDevice.localStream.addTrack(track)
-                    
-                    videoSender.replaceTrack(track);
-                } 
-            })                    
-                
+            }    
+            /*  
+            pool.getAllConnectionIds().forEach(id=>{
+                const conn = pool.getConnection(id) 
+                const senders = conn.pc.getSenders(); 
+                localStream.getTracks().forEach(track => {
+                    const videoSender = senders.find(sender => sender.track && sender.track.kind === track.kind);
+                    if (!videoSender) {
+                        localDevice.localStream.addTrack(track)
+                        conn.pc.addTrack(track, localDevice.localStream); 
+                    }else{ 
+                        //const tr = localDevice.localStream.getTracks().find(t =>   t.kind === track.kind);
+                        //tr.stop()
+                        videoSender.track.stop()
+                        localDevice.localStream.removeTrack(videoSender.track)
+                        localDevice.localStream.addTrack(track)
+                        
+                        videoSender.replaceTrack(track);
+                    } 
+                })                    
+            })*/
             
         })
     }}>local Video</button>
@@ -277,8 +353,6 @@ const attachElement = (
     {@render mesh( m  )}
 {/each}
 
- 
-   
 </div>
 <Dialog {dialogConfig}   > 
     <div bind:this={dialogConfig.content} style="text-align:left" >
@@ -307,12 +381,6 @@ const attachElement = (
     color: white;
 }
  
-.code-label {
-    font-size: 14px;
-    letter-spacing: 1px;
-    color: #ccdeff;
-     
-}
  
  
 </style>

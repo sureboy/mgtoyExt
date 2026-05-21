@@ -1,5 +1,5 @@
 
-const configuration = {
+export const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         {urls: 'stun:stun.qq.com:3478'}, 
@@ -7,7 +7,7 @@ const configuration = {
     //sdpSemantics: 'unified-plan'
 };
 type ConnectionId = string;
-type connType = {pc:RTCPeerConnection,dc?:RTCDataChannel,id:string}
+export type connType = {pc:RTCPeerConnection,dc?:RTCDataChannel,id:string}
 
 class ConnectionPool {
     // 核心存储：用一个Map来管理所有连接

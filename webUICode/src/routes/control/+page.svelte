@@ -1,6 +1,6 @@
 <script lang="ts">  
 import BlinkEyes from '$lib/components/BlinkEyes.svelte';
-import InfoPanel,{dialogConfig,meshList} from "$lib/components/InfoPanel.svelte";
+import InfoPanel,{dialogConfig,meshList,localDevice} from "$lib/components/InfoPanel.svelte";
 import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
 import {handleOffer,createOffer} from '$lib/webrtc' 

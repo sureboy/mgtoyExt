@@ -11,7 +11,7 @@ export async function getLocalStream(facingMode:ConstrainDOMString = "user" ) {
             }, 
         });
         console.log('使用摄像头'); 
-        return {localStream };
+        return localStream ;
     } catch (error) { 
         //alert(error);
         console.log(error);
@@ -25,15 +25,26 @@ export async function getLocalStream(facingMode:ConstrainDOMString = "user" ) {
             localVideo.loop = true;     // 循环播放
             localVideo.muted = true;     // 必须静音，否则可能无法自动播放
             localVideo.autoplay = true;  
-            await new Promise((resolve) => {
+            return  new Promise<MediaStream>((resolve,reject) => {
                 localVideo.onloadeddata = (e) => {
-                    resolve(e);
+                    
+                    localVideo.play();
+                    if (localVideo.captureStream){
+                        resolve( localVideo.captureStream() );
+                    }else if (localVideo["mozCaptureStream"]){
+                        resolve( localVideo["mozCaptureStream"]() );
+                    }
+                    
+                };
+                localVideo.onerror = (e)=>{
+                    reject(e);
                 };
             });
-            await localVideo.play(); 
-            return {localStream:localVideo.captureStream()};
+            //await localVideo.play(); 
+            //return {localStream:localVideo.captureStream()};
         }catch(e){
-            console.log(e);
+            throw e;
+            //console.log(e);
             //return undefined
         } 
     }
