@@ -120,7 +120,7 @@ const webrtcBtn = (conn: connType )=>{
         } );
     }) 
 }
-const updateButtonUI = (
+const updateDetailsUI = (
     conf:{name:string,type:string,update:number},
     element: HTMLDivElement,
     obj:InfoType
@@ -181,10 +181,8 @@ const createWebRTCDataChannel = (conn: connType)=>{
                 console.error(e)
             }
         })
-        const btn = document.getElementById(conn.id)
-        if (btn){
-            btn.textContent = "@"+conn.id
-        }
+
+        updateUIWhenConn(conn)
         //JSON.parse(e.data)
     }
 }
@@ -214,11 +212,7 @@ const initWebRTC = (obj:{dc:{send:(db:string)=>void},id:string})=>{
     conn.pc.ondatachannel = (ev)=>{
         console.log("open channel",ev.channel)
         conn.dc = ev.channel;
-        const btn = document.getElementById(conn.id);
-        if (btn){
-            btn.textContent = "@"+conn.id;
-             
-        } 
+        updateUIWhenConn(conn)
         ev.channel.addEventListener('message',e=>{
             try{
                 setRemoteRTCMsg(JSON.parse(e.data),{pc:conn.pc,dc:ev.channel})
@@ -250,8 +244,35 @@ const initWebRTC = (obj:{dc:{send:(db:string)=>void},id:string})=>{
      
     return conn
 }
-
-const answerWebRTC = (obj:InfoType)=>{ 
+const remoteTrack = (pc: RTCPeerConnection)=>{
+    pc.ontrack = (ev)=>{
+        console.log(ev)
+        if (!localDevice.remoteStream){
+            localDevice.remoteStream = new MediaStream()
+        }
+        const t = localDevice.remoteStream.getTracks().find(t=>t.kind===ev.track.kind)
+        if (t){
+            
+            t.stop()
+            localDevice.remoteStream.removeTrack(t)
+        }
+        localDevice.remoteStream.addTrack(ev.track)
+        if (!localDevice.videoDom){
+            localDevice.videoDom = createVidelElement({srcObject:localDevice.remoteStream})
+            //localDevice.videoDom.srcObject = localDevice.remoteStream
+            fillMainArea(localDevice.videoDom)
+        } 
+        localDevice.videoDom.play()
+    }
+}
+const updateUIWhenConn = (conn: connType)=>{
+    const btn = document.getElementById(conn.id);
+    if (btn){
+        btn.textContent = "@"+conn.id; 
+    } 
+    meshList.push({setSender:()=>{},pc:conn.pc,dc:conn.dc,id:conn.id})
+}
+const passthroughWebRTC = (obj:InfoType)=>{ 
     obj.dc.addEventListener("message",(e)=>{
         const conf = JSON.parse(e.data)
         if (conf.type !=="passthrough"){
@@ -274,11 +295,12 @@ const answerWebRTC = (obj:InfoType)=>{
 const attachElement = (
     element: HTMLDivElement,
     obj:InfoType)=>{
-    (element.firstChild as HTMLButtonElement).click();
-    answerWebRTC(obj)
+    //(element.firstChild as HTMLButtonElement).click();
+    passthroughWebRTC(obj)
     obj.dc.addEventListener("message",(e)=>{
         const conf = JSON.parse(e.data) 
-        updateButtonUI(conf,element,obj) 
+        //console.log(conf,obj)
+        updateDetailsUI(conf,element,obj) 
     }) 
 }
 
@@ -302,9 +324,10 @@ const startLocalStream = (stream:(m?: MediaStream)=>void)=>{
     <summary   style="cursor: pointer; text-align: left;height:48px; line-height: 48px;"  >
         {obj.id}
     </summary>
-    <div data-facing="user" {@attach (element)=>{
+    <div   {@attach (element)=>{
         attachElement(element,obj)
         //showVideo(element,obj)
+        remoteTrack(obj.pc)
         return () => {
             console.log(`${element.tagName} 即将卸载`);
         };

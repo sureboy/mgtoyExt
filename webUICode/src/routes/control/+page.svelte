@@ -56,14 +56,17 @@ const startWebRTC = (sign:signalingStruct,conn:(
     pc: RTCPeerConnection)=>void)=>{
     const {pc} =pool.createConnection()// new RTCPeerConnection(configuration); 
     const link = document.createElement("a")
+    link.textContent='...'
+    dialogConfig.dialogEl?.showModal()
+    dialogConfig.content.appendChild(link)
     handleOffer(sign,pc,(answer)=>{ 
         link.target="_blank"
         link.textContent = "确定"
         link.rel = "opener"
         link.onclick=()=>{link.textContent="..."}
         link.href=sign.backUrl+"#"+encodeURIComponent(JSON.stringify(answer))
-        dialogConfig.content.appendChild(link)
-        dialogConfig.dialogEl?.showModal()
+        
+        
         //link.click()
     },(receiveChannel)=>{ 
         dialogConfig.content.innerHTML=""  
