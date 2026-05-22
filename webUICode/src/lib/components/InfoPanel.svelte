@@ -84,8 +84,9 @@ const isStatusOnline = (updatetime:number)=>{
     }
 }
 const webrtcBtn = (conn: connType )=>{
+    dialogConfig.dialogEl.showModal() 
     startLocalStream(m=>{
-        dialogConfig.dialogEl.showModal() 
+        
         const jsonTable = {
             _comment:conn.id,
             //data:true
@@ -139,13 +140,17 @@ const updateButtonUI = (
             }
         }else if(conf.type==="webrtc"){ 
             c.onclick=()=>{
-                const conn = initWebRTC({id:conf.name,dc:obj.dc})
-                createWebRTCDataChannel(conn)
+                let conn = pool.getConnection(conf.name)
+                if (!conn){
+                    conn = initWebRTC({id:conf.name,dc:obj.dc})
+                    createWebRTCDataChannel(conn)
+                }
+                
                 
                 webrtcBtn(conn)  
-                c.onclick = ()=>{
-                    webrtcBtn(conn) 
-                } 
+                //c.onclick = ()=>{
+                //    webrtcBtn(conn) 
+                //} 
             }      
             
         }
@@ -176,6 +181,10 @@ const createWebRTCDataChannel = (conn: connType)=>{
                 console.error(e)
             }
         })
+        const btn = document.getElementById(conn.id)
+        if (btn){
+            btn.textContent = "@"+conn.id
+        }
         //JSON.parse(e.data)
     }
 }
@@ -207,12 +216,9 @@ const initWebRTC = (obj:{dc:{send:(db:string)=>void},id:string})=>{
         conn.dc = ev.channel;
         const btn = document.getElementById(conn.id);
         if (btn){
-            (btn as HTMLButtonElement).onclick = ()=>{
-                webrtcBtn(conn) 
-            } 
-        }
-        
-        //obj.dc = ev.channel
+            btn.textContent = "@"+conn.id;
+             
+        } 
         ev.channel.addEventListener('message',e=>{
             try{
                 setRemoteRTCMsg(JSON.parse(e.data),{pc:conn.pc,dc:ev.channel})

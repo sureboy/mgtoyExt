@@ -81,10 +81,11 @@ class ConnectionPool {
             //pc.dc.close();
             pc.pc.close();
             this.connections.delete(id);
+            /*
             const div = document.getElementById(id);
             if (div){
                 div.remove();
-            }
+            }*/
             //this.routerSignaling.delete(id);
             console.log(`连接 ${id} 已关闭并移除，当前活跃连接数: ${this.connections.size}`);
         } else {
