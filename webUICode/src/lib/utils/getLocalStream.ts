@@ -51,3 +51,30 @@ export async function getLocalStream(facingMode:ConstrainDOMString = "user" ) {
         } 
     }
 }
+export const createVidelElement = (opt?:{[key:string]:any})=>{
+    const video = document.createElement('video');
+    video.style.objectFit = 'cover';
+    video.autoplay=true;
+    video.muted=true;
+    video.controls=true;
+    video['playsinline']=true;
+    video['webkit-playsinline']=true;
+    function resizeCanvasAndUpdate() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        video.width = w;
+        video.height = h;
+ 
+    }
+    if (opt){
+        Object.assign(video,opt);
+        //video.srcObject = srcObj
+    }
+    window.addEventListener('resize', resizeCanvasAndUpdate);
+    /*
+    video.addEventListener('close',()=>{
+        window.removeEventListener('resize',resizeCanvasAndUpdate)
+    })*/
+    resizeCanvasAndUpdate();
+    return video;
+};

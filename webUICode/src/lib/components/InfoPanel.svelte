@@ -33,7 +33,7 @@ export const localDevice : {
 </script>
 <script lang="ts"  >
 //import { onMount } from "svelte";
-import {getLocalStream} from '$lib/utils/getLocalStream'
+import {getLocalStream,createVidelElement} from '$lib/utils/getLocalStream'
 //import type {infoStruct} from "$lib/utils/mainDataStruct"  
 import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 import Dialog  from '$lib/components/Dialog.svelte'
@@ -100,11 +100,20 @@ const webrtcBtn = (conn: connType )=>{
             //const conn = initWebRTC(initConf)
             const sender = conn.pc.getSenders()
             m.getTracks().forEach(t=>{
+                const s = sender.find(f=>f.track && f.track.kind===t.kind)
+  
                 if (db[t.kind]){
-                    conn.pc.addTrack(t,m)
+                    if (!s){
+                        conn.pc.addTrack(t,m)
+                    }else{
+                        s.replaceTrack(t)
+                    }
                 }else{
-                    conn.pc.removeTrack(sender.find(f=>f.track.kind===t.kind))
-                    //t.stop()
+                    if (s){
+                        //s.track.stop()
+                        conn.pc.removeTrack(s)
+                    }
+                    
                 }
             })            
         } );
@@ -133,7 +142,10 @@ const updateButtonUI = (
                 const conn = initWebRTC({id:conf.name,dc:obj.dc})
                 createWebRTCDataChannel(conn)
                 
-                webrtcBtn(conn)   
+                webrtcBtn(conn)  
+                c.onclick = ()=>{
+                    webrtcBtn(conn) 
+                } 
             }      
             
         }
@@ -193,7 +205,13 @@ const initWebRTC = (obj:{dc:{send:(db:string)=>void},id:string})=>{
     conn.pc.ondatachannel = (ev)=>{
         console.log("open channel",ev.channel)
         conn.dc = ev.channel;
-        (document.getElementById(conn.id) as HTMLButtonElement).disabled = true
+        const btn = document.getElementById(conn.id);
+        if (btn){
+            (btn as HTMLButtonElement).onclick = ()=>{
+                webrtcBtn(conn) 
+            } 
+        }
+        
         //obj.dc = ev.channel
         ev.channel.addEventListener('message',e=>{
             try{
@@ -211,38 +229,22 @@ const initWebRTC = (obj:{dc:{send:(db:string)=>void},id:string})=>{
         }
         const t = localDevice.remoteStream.getTracks().find(t=>t.kind===ev.track.kind)
         if (t){
+            
             t.stop()
             localDevice.remoteStream.removeTrack(t)
         }
         localDevice.remoteStream.addTrack(ev.track)
         if (!localDevice.videoDom){
-            localDevice.videoDom = createVidelElement()
-            localDevice.videoDom.srcObject = localDevice.remoteStream
+            localDevice.videoDom = createVidelElement({srcObject:localDevice.remoteStream})
+            //localDevice.videoDom.srcObject = localDevice.remoteStream
             fillMainArea(localDevice.videoDom)
         } 
+        localDevice.videoDom.play()
     }
      
     return conn
 }
-const createVidelElement = ()=>{
-    const video = document.createElement('video')
-    video.style.objectFit = 'cover';
-    video.autoplay=true
-    video.muted=true;
-    video.controls=true;
-    video['playsinline']=true
-    video['webkit-playsinline']=true
-    function resizeCanvasAndUpdate() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        video.width = w;
-        video.height = h;
- 
-    }
-    window.addEventListener('resize', resizeCanvasAndUpdate);
-    resizeCanvasAndUpdate()
-    return video
-}
+
 const answerWebRTC = (obj:InfoType)=>{ 
     obj.dc.addEventListener("message",(e)=>{
         const conf = JSON.parse(e.data)

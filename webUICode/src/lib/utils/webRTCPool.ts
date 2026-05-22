@@ -14,12 +14,13 @@ class ConnectionPool {
     private connections: Map<ConnectionId, connType> = new Map();
     //private connectionsTime: Map<ConnectionId, number> = new Map();
     private iceServers: RTCIceServer[];
+    /*
     public routerSignaling = 
     new Map<string,
     {
         remoteDataChannel?:RTCDataChannel,
         localDataChannel:RTCDataChannel,
-        msg:any[]}>();
+        msg:any[]}>();*/
 
     constructor(iceServers: RTCIceServer[] = [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -80,7 +81,11 @@ class ConnectionPool {
             //pc.dc.close();
             pc.pc.close();
             this.connections.delete(id);
-            this.routerSignaling.delete(id);
+            const div = document.getElementById(id);
+            if (div){
+                div.remove();
+            }
+            //this.routerSignaling.delete(id);
             console.log(`连接 ${id} 已关闭并移除，当前活跃连接数: ${this.connections.size}`);
         } else {
             console.warn(`尝试关闭不存在的连接: ${id}`);
