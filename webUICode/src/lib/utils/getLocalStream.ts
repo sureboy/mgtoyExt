@@ -59,6 +59,14 @@ export const createVidelElement = (opt?:{[key:string]:any})=>{
     video.controls=true;
     video['playsinline']=true;
     video['webkit-playsinline']=true;
+    
+    if (opt){
+        Object.assign(video,opt);
+        //video.srcObject = srcObj
+    }
+    if (opt && (opt.width || opt.height)){
+        return video;
+    }
     function resizeCanvasAndUpdate() {
         const w = window.innerWidth;
         const h = window.innerHeight;
@@ -66,15 +74,8 @@ export const createVidelElement = (opt?:{[key:string]:any})=>{
         video.height = h;
  
     }
-    if (opt){
-        Object.assign(video,opt);
-        //video.srcObject = srcObj
-    }
     window.addEventListener('resize', resizeCanvasAndUpdate);
-    /*
-    video.addEventListener('close',()=>{
-        window.removeEventListener('resize',resizeCanvasAndUpdate)
-    })*/
+     
     resizeCanvasAndUpdate();
     return video;
 };

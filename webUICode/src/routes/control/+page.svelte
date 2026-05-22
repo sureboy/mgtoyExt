@@ -8,7 +8,7 @@ import {handleOffer,createOffer} from '$lib/webrtc'
 //import ConnWebrtc,{ startWebRTC} from '$lib/ConnWebrtc.svelte'; 
 import type {infoStruct,signalingStruct} from "$lib/utils/mainDataStruct" 
 import {createCmdSender} from "$lib/utils/wheelCmdSender"
-import type {InfoType} from '$lib/components/InfoPanel.svelte'
+import type {meshInfoType} from '$lib/components/InfoPanel.svelte'
 import {setRemoteRTCMsg} from "$lib/utils/postAndSSEWebrtc"
 import {pool} from "$lib/utils/webRTCPool"
 //    import { clearInterval } from 'node:timers';
@@ -23,25 +23,25 @@ const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
     //dialogConfig.dialogEl?.close()
     //initDataChannelListener(dataChannel) 
     //initDataChannelSender(dataChannel) 
-    const dcconfig:InfoType = {
-        id:dc.label,
+    const dcconfig:meshInfoType = {
+        conn:{id:dc.label,
         //videoFacing:"user",
         //localStream:new MediaStream(),
         //children:[], 
         pc,
-        dc, 
+        dc}, 
         setSender:function(db:any){  
             sender = msg=>{ 
                 dc.send(JSON.stringify(Object.assign({msg},db)))
             }  
         }        
     }
-    mgtoyTitle = dcconfig.id +"-mgtoy"
+    mgtoyTitle = dcconfig.conn.id +"-mgtoy"
     
 
     for (let i=0;i<meshList.length;i++){
         const v = meshList[i]
-        if (v.id ===dcconfig.id){
+        if (v.conn.id ===dcconfig.conn.id){
             meshList[i] = dcconfig
             return
         }

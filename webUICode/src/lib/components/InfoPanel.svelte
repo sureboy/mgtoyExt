@@ -12,21 +12,24 @@ export const dialogConfig:dialogStruct = {
     closeOnBackdrop:false,
     closeOnEsc:false,
 } ;
-export type InfoType = {
-    id:string
-    dc: RTCDataChannel,
-    pc: RTCPeerConnection,
-    setSender:(obj:any)=>void,
+export type meshInfoType = {
+    conn:connType,
+    //id:string
+    //dc: RTCDataChannel,
+    //pc: RTCPeerConnection,
+    remoteStream?: MediaStream,
+    video?:HTMLVideoElement,
+    setSender?:(obj:any)=>void,
     //localStream?: MediaStream,
     //videoFacing:"user"| { exact: "environment" },
     //[key:string]:any
 }
 //export const meshMap =new SvelteMap<string,any>()
-export const meshList:InfoType[] =$state([])
+export const meshList:meshInfoType[] =$state([])
 export const localDevice : {
     //pc?: RTCPeerConnection
     localStream?: MediaStream,
-    remoteStream?: MediaStream,
+    //remoteStream?: MediaStream,
     videoFacing:"user"| { exact: "environment" },
     videoDom?:HTMLVideoElement,
 }={videoFacing:"user"}
@@ -123,7 +126,7 @@ const webrtcBtn = (conn: connType )=>{
 const updateDetailsUI = (
     conf:{name:string,type:string,update:number},
     element: HTMLDivElement,
-    obj:InfoType
+    obj:meshInfoType
 )=>{
     if (!conf.name)return
     let c = document.getElementById(conf.name)  as HTMLButtonElement
@@ -142,7 +145,7 @@ const updateDetailsUI = (
             c.onclick=()=>{
                 let conn = pool.getConnection(conf.name)
                 if (!conn){
-                    conn = initWebRTC({id:conf.name,dc:obj.dc})
+                    conn = initWebRTC({id:conf.name,dc:obj.conn.dc})
                     createWebRTCDataChannel(conn)
                 }
                 
@@ -222,47 +225,30 @@ const initWebRTC = (obj:{dc:{send:(db:string)=>void},id:string})=>{
             
         })
     }
-    conn.pc.ontrack = (ev)=>{
-        console.log(ev)
-        if (!localDevice.remoteStream){
-            localDevice.remoteStream = new MediaStream()
-        }
-        const t = localDevice.remoteStream.getTracks().find(t=>t.kind===ev.track.kind)
-        if (t){
-            
-            t.stop()
-            localDevice.remoteStream.removeTrack(t)
-        }
-        localDevice.remoteStream.addTrack(ev.track)
-        if (!localDevice.videoDom){
-            localDevice.videoDom = createVidelElement({srcObject:localDevice.remoteStream})
-            //localDevice.videoDom.srcObject = localDevice.remoteStream
-            fillMainArea(localDevice.videoDom)
-        } 
-        localDevice.videoDom.play()
-    }
+ 
      
     return conn
 }
-const remoteTrack = (pc: RTCPeerConnection)=>{
-    pc.ontrack = (ev)=>{
+const remoteTrack = (obj:meshInfoType,element: HTMLDivElement)=>{
+    obj.conn.pc.ontrack = (ev)=>{
         console.log(ev)
-        if (!localDevice.remoteStream){
-            localDevice.remoteStream = new MediaStream()
+        if (!obj.remoteStream){
+            obj.remoteStream = new MediaStream()
         }
-        const t = localDevice.remoteStream.getTracks().find(t=>t.kind===ev.track.kind)
+        const t = obj.remoteStream.getTracks().find(t=>t.kind===ev.track.kind)
         if (t){
             
             t.stop()
-            localDevice.remoteStream.removeTrack(t)
+            obj.remoteStream.removeTrack(t)
         }
-        localDevice.remoteStream.addTrack(ev.track)
-        if (!localDevice.videoDom){
-            localDevice.videoDom = createVidelElement({srcObject:localDevice.remoteStream})
+        obj.remoteStream.addTrack(ev.track)
+        if (!obj.video){
+            obj.video = createVidelElement({srcObject:obj.remoteStream,width:100})
             //localDevice.videoDom.srcObject = localDevice.remoteStream
-            fillMainArea(localDevice.videoDom)
+            //fillMainArea(localDevice.videoDom)
+            element.append(obj.video)
         } 
-        localDevice.videoDom.play()
+        obj.video.play()
     }
 }
 const updateUIWhenConn = (conn: connType)=>{
@@ -270,9 +256,9 @@ const updateUIWhenConn = (conn: connType)=>{
     if (btn){
         btn.textContent = "@"+conn.id; 
     } 
-    meshList.push({setSender:()=>{},pc:conn.pc,dc:conn.dc,id:conn.id})
+    meshList.push({conn})
 }
-const passthroughWebRTC = (obj:InfoType)=>{ 
+const passthroughWebRTC = (obj:connType)=>{ 
     obj.dc.addEventListener("message",(e)=>{
         const conf = JSON.parse(e.data)
         if (conf.type !=="passthrough"){
@@ -294,10 +280,12 @@ const passthroughWebRTC = (obj:InfoType)=>{
 }
 const attachElement = (
     element: HTMLDivElement,
-    obj:InfoType)=>{
+    obj:meshInfoType)=>{
+        element.id = "ele_"+obj.conn.id
     //(element.firstChild as HTMLButtonElement).click();
-    passthroughWebRTC(obj)
-    obj.dc.addEventListener("message",(e)=>{
+    remoteTrack(obj,element )
+    passthroughWebRTC(obj.conn)
+    obj.conn.dc.addEventListener("message",(e)=>{
         const conf = JSON.parse(e.data) 
         //console.log(conf,obj)
         updateDetailsUI(conf,element,obj) 
@@ -319,21 +307,21 @@ const startLocalStream = (stream:(m?: MediaStream)=>void)=>{
 }
 //Object.assign()
 </script>
-{#snippet mesh(obj:InfoType)}
+{#snippet mesh(obj:meshInfoType)}
 <details    >
     <summary   style="cursor: pointer; text-align: left;height:48px; line-height: 48px;"  >
-        {obj.id}
+        {obj.conn.id}
     </summary>
     <div   {@attach (element)=>{
         attachElement(element,obj)
         //showVideo(element,obj)
-        remoteTrack(obj.pc)
+        
         return () => {
             console.log(`${element.tagName} 即将卸载`);
         };
     }}  style="color:white;text-align: center;" id="module_list" >
         <button onclick={(e)=>{
-            obj.dc.send(JSON.stringify({  
+            obj.conn.dc.send(JSON.stringify({  
                 name:"local" ,
                 msg: 0,
                 hasVideo:localDevice.localStream?true:false
