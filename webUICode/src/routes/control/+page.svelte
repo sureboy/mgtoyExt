@@ -16,7 +16,7 @@ import {pool} from "$lib/utils/webRTCPool"
 let sender:(n:number)=>void = undefined
 const infoData:infoStruct= {cars:[]}
 let mainArea:HTMLDivElement 
-
+let mgtoyTitle = $state("mgtoy")
  
 const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
     //InfoPanelMenu.conn=false
@@ -36,6 +36,7 @@ const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
             }  
         }        
     }
+    mgtoyTitle = dcconfig.id +"-mgtoy"
     
 
     for (let i=0;i<meshList.length;i++){
@@ -82,8 +83,8 @@ const startWebRTC = (sign:signalingStruct,conn:(
         conn(receiveChannel,pc) 
     })
 }
-onMount(()=>{ 
  
+onMount(()=>{  
     if (window.location.hash){
         const hashdb = window.location.hash.slice(1)
         if (hashdb){
@@ -97,16 +98,20 @@ onMount(()=>{
             } 
         }
     }
+    mainArea.append
 })
 </script>
- 
+<svelte:head><title  >{mgtoyTitle}</title></svelte:head> 
 <div class="bg" bind:this={mainArea} ><BlinkEyes></BlinkEyes></div>
  
 <Joystick clickEvent={createCmdSender((n)=>{
     //console.log( n]]);
     if (sender)sender(n)
 })}></Joystick>
-<InfoPanel  ></InfoPanel>
+<InfoPanel fillMainArea={(...nodes: (Node | string)[])=>{
+    mainArea.innerHTML=""
+    mainArea.append(...nodes)
+    }} ></InfoPanel>
 <footer>🎥 摄像头视频背景 | 半透明摇杆 | 拖拽右下角 → 8方向 + 中心停止</footer> 
 <style>
 footer {

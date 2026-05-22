@@ -33,6 +33,8 @@ export async function getLocalStream(facingMode:ConstrainDOMString = "user" ) {
                         resolve( localVideo.captureStream() );
                     }else if (localVideo["mozCaptureStream"]){
                         resolve( localVideo["mozCaptureStream"]() );
+                    }else{
+                        reject("no stream");
                     }
                     
                 };
