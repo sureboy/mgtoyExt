@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 import {stopServer,startServer} from './init';
 import {createWebRtcConn} from './webRtcHost';
+import {previewFile} from './preview';
 //import {SerialPortTest} from './serial';
 
 // This method is called when your extension is activated
@@ -22,10 +23,14 @@ export function activate(context: vscode.ExtensionContext) {
 		stopServer();
 	});  
 	const start = vscode.commands.registerCommand('mgtoy.start', () => {  
-		startServer(context );
+		const config = vscode.workspace.getConfiguration("mgtoy");
+		startServer(context ,vscode.Uri.joinPath(context.extensionUri,config.get("webUI")||"webUI","index.html") );
 		vscode.window.showInformationMessage('Hello World from mgtoy!');
 	}); 
-	context.subscriptions.push(start,stop,conn);
+	const preview = vscode.commands.registerCommand('mgtoy.previewInWebview',(uri: vscode.Uri)=>{
+		previewFile(uri,context);
+	});
+	context.subscriptions.push(start,stop,conn,preview);
 }
 
 // This method is called when your extension is deactivated

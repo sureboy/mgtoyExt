@@ -1,9 +1,36 @@
-<script lang="ts">
-import { onMount } from "svelte";
+<html lang="zh-cn">
+	<head>
+<meta charset="utf-8" />
+<style> 
+/* 摇杆 Canvas 层：半透明控件叠加 */
+#joystickCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+    touch-action: none;   /* 防止触摸时滚动/缩放 */
+    z-index: 2;
+}
+
+#joystickCanvas:active {
+    cursor: grabbing;
+}
+</style>
+	</head>
+    <body>
+<canvas id="joystickCanvas" ></canvas>
+<script>
+ 
+
+    
+ 
 
 
-export let clickEvent:(n:number)=>void;
-let canvas:HTMLCanvasElement
+let clickEvent = console.log;
+const canvas  = document.getElementById("joystickCanvas");
 let stickOuterRadius = 110;      // 大圈半径 (底座)
 let stickInnerRadius = 34;       // 小手柄半径
 let maxMoveDist = stickOuterRadius - stickInnerRadius; // 76px
@@ -23,18 +50,18 @@ let stopThreshold = maxMoveDist * 0.2;  // 停止阈值 ≈15.2px
 // ---------- 辅助: 获取方向码 (从偏移量) ----------
 function computeDirection(dx, dy) {
     const dist = Math.hypot(dx, dy);
-    if (dist < stopThreshold) return 0;
+    if (dist < stopThreshold) {return 0;}
     let angle = Math.atan2(dy, dx) * 180 / Math.PI;
-    if (angle < 0) angle += 360;
+    if (angle < 0) {angle += 360;}
     // 8方向扇区 (边界偏移22.5°)
-    if ((angle >= 337.5 && angle <= 360) || (angle >= 0 && angle < 22.5)) return 1;   // 上
-    if (angle >= 22.5 && angle < 67.5) return 2;    // 右上
-    if (angle >= 67.5 && angle < 112.5) return 3;   // 右
-    if (angle >= 112.5 && angle < 157.5) return 4;  // 右下
-    if (angle >= 157.5 && angle < 202.5) return 5;  // 下
-    if (angle >= 202.5 && angle < 247.5) return 6;  // 左下
-    if (angle >= 247.5 && angle < 292.5) return 7;  // 左
-    if (angle >= 292.5 && angle < 337.5) return 8;  // 左上
+    if ((angle >= 337.5 && angle <= 360) || (angle >= 0 && angle < 22.5)) {return 1; }  // 上
+    if (angle >= 22.5 && angle < 67.5) {return 2;}    // 右上
+    if (angle >= 67.5 && angle < 112.5) {return 3;}   // 右
+    if (angle >= 112.5 && angle < 157.5) {return 4;}  // 右下
+    if (angle >= 157.5 && angle < 202.5) {return 5;}  // 下
+    if (angle >= 202.5 && angle < 247.5) {return 6;}  // 左下
+    if (angle >= 247.5 && angle < 292.5) {return 7;}  // 左
+    if (angle >= 292.5 && angle < 337.5) {return 8; } // 左上
     return 0;
 }
 // 更新UI方向码显示
@@ -102,7 +129,7 @@ function getCanvasCoords(e) {
     const scaleY = canvas.height / rect.height;
     let clientX, clientY;
     if (e.touches) {
-        if (e.touches.length === 0) return null;
+        if (e.touches.length === 0){ return null;}
         clientX = e.touches[0].clientX;
         clientY = e.touches[0].clientY;
     } else {
@@ -130,18 +157,18 @@ function setOffset(rawDx, rawDy) {
 function startDrag(e) {
     e.preventDefault();
     const coord = getCanvasCoords(e);
-    if (!coord) return;
-    if (!isInsideStickArea(coord.x, coord.y)) return;
+    if (!coord) {return;}
+    if (!isInsideStickArea(coord.x, coord.y)) {return;}
     dragging = true;
     let dx = coord.x - centerX;
     let dy = coord.y - centerY;
     setOffset(dx, dy);
 }
 function onDragMove(e) {
-    if (!dragging) return;
+    if (!dragging){ return;}
     e.preventDefault();
     const coord = getCanvasCoords(e);
-    if (!coord) return;
+    if (!coord){ return;}
     let dx = coord.x - centerX;
     let dy = coord.y - centerY;
     setOffset(dx, dy);
@@ -149,7 +176,7 @@ function onDragMove(e) {
 
 function endDrag(e) {
     if (!dragging) {
-        if (offsetX !== 0 || offsetY !== 0) resetStick();
+        if (offsetX !== 0 || offsetY !== 0) {resetStick();}
         return;
     }
     dragging = false;
@@ -184,7 +211,7 @@ function init() {
     animationLoop();
 }
 function drawJoystickOnly() {
-    if (!canvas) return;
+    if (!canvas){ return;}
     const ctx = canvas.getContext('2d');
     // 清除整个canvas (透明背景)
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -272,28 +299,7 @@ function drawJoystickOnly() {
     }
     ctx.restore();  // 恢复 globalAlpha
 }
-onMount(()=>{
-    init()
-})
+init();
 </script>
-
-<canvas id="joystickCanvas" bind:this={canvas}></canvas>
-
-<style> 
-/* 摇杆 Canvas 层：半透明控件叠加 */
-#joystickCanvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: block;
-    cursor: grab;
-    touch-action: none;   /* 防止触摸时滚动/缩放 */
-    z-index: 2;
-}
-
-#joystickCanvas:active {
-    cursor: grabbing;
-}
-</style>
+</body>
+</html>

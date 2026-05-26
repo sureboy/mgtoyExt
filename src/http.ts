@@ -1,5 +1,6 @@
 import * as http from 'http'; 
 import * as path from 'path'; 
+//import * as vscode from 'vscode'; 
 //import {RTCDataChannel} from 'werift';
 //import * as   WebSocket  from 'ws' ;
 import {
@@ -15,6 +16,7 @@ import {nameMap} from './cache';
 export type HttpConfigType = { 
     port:number, 
     rootPath:string,
+    webUI:string,
     callBack:(obj:any)=>any 
 } 
 export type SerConfig = {
@@ -51,14 +53,19 @@ export const defaultSerConfig:
 
     // 2. 立即关闭空闲连接（可选，减少等待时间）
     server.closeIdleConnections();
+    
 
     // 3. 设置超时强制退出（避免因活动连接永远不关闭而卡住）
-    setTimeout(() => {
+    const t = setTimeout(() => {
         console.error('Forced shutdown: closing all connections.');
         server.closeAllConnections();
         this.ser=undefined;
         //process.exit(1);
     }, 10000); 
+    server.addListener('close',()=>{
+        clearTimeout(t);
+        this.ser=undefined;
+    });
 }};
 const contentType:{ [key: string]: string } = {
     '.html': 'text/html',
@@ -87,14 +94,20 @@ return `<!doctype html>
     </body>
 </html>`;
 };
-const readBinaryFile = (filePaths:string,contentType:string,res:http.ServerResponse<http.IncomingMessage> & {
-    req: http.IncomingMessage;
-} ) =>{
+const readBinaryFile = (
+    filePaths:string,
+    contentType:string,
+    res:http.ServerResponse<http.IncomingMessage> & {
+        req: http.IncomingMessage;
+    },
+    notFound:()=>void
+    ) =>{
     try{
         fs.stat(filePaths, (err, stats) => {
             if (err || !stats.isFile()) {
-                res.statusCode = 404;
-                res.end('File not found');
+                notFound();
+                //res.statusCode = 404;
+                //res.end('File not found');
                 return;
             }
             res.setHeader('Content-Type', contentType || 'text/plain');
@@ -113,8 +126,9 @@ const readBinaryFile = (filePaths:string,contentType:string,res:http.ServerRespo
         }); 
     }catch(e){
         console.error(e);
-        res.writeHead(404);
-        res.end();
+        notFound();
+        //res.writeHead(404);
+        //res.end();
     }
 };
 function createHttpServer   (conf: HttpConfigType   ) {   
@@ -125,8 +139,9 @@ function createHttpServer   (conf: HttpConfigType   ) {
             res.writeHead(200, { 'Content-Type': 'text/html' });
             let indexHtml = "";
             //console.log("index path",conf.rootPath);
+            //path.dirname()
             try{
-                indexHtml = fs.readFileSync(path.join(conf.rootPath,"index.html"),{encoding:'utf8'}) ;
+                indexHtml = fs.readFileSync(conf.rootPath,{encoding:'utf8'}) ;
             }catch(e){
                 indexHtml = httpindexHtml();
             }
@@ -177,7 +192,17 @@ function createHttpServer   (conf: HttpConfigType   ) {
                     const ext = path.extname(u);
                     if (ext){
                         res.setHeader("Access-Control-Allow-Origin","*");
-                        readBinaryFile(path.join(conf.rootPath,u),contentType[ext]|| 'text/plain',res);
+                        const extVal = contentType[ext]|| 'text/plain';
+                        readBinaryFile(
+                            path.join(path.dirname(conf.rootPath),u),
+                            extVal,res,
+                        ()=>{
+                            readBinaryFile(path.join(conf.webUI,u),extVal,res,()=>{
+                                res.writeHead(404);
+                                res.end();
+                            });
+                        }
+                        );
                         
                         return ;
                     }
@@ -245,9 +270,11 @@ export const RunHttpServer = (
     errNumber = 10 
       )=>{
     console.log(conf);
-    if (defaultSerConfig.ser && defaultSerConfig.ser.Server){
+    if (defaultSerConfig.ser && defaultSerConfig.ser.Server){ 
         Object.assign(defaultSerConfig.ser.conf,conf);
-        backServ(defaultSerConfig.ser);
+        setTimeout(()=>{ 
+            backServ(defaultSerConfig.ser!);
+        });
         return;
     }
     const serv = createHttpServer(conf );

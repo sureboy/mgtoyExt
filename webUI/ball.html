@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html  lang="zh-cn">
+    <head>
+        <meta charset="utf-8" />
+        <title>game</title>
+    </head>
+    <body>
+        <canvas id="a" width="500" height="500"></canvas>
+        <script>
+            var a = document.getElementById("a")
+            var b = a.getContext("2d")
+            let x = 20
+            let y = 300
+            let bx = 1
+            let by = 1
+            let r = 20
+ 
+            setInterval(()=>{
+                b.clearRect(0,0,500,500)
+                (()=>{
+                    b.beginPath()
+                    b.arc(x,y,r,0,Math.PI*2)
+                    b.fillStyle = 'red'
+                    b.fill()
+                    b.closePath()
+                })()
+
+                x += bx
+                y += by
+                if(x + bx - r < 0){
+                    bx = -bx
+                }if(x + bx + r > 500){
+                    bx = -bx
+                }if(y + by - r < 0){
+                    by = -by
+                }if(y + by + r > 500){
+                    by = -by
+                }
+            },20)
+        </script>
+    </body>
+</html>

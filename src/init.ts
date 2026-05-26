@@ -5,6 +5,7 @@ import {getLocalIp} from './util';
 //import {initWebSocket} from './webSocket';
 import {initUDPServer} from './udp';
 import {nameMap} from './cache';
+import * as path from 'path';
 //import { initWebRtcClient } from './webrtc';
 //import {initMulMDNS,initUDPServer as initMDNS} from './mdns';
 import {initBar} from './Bar'; 
@@ -48,29 +49,44 @@ const initConfCallBack = (udpServer: Socket)=>{
         return {name:db?.DB.Carname,update:db?.Update,type:"udp"};
     };    
 };
-const initRun = (ser:SerConfig)=>{
+const initRun = (ser:SerConfig )=>{
     //console.log(ser); 
     //initWebRtcClient()
-    const localIP = getLocalIp();
+    
     //const bon = initMDNS(ser.httpPort,localIP,"mgtoy.local"); 
-    const Bar = initBar(ser.httpPort,localIP);  
-    //const wss = initWebSocket({server:ser.Server,callBack:ser.conf.callBack});
-    serverList.push(Bar );
+    try{
+        const localIP = getLocalIp(); 
+        const {Bar,menu} = initBar(ser.httpPort,localIP );  
+        console.log("init bar");
+        //const wss = initWebSocket({server:ser.Server,callBack:ser.conf.callBack});
+        serverList.push(Bar,menu );
+    }catch(e){
+        console.error(e);
+    }
 };
-export const startServer = (context: vscode.ExtensionContext)=>{
-    console.log(context);
+export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Uri,back?:(ser:SerConfig)=>void)=>{
+    //console.log(context);
     const config = vscode.workspace.getConfiguration("mgtoy");
     const udpServer = initUDPServer({port:config.get("udpPort") ||9002});
-    serverList.push({dispose:()=>{
-        udpServer.close();
-    }});
+    if (udpServer){
+        serverList.push({dispose:()=>{
+            udpServer.close();
+        }});
+    }
+    
     const conf:HttpConfigType = {
         //udpPort:config.get("udpPort") ||9002,
-        port:config.get("tcpPort") || 3000,
-        rootPath:vscode.Uri.joinPath(context.extensionUri,config.get("webUI")||"webUI").fsPath,
-        callBack : initConfCallBack(udpServer)
+        webUI:vscode.Uri.joinPath(context.extensionUri,config.get("webUI")||"webUI").fsPath,
+        port:config.get("tcpPort") || 3000, 
+        rootPath:rootPath.fsPath,
+        callBack :udpServer?initConfCallBack(udpServer):console.log
     }; 
     
-    RunHttpServer( conf   ,initRun);
+    RunHttpServer( conf   ,(ser:SerConfig)=>{
+        initRun(ser);
+        if (back){
+            back(ser);
+        }
+    });
 };
 

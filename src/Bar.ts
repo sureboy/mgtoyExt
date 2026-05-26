@@ -1,7 +1,7 @@
 //import {getLocalIp} from './util';
 import * as vscode from 'vscode';
 //import {defaultSerConfig} from './http';
-export const initBar = (port:number,loadIP:string  )=>{
+export const initBar = (port:number,loadIP:string   )=>{
     //if (menu){
         //return;
     const Bar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
@@ -10,16 +10,13 @@ export const initBar = (port:number,loadIP:string  )=>{
     //}
     //const loadIP = getLocalIp();
     Bar.command="menu";
-    const ipUrl = `http://${loadIP}:${port}/conn.html`;
+    const ipUrl = `http://${loadIP}:${port}`;
     Bar.text = ipUrl;
-    const loadUrl = `http://localhost:${port}/control.html`;
-    const menuList = [ 
-        "start",
-        "stop", 
-    ];
+    const loadUrl = `http://localhost:${port}`;
+    const menuList = [ipUrl,loadUrl];
    
     //if (defaultSerConfig.ser){
-		menuList.push(ipUrl,loadUrl); 
+	//	menuList.push(ipUrl,loadUrl); 
     //} 
     menu = vscode.commands.registerCommand('menu', () => {
         vscode.window.showQuickPick(menuList).then(v=>{
@@ -35,6 +32,6 @@ export const initBar = (port:number,loadIP:string  )=>{
         });
     }); 
     Bar.show();
-    return Bar;
+    return {Bar,menu};
     
 };

@@ -57,6 +57,14 @@ export const initUDPServer = (conf = {port:9002})=>{
         server.close();
     });
     //const PORT = 9002;
-    server.bind(conf.port);
-    return server;
+    server.on('close',()=>{
+        console.log(conf.port,"close");
+    });
+    try{
+        server.bind(conf.port);
+        return server;
+    }catch(e){
+        console.error(e);
+    }
+    
 };

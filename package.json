@@ -9,11 +9,15 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:mgtoy",
+    "onCommand:mgtoy.preview"
+  ],
   "main": "./dist/extension.js",
   "repository": "https://github.com/sureboy/mgtoyExt",
   "publisher": "WeijieZhao",
   "contributes": {
+ 
     "configuration": {
       "title": "mgtoy",
       "properties": {
@@ -46,8 +50,20 @@
       {
         "command": "mgtoy.stop",
         "title": "mgtoy stop"
+      },
+      {
+        "command": "mgtoy.previewInWebview",
+        "title": "mgtoy Preview",
+        "icon": "$(eye)"
       }
     ],
+    "menus": {
+      "editor/title": [{
+          "command": "mgtoy.previewInWebview",
+          "when": "resourceFilename =~ /\\.mgtoy\\.js|.html$/",
+          "group": "navigation"
+      }]
+    },
     "customEditors": []
   },
   "scripts": {
