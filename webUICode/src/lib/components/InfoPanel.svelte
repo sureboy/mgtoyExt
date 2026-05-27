@@ -40,7 +40,7 @@ import {getLocalStream,createVidelElement} from '$lib/utils/getLocalStream'
 //import type {infoStruct} from "$lib/utils/mainDataStruct"  
 import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 import Dialog  from '$lib/components/Dialog.svelte'
-import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm' 
+import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm'  
 const {fillMainArea}:{fillMainArea:(...nodes: (Node | string)[])=>void} = $props()
 //export let mainArea:HTMLDivElement = null
  //   import { isStatusOnline } from '$lib/ControlExt.svelte';
@@ -123,8 +123,49 @@ const webrtcBtn = (conn: connType )=>{
         } );
     }) 
 }
+async function readFromDataChannel(name:string,size_:number,conn: connType) {
+    const file = conn.pc.createDataChannel(name,{ordered:true})
+    const root = await navigator.storage.getDirectory();
+    const fileHandle = await root.getFileHandle(name, { create: true });
+    const fileWritable = await fileHandle.createWritable();
+    let size = size_
+    file.onmessage = ev=>{  
+        fileWritable.write(ev.data).then(()=>{
+            size-=(ev.data as ArrayBuffer).byteLength
+            if (size>0){
+                return
+            }
+            console.log(name,size_, "end")
+            //
+            file.close() 
+            fileHandle.getFile().then(f=>{ 
+                
+                const furl = URL.createObjectURL(f) 
+                const iframe = document.createElement('iframe')
+                iframe.src = furl
+                iframe.width = window.innerWidth.toString();
+                iframe.height = window.innerHeight.toString();
+                //iframe.addEventListener('load')
+                fillMainArea(iframe)
+                iframe.onload = () => {
+                    fileWritable.close();
+                    URL.revokeObjectURL(furl)
+                    conn.dc.addEventListener('message',(ev)=>{ 
+                        iframe.contentWindow.postMessage(JSON.parse(ev.data))
+                    })
+                    window.addEventListener('message', (event) => {
+                        if (event.origin !== furl) return;
+                        conn.dc.send(JSON.stringify(event.data))
+                    }) 
+                }
+            })
+                                    
+        });
+    }
+}
+
 const updateDetailsUI = (
-    conf:{name:string,type:string,update:number},
+    conf:{name:string,type:string,update:number,size:number },
     element: HTMLDivElement,
     obj:meshInfoType
 )=>{
@@ -135,13 +176,14 @@ const updateDetailsUI = (
         element.append(c)
         c.id = conf.name 
         c.textContent = conf.name
-       
-        if (conf.type==="udp"){
+        switch (conf.type){
+        case "udp" :
             c.onclick=()=>{
                 //mgtoyTitle=conf.name+"-"+conf.type
                 obj.setSender(conf)
             }
-        }else if(conf.type==="webrtc"){ 
+            break;
+        case "webrtc":
             c.onclick=()=>{
                 let conn = pool.getConnection(conf.name)
                 if (!conn){
@@ -155,7 +197,18 @@ const updateDetailsUI = (
                 //    webrtcBtn(conn) 
                 //} 
             }      
-            
+            break;
+        case "file":
+            c.onclick=async ()=>{
+                console.log(conf.name)
+                try{
+                    readFromDataChannel(conf.name,conf.size,obj.conn) 
+                }catch(e){
+                    console.error(e)
+                }
+            }
+            break;
+
         }
     }
     if (conf.update){

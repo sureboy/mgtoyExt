@@ -23,6 +23,7 @@ import {pool,
 } from './webrtc'; 
 import type {signalingStruct} from './webrtc';
 import {nameMap} from './cache';  
+import {sendFileWithStream} from './sendFileWithStream';
 export const workspaceConfig = vscode.workspace.getConfiguration("mgtoy"); 
 const serverList:{
     dispose(): any;
@@ -115,14 +116,28 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
         },
         handleGetReq:{
             "/offer":(resdb:(db:any)=>void)=>{
-                handleWebRtcConn(resdb,dc=>{
+                handleWebRtcConn(resdb,({dc,pc})=>{
                     openDataChannelEvent(dc);
                     dc.addEventListener('open',()=>{ 
                         for (const v of nameMap.entries()){
                             dc.send(JSON.stringify({
                                 name:v[1].DB.Carname,
                                 update:v[1].Update,type:"udp"}));
-                        } 
+                        }  
+                        pc.ondatachannel=(ev)=>{
+                            console.log(ev.channel.label);
+                            const fn = vscode.Uri.file(path.join(path.dirname(rootPath.fsPath),ev.channel.label));
+                            vscode.workspace.fs.stat(fn).then(file=>{ 
+                                sendFileWithStream(fn.fsPath,ev.channel).then(n=>{
+                                    console.log(n,file.size);
+                                }); 
+                            });
+                            
+                        };
+                        vscode.workspace.fs.stat(rootPath).then(FileStat=>{
+                            dc.send(JSON.stringify({size:FileStat.size,type:"file",name:path.basename(rootPath.fsPath)}));
+                        });
+                        
                     });
                     dc.addEventListener('message',
                      (e)=>{
@@ -180,7 +195,7 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
         }
     });
 };
-const handleWebRtcConn = (send:(signaling: signalingStruct)=>void,DataChannel:(dc:RTCDataChannel)=>void)=>{
+const handleWebRtcConn = (send:(signaling: signalingStruct)=>void,DataChannel:(obj:{dc:RTCDataChannel,pc: RTCPeerConnection})=>void)=>{
     let isSend = false;            
     initWebRtcClient(({signaling})=>{ 
         if (signaling.offer && !isSend){
@@ -188,7 +203,7 @@ const handleWebRtcConn = (send:(signaling: signalingStruct)=>void,DataChannel:(d
             isSend=true;
         }                        
     }).then(({signaling,dc,pc})=>{
-        DataChannel(dc);
+        DataChannel({dc,pc});
  
         if (signaling.ICEList.length>0 && !isSend ){
             send(signaling); 

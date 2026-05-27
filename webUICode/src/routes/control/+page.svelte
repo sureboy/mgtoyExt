@@ -69,6 +69,9 @@ const startWebRTC = (sign:signalingStruct,conn:(
         
         //link.click()
     },(receiveChannel)=>{ 
+        if (receiveChannel.label==="file"){
+            return
+        }
         dialogConfig.content.innerHTML=""  
         dialogConfig.dialogEl?.close()
         pc.onnegotiationneeded = ()=>{
@@ -83,6 +86,7 @@ const startWebRTC = (sign:signalingStruct,conn:(
                 console.error(e)
             }            
         })
+        console.log(receiveChannel)
         conn(receiveChannel,pc) 
     })
 }
