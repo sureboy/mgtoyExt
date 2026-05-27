@@ -1,5 +1,6 @@
 //import {getLocalIp} from './util';
 import * as vscode from 'vscode';
+import * as QRCode from 'qrcode';
 //import {defaultSerConfig} from './http';
 export const initBar = (port:number,loadIP:string   )=>{
     //if (menu){
@@ -12,9 +13,23 @@ export const initBar = (port:number,loadIP:string   )=>{
     Bar.command="menu";
     const ipUrl = `http://${loadIP}:${port}`;
     Bar.text = ipUrl;
+    Bar.tooltip="Generating QR code...";
     const loadUrl = `http://localhost:${port}`;
     const menuList = [ipUrl,loadUrl];
-   
+    const textToEncode =`${ipUrl}/conn.html#https://mgtoy.cn/control`;
+    QRCode.toDataURL(textToEncode, { margin: 1, width: 150 }, (err, url) => {
+        if (err) {
+            Bar.tooltip = `Failed: ${err.message}`;
+            return;
+        }
+        // 创建一个 MarkdownString，支持图片
+        const markdown = new vscode.MarkdownString(
+            `![QR Code](${url})\n\n**${textToEncode}**`
+        );
+        markdown.supportHtml = true;  // 可开启 HTML 支持（非必须）
+        markdown.isTrusted = true;     // 信任内容，允许图片加载
+        Bar.tooltip = markdown;
+    });
     //if (defaultSerConfig.ser){
 	//	menuList.push(ipUrl,loadUrl); 
     //} 

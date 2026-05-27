@@ -74,8 +74,42 @@ const  replaceAssetPathsAdvanced = (html: string, replacer: (originalPath: strin
   html = html.replace(/(<script\s+[^>]*\bsrc=["'])([^"']+)(["'][^>]*>)/gi, 
     (match, prefix, oldPath, suffix) => prefix + replacer(oldPath) + suffix
   );
+ // 3. 处理内联 script 标签内的模块导入路径（仅当标签内容为 JavaScript 代码时）
+  html = html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi, (fullMatch, attrs, scriptContent:string) => {
+    // 如果标签有 src 属性，说明是外部脚本，跳过内容处理
+    if (/\bsrc\s*=/i.test(attrs)) {
+      return fullMatch;
+    }
 
+    // 解析 type 属性，判断是否为 JavaScript 代码
+    let isJavaScript = false;
+    const typeMatch = attrs.match(/\btype\s*=\s*["']([^"']*)["']/i);
+    if (!typeMatch) {
+      // 没有 type 属性，默认为 JavaScript
+      isJavaScript = true;
+    } else {
+      const typeValue = typeMatch[1].toLowerCase();
+      // 常见的 JavaScript 类型：module, text/javascript, application/javascript 等
+      if (typeValue === 'module' || typeValue === 'text/javascript' || typeValue === 'application/javascript') {
+        isJavaScript = true;
+      }
+    }
+
+    // 仅当是 JavaScript 代码时才替换 import/export/require 中的路径
+    if (isJavaScript) { 
+      return `<script${attrs}>${replaceAssetPathsFromJS(scriptContent,replacer)}</script>`;
+    }
+
+    // 非 JavaScript 的脚本块，直接返回原内容
+    return fullMatch;
+  });
   return html;
+};
+const replaceAssetPathsFromJS = (jsStr: string, replacer: (originalPath: string) => string)=>{
+  return jsStr.replace(
+        /(?:import\s*\(|import\s+.*\s+from\s+|export\s+.*\s+from\s+|require\s*\(\)?)\s*['"]([^'"]+)['"]/g,
+        (match, oldPath) => match.replace(oldPath, replacer(oldPath))
+      );
 };
 const insertScriptAtBodyStart = (html: string, codeToInsert: string)=> {
   const bodyRegex = /<body\b[^>]*>/i;
@@ -105,10 +139,42 @@ const setWebviewHtml = (uri: vscode.Uri,context: vscode.ExtensionContext,port =3
     vscode.workspace.fs.readFile(uri).then(content=>{
         let strHtml = new TextDecoder('utf-8').decode(content) ;
         strHtml = setCSPMetaInHtml(strHtml,csp );
-		strHtml = insertScriptAtBodyStart(strHtml,`window.vscode = acquireVsCodeApi();`);
+		strHtml = insertScriptAtBodyStart(strHtml,`window.vscode = acquireVsCodeApi();
+function reportErrorToExtension(errorDetails) {
+  if (window.vscode) {
+    window.vscode.postMessage({
+      type: 'webviewError',
+      payload: errorDetails
+    });
+  } else {
+    // 备用方案：回退到控制台输出
+    console.error('[Fallback] Webview Error:', errorDetails);
+  }
+}
+window.addEventListener('error', (event) => { 
+  const errorInfo = {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    error: event.error
+  };
+console.error('【全局错误捕获】:', errorInfo);
+reportErrorToExtension(errorInfo);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  const errorInfo = {
+    type: 'unhandledRejection',
+    reason: event.reason,
+    promise: event.promise
+  };
+  console.error('【未处理的 Promise 拒绝】:', errorInfo);
+  reportErrorToExtension(errorInfo);
+}); 
+      `);
 		strHtml = replaceAssetPathsAdvanced(strHtml,(p)=>{
 			if (port){
-				return `http://localhost:${port}`+p;
+				return new URL(p,`http://localhost:${port}`).toString();
 			}
 			return panel!.webview.asWebviewUri(
 				vscode.Uri.joinPath(context.extensionUri,  'webUI',  p)
@@ -119,12 +185,13 @@ const setWebviewHtml = (uri: vscode.Uri,context: vscode.ExtensionContext,port =3
 		panel!.webview.html = strHtml;
         //panel.webview.postMessage({code});
         //console.log(code);
+        
     }); 
 };
 export function previewFile(uri: vscode.Uri,context: vscode.ExtensionContext) {
     if (panel===null){
         panel = vscode.window.createWebviewPanel(
-            'myPreview',
+            'mgToy Preview',
             `Preview: ${path.basename(uri.fsPath)}`,
             vscode.ViewColumn.Beside,
             { enableScripts: true }
@@ -135,6 +202,28 @@ export function previewFile(uri: vscode.Uri,context: vscode.ExtensionContext) {
             stopServer();
             //vscode.commands.executeCommand("mgtoy.stop");
         });
+        const outputChannel = vscode.window.createOutputChannel('mgToy');
+        context.subscriptions.push(outputChannel);
+        
+        outputChannel.clear();
+        outputChannel.show();
+        //vscode.window.setStatusBarMessage()
+        panel.webview.onDidReceiveMessage(
+          message => {
+           // if (message.type === 'webviewError') {
+              //vscode.window.createOutputChannel()
+              // 此时，错误信息会作为普通的扩展日志，输出在“调试控制台”(DEBUG CONSOLE)中
+              //vscode.window.showErrorMessage('js Error',{modal:true,detail:JSON.stringify(message.payload,null,2)});
+              outputChannel.append(JSON.stringify(message,null,2));
+              outputChannel.appendLine('');
+              console.error('[Webview Error]', message.payload);
+              // 你甚至可以选择在这里用 vscode.window.showErrorMessage 向用户弹窗提醒
+           // }
+          },
+          undefined,
+          context.subscriptions
+        );
+        
         //vscode.commands.executeCommand("mgtoy.start");
         startServer(context, uri,(ser)=>{
             setWebviewHtml(uri,context,ser.httpPort);

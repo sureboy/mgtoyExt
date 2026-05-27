@@ -11,7 +11,7 @@ import {previewFile} from './preview';
 
 export function activate(context: vscode.ExtensionContext) { 
 	//console.log('Congratulations, your extension "mgtoy" is now active!'); 
- 
+	
 	const conn = vscode.commands.registerCommand('mgtoy.conn', () => { 
 		vscode.window.showQuickPick(['create','append']).then(value=>{
 		 
