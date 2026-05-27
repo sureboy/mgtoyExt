@@ -105,12 +105,11 @@ onMount(()=>{
 })
 </script>
 <svelte:head><title  >{mgtoyTitle}</title></svelte:head> 
-<div class="bg" bind:this={mainArea} ><BlinkEyes></BlinkEyes></div>
- 
-<Joystick clickEvent={createCmdSender((n)=>{
-    //console.log( n]]);
-    if (sender)sender(n)
-})}></Joystick>
+<div class="bg" bind:this={mainArea} >
+    
+    
+</div>
+  
 <InfoPanel fillMainArea={(...nodes: (Node | string)[])=>{
     mainArea.innerHTML=""
     mainArea.append(...nodes)

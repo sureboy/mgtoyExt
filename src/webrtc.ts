@@ -123,7 +123,7 @@ export const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(
  
 };
 export const openDataChannelEvent = (dataChannel:RTCDataChannel)=>{
-  dataChannel.onopen = ()=>{
+  dataChannel.addEventListener('open', ()=>{
     pool.getAllConnectionIds().forEach(v=>{
       if (v===dataChannel.label){
         return;
@@ -131,7 +131,7 @@ export const openDataChannelEvent = (dataChannel:RTCDataChannel)=>{
       dataChannel.send(JSON.stringify({name:v,type:'webrtc'}));
       pool.getConnection(v)?.dc.send(JSON.stringify({name:dataChannel.label,type:'webrtc'}));
     });
-  };
+  });
   
 };
 export const webRtcRouterHandle = (obj:any,dataChannel: RTCDataChannel) =>{

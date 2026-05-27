@@ -1,6 +1,6 @@
 import dgram from 'dgram';
 import {addrMap,nameMap} from './cache'; 
-export const initUDPServer = (conf = {port:9002})=>{
+export const initUDPServer = (conf:{port:number,newCar?:(n:any)=>void} = {port:9002})=>{
     const server = dgram.createSocket('udp4');
     // 监听当服务器启动并准备好接收消息时触发的事件
     server.on('listening', () => {
@@ -38,6 +38,8 @@ export const initUDPServer = (conf = {port:9002})=>{
                 }else{
                     addrMap.set(k,_db) ;
                     nameMap.set(_db.DB.Carname,_db);
+                    if (conf.newCar){
+                    conf.newCar(_db);}
                 }
                 break; 
             default:
