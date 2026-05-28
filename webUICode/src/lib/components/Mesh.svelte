@@ -17,6 +17,7 @@ import { onMount } from "svelte";
 import { createOffer} from '$lib/webrtc' 
 import {handleFile,replaceAssetPathsAdvanced} from '$lib/utils/opfs'
 let element: HTMLDivElement
+const urlList:string[] = []
 const {obj,fillMainArea}:{
     obj:meshInfoType,
     fillMainArea:(...nodes: (Node | string)[])=>void} = $props()
@@ -187,6 +188,15 @@ const updateDetailsUI = (
     //return c
 }
 const showHtml =async (root:FileSystemDirectoryHandle,path:string,code:string)=>{
+    while(true){
+        const u = urlList.pop()
+        if (!u){
+            break
+        }
+        URL.revokeObjectURL(u)
+
+    }
+    
     code =await replaceAssetPathsAdvanced(code,(origin)=>{
         return new Promise<string>((resolve,reject)=>{
             let t = setTimeout(() => {
@@ -202,6 +212,7 @@ const showHtml =async (root:FileSystemDirectoryHandle,path:string,code:string)=>
                             { type: contentType['.'+origin.split(".").pop()] || 'text/plain' }
                         )
                     )
+                    urlList.push(url)
                     resolve(url)
                 },()=>{
                     try{
@@ -226,13 +237,14 @@ const showHtml =async (root:FileSystemDirectoryHandle,path:string,code:string)=>
             { type: contentType['.html'] || 'text/plain' }
         )
     )
+    urlList.push(iframe.src)
     iframe.width = window.innerWidth.toString();
-    iframe.sandbox.add('allow-scripts','allow-same-origin' )
+    //iframe.sandbox.add('allow-scripts','allow-same-origin' )
     iframe.height = window.innerHeight.toString();
     //iframe.addEventListener('load')
     fillMainArea(iframe)
     iframe.onload = () => { 
-        URL.revokeObjectURL(iframe.src)
+        //URL.revokeObjectURL(iframe.src)
         obj.conn.dc.addEventListener('message',(ev)=>{ 
             iframe.contentWindow.postMessage(JSON.parse(ev.data))
         })
