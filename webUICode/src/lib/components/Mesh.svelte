@@ -227,6 +227,7 @@ const showHtml =async (root:FileSystemDirectoryHandle,path:string,code:string)=>
         )
     )
     iframe.width = window.innerWidth.toString();
+    iframe.sandbox.add('allow-scripts','allow-same-origin' )
     iframe.height = window.innerHeight.toString();
     //iframe.addEventListener('load')
     fillMainArea(iframe)
@@ -262,18 +263,13 @@ const contentType:{ [key: string]: string } = {
 async function ensureDirectory(root:FileSystemDirectoryHandle, name:string) {
   // 先尝试获取为目录
   try {
-    return await root.getDirectoryHandle(name, { create: false });
+    return await root.getDirectoryHandle(name, { create: true });
   } catch (e) {
     console.error(e)
-    if (e.name === 'NotFoundError') {
-      return await root.getDirectoryHandle(name, { create: true });
-    } else if (e.name === 'TypeMismatchError') {
-      // 已存在且是文件，删除后再创建目录
-      await root.removeEntry(name, { recursive: false }); // 删除文件
-      return await root.getDirectoryHandle(name, { create: true });
-    } else {
-      throw e;
-    }
+ 
+    await root.removeEntry(name, { recursive: false }); // 删除文件
+    return await root.getDirectoryHandle(name, { create: true });
+ 
   }
 }
 async function updateFileFromDataChannel(root:FileSystemDirectoryHandle,path:string,file:RTCDataChannel,fileStr:(v:string)=>void,runEvent?:(n:number)=>void) {
@@ -296,9 +292,7 @@ async function updateFileFromDataChannel(root:FileSystemDirectoryHandle,path:str
             //console.log(file.label,"end")
             const code = await handleFile(await fileHandle.getFile() ).finally(()=>{
                 fileWritable.close();
-            })
-            
-            
+            }) 
             fileStr(code)
             
             
