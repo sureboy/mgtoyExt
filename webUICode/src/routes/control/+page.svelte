@@ -8,7 +8,7 @@ import {handleOffer,createOffer} from '$lib/webrtc'
 //import ConnWebrtc,{ startWebRTC} from '$lib/ConnWebrtc.svelte'; 
 import type {infoStruct,signalingStruct} from "$lib/utils/mainDataStruct" 
 import {createCmdSender} from "$lib/utils/wheelCmdSender"
-import type {meshInfoType} from '$lib/components/InfoPanel.svelte'
+import type {meshInfoType} from '$lib/components/Mesh.svelte'
 import {setRemoteRTCMsg} from "$lib/utils/postAndSSEWebrtc"
 import {pool} from "$lib/utils/webRTCPool"
 //    import { clearInterval } from 'node:timers';

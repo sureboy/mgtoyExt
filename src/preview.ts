@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import {stopServer,startServer} from './init';
 import {defaultSerConfig} from './http';
+import { pool } from './webrtc';
 let panel:vscode.WebviewPanel|null  = null;
 function getNonce() {
 	let text = '';
@@ -227,19 +228,18 @@ export function previewFile(uri: vscode.Uri,context: vscode.ExtensionContext) {
         //vscode.commands.executeCommand("mgtoy.start");
         startServer(context, uri,(ser)=>{
             setWebviewHtml(uri,context,ser.httpPort);
-        });
-         
-    }else{
-        
+        }); 
+    }else{ 
         if (defaultSerConfig.ser){
-            panel.title = `Preview: ${path.basename(uri.fsPath)}`;
-            defaultSerConfig.ser.conf.rootPath = uri.fsPath;
+            const name = path.basename(uri.fsPath);
+            panel.title = `Preview: ${name}`;
+            defaultSerConfig.ser.conf.rootPath = uri.fsPath; 
+            //dc.send(JSON.stringify({ type:"file",name:path.basename(conf.rootPath)}));
+            pool.getAllConnectionIds().forEach(id=>{
+              pool.getConnection(id)?.dc.send(JSON.stringify({type:"file",name }));
+            });
             setWebviewHtml(uri,context,defaultSerConfig.ser.httpPort);
-        }
-        
-        
-    }
-
-    
+        } 
+    } 
 }
  

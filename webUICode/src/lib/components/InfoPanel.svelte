@@ -1,10 +1,8 @@
 <script lang="ts" module>
-import type {dialogStruct} from '$lib/components/Dialog.svelte'
-import { setRemoteRTCMsg } from '$lib/utils/postAndSSEWebrtc';
-
-import { createOffer} from '$lib/webrtc' 
+import type {dialogStruct} from '$lib/components/Dialog.svelte' 
 import {pool} from "$lib/utils/webRTCPool"
 import type {connType} from "$lib/utils/webRTCPool"
+import type {meshInfoType} from '$lib/components/Mesh.svelte'
 export const dialogConfig:dialogStruct = {
     //open:true,
     //dialogEl:undefined,
@@ -12,18 +10,7 @@ export const dialogConfig:dialogStruct = {
     closeOnBackdrop:false,
     closeOnEsc:false,
 } ;
-export type meshInfoType = {
-    conn:connType,
-    //id:string
-    //dc: RTCDataChannel,
-    //pc: RTCPeerConnection,
-    remoteStream?: MediaStream,
-    video?:HTMLVideoElement,
-    setSender?:(obj:any)=>void,
-    //localStream?: MediaStream,
-    //videoFacing:"user"| { exact: "environment" },
-    //[key:string]:any
-}
+ 
 //export const meshMap =new SvelteMap<string,any>()
 export const meshList:meshInfoType[] =$state([])
 export const localDevice : {
@@ -33,30 +20,12 @@ export const localDevice : {
     videoFacing:"user"| { exact: "environment" },
     videoDom?:HTMLVideoElement,
 }={videoFacing:"user"}
-</script>
-<script lang="ts"  >
-//import { onMount } from "svelte";
-import {getLocalStream,createVidelElement} from '$lib/utils/getLocalStream'
-//import type {infoStruct} from "$lib/utils/mainDataStruct"  
-import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
-import Dialog  from '$lib/components/Dialog.svelte'
-import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm'  
-const {fillMainArea}:{fillMainArea:(...nodes: (Node | string)[])=>void} = $props()
-//export let mainArea:HTMLDivElement = null
- //   import { isStatusOnline } from '$lib/ControlExt.svelte';
-let mgtoyTitle = $state("mgtoy")
-
-const connUrl = "http://192.168.1.8:3000/conn.html" 
-const getConnHostJsonStr = ()=>{
-    return  {
-        _comment:"跨网信令交换服务",
-        id:Date.now().toString(32).slice(4),
-        id_comment:"[加入]端需要输入[生成]端的id",
-        create:false,
-        create_comment:"[生成/加入]WebRtc会话",
-        host_comment:"信令交换服务公共网址",
-        host:"https://www.zaddone.com/rtc"
-    }  
+export const updateUIWhenConn = (conn: connType)=>{
+    const btn = document.getElementById(conn.id);
+    if (btn){
+        btn.textContent = "@"+conn.id; 
+    } 
+    meshList.push({conn})
 }
 const ShowSubmit = (db:any,hand:(db:any)=>void)=>{ 
     jsonToForm(db ,dialogConfig.content)  
@@ -76,17 +45,20 @@ const ShowSubmit = (db:any,hand:(db:any)=>void)=>{
     };
     dialogConfig.content.appendChild(btn); 
 }
-
-const isStatusOnline = (updatetime:number)=>{
-    const timeOut = Date.now() - updatetime 
-    console.log(timeOut)
-    if ((6000-timeOut)<=0){
-        return '' 
-    }else{ 
-        return '('+(100-timeOut /6000 *100).toFixed(0) +"%)" 
+const startLocalStream = (stream:(m?: MediaStream)=>void)=>{
+    if (localDevice.localStream){
+        stream(localDevice.localStream)
+        return
     }
+    getLocalStream(localDevice.videoFacing).then((localStream)=>{
+        stream(localStream)
+        localDevice.localStream = localStream
+    }).catch(e=>{
+        stream()
+        console.log(e)
+    })
 }
-const webrtcBtn = (conn: connType )=>{
+export const webrtcBtn = (conn: connType )=>{
     dialogConfig.dialogEl.showModal() 
     startLocalStream(m=>{
         
@@ -123,266 +95,30 @@ const webrtcBtn = (conn: connType )=>{
         } );
     }) 
 }
-async function readFromDataChannel(name:string,size_:number,conn: connType) {
-    const file = conn.pc.createDataChannel(name,{ordered:true})
-    const root = await navigator.storage.getDirectory();
-    const fileHandle = await root.getFileHandle(name, { create: true });
-    const fileWritable = await fileHandle.createWritable();
-    let size = size_
-    file.onmessage = ev=>{  
-        fileWritable.write(ev.data).then(()=>{
-            size-=(ev.data as ArrayBuffer).byteLength
-            if (size>0){
-                return
-            }
-            console.log(name,size_, "end")
-            //
-            file.close() 
-            fileHandle.getFile().then(f=>{ 
-                
-                const furl = URL.createObjectURL(f) 
-                const iframe = document.createElement('iframe')
-                iframe.src = furl
-                iframe.width = window.innerWidth.toString();
-                iframe.height = window.innerHeight.toString();
-                //iframe.addEventListener('load')
-                fillMainArea(iframe)
-                iframe.onload = () => {
-                    fileWritable.close();
-                    URL.revokeObjectURL(furl)
-                    conn.dc.addEventListener('message',(ev)=>{ 
-                        iframe.contentWindow.postMessage(JSON.parse(ev.data))
-                    })
-                    window.addEventListener('message', (event) => {
-                        if (event.origin !== furl) return;
-                        conn.dc.send(JSON.stringify(event.data))
-                    }) 
-                }
-            })
-                                    
-        });
-    }
-}
-
-const updateDetailsUI = (
-    conf:{name:string,type:string,update:number,size:number },
-    element: HTMLDivElement,
-    obj:meshInfoType
-)=>{
-    if (!conf.name)return
-    let c = document.getElementById(conf.name)  as HTMLButtonElement
-    if (!c){
-        c =document.createElement('button') 
-        element.append(c)
-        c.id = conf.name 
-        c.textContent = conf.name
-        switch (conf.type){
-        case "udp" :
-            c.onclick=()=>{
-                //mgtoyTitle=conf.name+"-"+conf.type
-                obj.setSender(conf)
-            }
-            break;
-        case "webrtc":
-            c.onclick=()=>{
-                let conn = pool.getConnection(conf.name)
-                if (!conn){
-                    conn = initWebRTC({id:conf.name,dc:obj.conn.dc})
-                    createWebRTCDataChannel(conn)
-                }
-                
-                
-                webrtcBtn(conn)  
-                //c.onclick = ()=>{
-                //    webrtcBtn(conn) 
-                //} 
-            }      
-            break;
-        case "file":
-            c.onclick=async ()=>{
-                console.log(conf.name)
-                try{
-                    readFromDataChannel(conf.name,conf.size,obj.conn) 
-                }catch(e){
-                    console.error(e)
-                }
-            }
-            break;
-
-        }
-    }
-    if (conf.update){
-        const n = isStatusOnline(conf.update)
-        if (!n){
-            c.disabled=true
-        }else{
-            c.disabled=false
-        }
-        c.textContent = n+conf.name
-    }
-    //return c
-}
-const createWebRTCDataChannel = (conn: connType)=>{
-    
-    const dc = conn.pc.createDataChannel(conn.id,
-        {ordered:false,protocol:"json"}
-    )
-    dc.onopen = (e)=>{
-        //c.disabled = true
-        conn.dc = dc
-        conn.dc.addEventListener('message',ev=>{
-            try{
-                setRemoteRTCMsg(JSON.parse(ev.data),{pc:conn.pc,dc})
-            }catch(e){
-                console.error(e)
-            }
-        })
-
-        updateUIWhenConn(conn)
-        //JSON.parse(e.data)
-    }
-}
-const initWebRTC = (obj:{dc:{send:(db:string)=>void},id:string})=>{
-    const conn =  pool.createConnection(obj.id)
-    const msg:{type:string,id:string,msg?:any} = {type:"passthrough",id:obj.id}
-    conn.pc.onnegotiationneeded = ()=>{
-        createOffer(conn.pc).then(sdp=>{
-            if (conn.dc){
-                conn.dc.send(JSON.stringify(sdp))
-                return
-            }
-            msg.msg = sdp
-            obj.dc.send(JSON.stringify(msg));
-        });
-    }
-    conn.pc.onicecandidate = event=>{ 
-        if (event.candidate) {
-            if (conn.dc){
-                conn.dc.send(JSON.stringify(event.candidate.toJSON()))
-                return
-            }
-            msg.msg = event.candidate.toJSON()
-            obj.dc.send(JSON.stringify(msg));
-        }
-    }
-    conn.pc.ondatachannel = (ev)=>{
-        console.log("open channel",ev.channel)
-        conn.dc = ev.channel;
-        updateUIWhenConn(conn)
-        ev.channel.addEventListener('message',e=>{
-            try{
-                setRemoteRTCMsg(JSON.parse(e.data),{pc:conn.pc,dc:ev.channel})
-            }catch(e){
-                console.error(e)
-            }
-            
-        })
-    }
- 
-     
-    return conn
-}
-const remoteTrack = (obj:meshInfoType,element: HTMLDivElement)=>{
-    obj.conn.pc.ontrack = (ev)=>{
-        console.log(ev)
-        if (!obj.remoteStream){
-            obj.remoteStream = new MediaStream()
-        }
-        const t = obj.remoteStream.getTracks().find(t=>t.kind===ev.track.kind)
-        if (t){
-            
-            t.stop()
-            obj.remoteStream.removeTrack(t)
-        }
-        obj.remoteStream.addTrack(ev.track)
-        if (!obj.video){
-            obj.video = createVidelElement({srcObject:obj.remoteStream,width:100})
-            //localDevice.videoDom.srcObject = localDevice.remoteStream
-            //fillMainArea(localDevice.videoDom)
-            element.append(obj.video)
-        } 
-        obj.video.play()
-    }
-}
-const updateUIWhenConn = (conn: connType)=>{
-    const btn = document.getElementById(conn.id);
-    if (btn){
-        btn.textContent = "@"+conn.id; 
-    } 
-    meshList.push({conn})
-}
-const passthroughWebRTC = (obj:connType)=>{ 
-    obj.dc.addEventListener("message",(e)=>{
-        const conf = JSON.parse(e.data)
-        if (conf.type !=="passthrough"){
-            return
-        }
-        let conn = pool.getConnection(conf.id)
-        if (!conn){ 
-            conn = initWebRTC({id:conf.id,dc:{send:(msg:string)=>{
-                conf.msg = JSON.parse(msg)
-                obj.dc.send( JSON.stringify(conf))
-            }}}) 
-            webrtcBtn(conn) 
-        }
-        setRemoteRTCMsg(conf.msg,{pc:conn.pc,dc:{send:(msg)=>{
-            conf.msg = JSON.parse(msg)
-            obj.dc.send(JSON.stringify(conf))
-        }}}) 
-    })
-}
-const attachElement = (
-    element: HTMLDivElement,
-    obj:meshInfoType)=>{
-        element.id = "ele_"+obj.conn.id
-    //(element.firstChild as HTMLButtonElement).click();
-    remoteTrack(obj,element )
-    passthroughWebRTC(obj.conn)
-    obj.conn.dc.addEventListener("message",(e)=>{
-        const conf = JSON.parse(e.data) 
-        //console.log(conf,obj)
-        updateDetailsUI(conf,element,obj) 
-    }) 
-}
-
-const startLocalStream = (stream:(m?: MediaStream)=>void)=>{
-    if (localDevice.localStream){
-        stream(localDevice.localStream)
-        return
-    }
-    getLocalStream(localDevice.videoFacing).then((localStream)=>{
-        stream(localStream)
-        localDevice.localStream = localStream
-    }).catch(e=>{
-        stream()
-        console.log(e)
-    })
-}
-//Object.assign()
 </script>
-{#snippet mesh(obj:meshInfoType)}
-<details    >
-    <summary   style="cursor: pointer; text-align: left;height:48px; line-height: 48px;"  >
-        {obj.conn.id}
-    </summary>
-    <div   {@attach (element)=>{
-        attachElement(element,obj)
-        //showVideo(element,obj)
-        
-        return () => {
-            console.log(`${element.tagName} 即将卸载`);
-        };
-    }}  style="color:white;text-align: center;" id="module_list" >
-        <button onclick={(e)=>{
-            obj.conn.dc.send(JSON.stringify({  
-                name:"local" ,
-                msg: 0,
-                hasVideo:localDevice.localStream?true:false
-            })) 
-        }}>reload </button> 
-    </div>
-</details>
-{/snippet}
+<script lang="ts"  >
+//import { onMount } from "svelte";
+import Mesh  from '$lib/components/Mesh.svelte'
+
+import {getLocalStream} from '$lib/utils/getLocalStream' 
+import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
+import Dialog  from '$lib/components/Dialog.svelte'
+import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm'  
+const {fillMainArea}:{fillMainArea:(...nodes: (Node | string)[])=>void} = $props()
+let mgtoyTitle = $state("mgtoy") 
+const connUrl = "http://192.168.1.8:3000/conn.html" 
+const getConnHostJsonStr = ()=>{
+    return  {
+        _comment:"跨网信令交换服务",
+        id:Date.now().toString(32).slice(4),
+        id_comment:"[加入]端需要输入[生成]端的id",
+        create:false,
+        create_comment:"[生成/加入]WebRtc会话",
+        host_comment:"信令交换服务公共网址",
+        host:"https://www.zaddone.com/rtc"
+    }  
+} 
+</script>
 <svelte:head><title  >{mgtoyTitle}</title></svelte:head> 
 <div class="info-panel" id="info_panel"   >
     <button  onclick={(e)=>{
@@ -448,8 +184,9 @@ const startLocalStream = (stream:(m?: MediaStream)=>void)=>{
 
     </div>
 </details>
-{#each meshList as m} 
-    {@render mesh( m  )}
+{#each meshList as obj} 
+<Mesh  {obj} {fillMainArea}></Mesh> 
+ 
 {/each}
 
 </div>

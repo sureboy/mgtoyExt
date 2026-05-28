@@ -17,13 +17,12 @@ async function readFromOPFS(fileName, root: FileSystemDirectoryHandle) {
   return buffer;
 }
 
-const handleFile = (f: File)=>{
-    const decoder = new TextDecoder();
-    f.arrayBuffer().then(v=>{
-        const code = decoder.decode(v);
-
-    })
-}
+export const handleFile =async  (f: File)=>{
+  const decoder = new TextDecoder();
+  const v = await f.arrayBuffer() ;
+  return  decoder.decode(v);
+ 
+};
 
 
 const  setCSPMetaInHtml = (html:string, contentValue:string) => {
@@ -78,10 +77,116 @@ const  setScriptNonce = (html: string, nonceValue: string): string => {
     }
   });
 };
-const  replaceAssetPathsAdvanced = (html: string, replacer: (originalPath: string) => string): string => {
+
+async function asyncReplaceAll(
+  str: string,
+  regex: RegExp,
+  replacer: (match: string, ...args: any[]) => Promise<string>
+): Promise<string> {
+  const matches = [...str.matchAll(regex)];
+  if (matches.length === 0) {return str;}
+
+  const replacements = await Promise.all(
+    matches.map(async (match) => {
+      const fullMatch = match[0];
+      // 捕获组从索引1开始
+      const groups = match.slice(1);
+      const newValue = await replacer(fullMatch, ...groups, match.index, str);
+      return {
+        index: match.index,
+        length: fullMatch.length,
+        newValue,
+      };
+    })
+  );
+
+  // 按位置拼接
+  let lastIndex = 0;
+  let result = '';
+  for (const { index, length, newValue } of replacements) {
+    result += str.slice(lastIndex, index) + newValue;
+    lastIndex = index + length;
+  }
+  result += str.slice(lastIndex);
+  return result;
+}
+
+// 主函数：异步版本
+export const replaceAssetPathsAdvanced = async (
+  html: string,
+  replacer: (originalPath: string) => Promise<string> | string
+): Promise<string> => {
+  // 1. 处理 link 标签的 href
+  let result = await asyncReplaceAll(
+    html,
+    /(<link\s+[^>]*\bhref=["'])([^"']+)(["'][^>]*>)/gi,
+    async (fullMatch, prefix, oldPath, suffix) => {
+      const newPath = await replacer(oldPath);
+      return prefix + newPath + suffix;
+    }
+  );
+
+  // 2. 处理 script 标签的 src
+  result = await asyncReplaceAll(
+    result,
+    /(<script\s+[^>]*\bsrc=["'])([^"']+)(["'][^>]*>)/gi,
+    async (fullMatch, prefix, oldPath, suffix) => {
+      const newPath = await replacer(oldPath);
+      return prefix + newPath + suffix;
+    }
+  );
+
+  // 3. 处理内联 script 标签内的模块导入路径
+  result = await asyncReplaceAll(
+    result,
+    /<script\b([^>]*)>([\s\S]*?)<\/script>/gi,
+    async (fullMatch, attrs, scriptContent) => {
+      // 如果标签有 src 属性，跳过内容处理
+      if (/\bsrc\s*=/i.test(attrs)) {
+        return fullMatch;
+      }
+
+      // 判断是否为 JavaScript 代码
+      let isJavaScript = false;
+      const typeMatch = attrs.match(/\btype\s*=\s*["']([^"']*)["']/i);
+      if (!typeMatch) {
+        isJavaScript = true;
+      } else {
+        const typeValue = typeMatch[1].toLowerCase();
+        if (
+          typeValue === 'module' ||
+          typeValue === 'text/javascript' ||
+          typeValue === 'application/javascript'
+        ) {
+          isJavaScript = true;
+        }
+      }
+
+      if (isJavaScript) {
+        // 假设存在异步版本的 replaceAssetPathsFromJS，或者内联实现异步路径替换
+        // 这里示例：调用一个同样支持异步 replacer 的替换函数
+        const newContent = await replaceAssetPathsFromJSAsync(scriptContent, replacer);
+        return `<script${attrs}>${newContent}</script>`;
+      }
+
+      // 非 JavaScript 脚本，保持原样
+      return fullMatch;
+    }
+  );
+
+  return result;
+};
+const replaceAssetPathsFromJSAsync = (jsStr: string, replacer: (originalPath: string) => Promise<string> | string)=>{
+  return asyncReplaceAll(jsStr, /(?:import\s*\(|import\s+.*\s+from\s+|export\s+.*\s+from\s+|require\s*\(\)?)\s*['"]([^'"]+)['"]/g,
+    async (fullMatch,  oldPath) => {
+      const newPath = await replacer(oldPath);
+      return  fullMatch.replace(oldPath,newPath)  ;
+    });
+};
+export const  replaceAssetPathsAdvanced_ =(html: string, replacer: (originalPath: string) => string) => {
   // 匹配 link 标签，捕获整个 href 属性值
   html = html.replace(/(<link\s+[^>]*\bhref=["'])([^"']+)(["'][^>]*>)/gi, 
-    (match, prefix, oldPath, suffix) => prefix + replacer(oldPath) + suffix
+    (match, prefix, oldPath, suffix) => {return prefix +  replacer(oldPath) + suffix;}
   );
 
   // 匹配 script 标签，捕获整个 src 属性值

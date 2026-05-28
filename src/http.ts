@@ -197,7 +197,8 @@ export const RunHttpServer = (
       )=>{
     console.log(conf);
     if (defaultSerConfig.ser && defaultSerConfig.ser.Server){ 
-        Object.assign(defaultSerConfig.ser.conf,conf);
+        defaultSerConfig.ser.conf = conf;
+        //Object.assign(defaultSerConfig.ser.conf,conf);
         setTimeout(()=>{ 
             backServ(defaultSerConfig.ser!);
         });
