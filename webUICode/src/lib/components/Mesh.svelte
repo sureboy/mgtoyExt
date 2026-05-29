@@ -250,13 +250,17 @@ const showHtml =async ( path:string,code:string)=>{
     )*/
     iframe.srcdoc = code
     //urlList.push(iframe.src)
-    iframe.width = window.innerWidth.toString();
-    //iframe.sandbox.add('allow-scripts','allow-same-origin' )
-    iframe.height = window.innerHeight.toString();
+    const resizeIframe = ()=>{
+        iframe.width = window.innerWidth.toString(); 
+        iframe.height = window.innerHeight.toString();
+    }
+    resizeIframe()
+
     //iframe.addEventListener('load')
+    //window.addEventListener('resize',resizeIframe)
     iframe.style.border="0";
     fillMainArea(iframe)
-  
+    window.addEventListener('resize',()=>resizeIframe())
     iframe.onload = () => { 
         //URL.revokeObjectURL(iframe.src)
         //obj.conn.dc.addEventListener('message',(ev)=>{ 
@@ -264,8 +268,12 @@ const showHtml =async ( path:string,code:string)=>{
         //})
         window.addEventListener('message', (event) => {
             console.log("listener message",event)
-            //if (event.origin !== iframe.src) return;
-            mesh.conn.dc.send(JSON.stringify(Object.assign({name:mgtoyTitle.child},event.data)))
+            const conn = pool.getConnection(mgtoyTitle.id) 
+            if (conn){
+                conn.dc.send(JSON.stringify(Object.assign({name:mgtoyTitle.child},event.data)))
+            }else{
+                mesh.conn.dc.send(JSON.stringify(Object.assign({name:mgtoyTitle.child},event.data)))
+            } 
         }) 
     } 
 }

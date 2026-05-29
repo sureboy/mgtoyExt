@@ -16,7 +16,7 @@ import {pool} from "$lib/utils/webRTCPool"
 let sender:(msg:any)=>void = undefined
 //const infoData:infoStruct= {cars:[]}
 let mainArea:HTMLDivElement 
-let mgtoyTitle = $state("mgtoy")
+//let mgtoyTitle = $state("mgtoy")
 const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
     //InfoPanelMenu.conn=false
     //dialogConfig.dialogEl?.close()
@@ -35,7 +35,7 @@ const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
             }  
         }        
     }
-    mgtoyTitle = dcconfig.conn.id +"-mgtoy"
+    //mgtoyTitle = dcconfig.conn.id +"-mgtoy"
     
 
     for (let i=0;i<meshList.length;i++){
@@ -53,7 +53,8 @@ const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
 const startWebRTC = (sign:signalingStruct,conn:(
     dc:RTCDataChannel,
     pc: RTCPeerConnection)=>void)=>{
-    const {pc} =pool.createConnection()// new RTCPeerConnection(configuration); 
+    const conn_ =pool.createConnection(sign.id)// new RTCPeerConnection(configuration); 
+    const {pc} = conn_
     const link = document.createElement("a")
     link.textContent='...'
     dialogConfig.dialogEl?.showModal()
@@ -71,6 +72,7 @@ const startWebRTC = (sign:signalingStruct,conn:(
         if (receiveChannel.label==="file"){
             return
         }
+        conn_.dc = receiveChannel
         dialogConfig.content.innerHTML=""  
         dialogConfig.dialogEl?.close()
         pc.onnegotiationneeded = ()=>{
@@ -107,7 +109,7 @@ onMount(()=>{
     mainArea.append
 })
 </script>
-<svelte:head><title  >{mgtoyTitle}</title></svelte:head> 
+ 
 <div class="bg" bind:this={mainArea} >
     
     

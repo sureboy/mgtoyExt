@@ -120,7 +120,7 @@ const getConnHostJsonStr = ()=>{
     }  
 } 
 </script>
-<svelte:head><title  >{`${mgtoyTitle.id}-${mgtoyTitle.child}`}</title></svelte:head> 
+<svelte:head><title  >{mgtoyTitle.child?(mgtoyTitle.id+'-'+mgtoyTitle.child):mgtoyTitle.id}  </title></svelte:head> 
 <div class="info-panel" id="info_panel"   >
     <button  onclick={(e)=>{
         getLocalStream(localDevice.videoFacing).then((localStream)=>{ 
