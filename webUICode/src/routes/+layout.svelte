@@ -5,6 +5,8 @@
 </script>
 
 <svelte:head>
+	
+	<meta http-equiv="content-security-policy"   content="frame-src blob:;">
 	<link rel="icon" href={favicon} />
 </svelte:head>
 <svelte:window  ontouchend={(e)=>{

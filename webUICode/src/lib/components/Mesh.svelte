@@ -233,12 +233,14 @@ const showHtml =async ( path:string,code:string)=>{
     //const doc =  new DOMParser().parseFromString(code, 'text/html');
     //fillMainArea(doc.firstElementChild)
     const iframe = document.createElement('iframe')
+    
     iframe.src = URL.createObjectURL(
         new Blob(
             [code],
             //{ type: contentType['.html'] || 'text/plain' }
         )
     )
+    iframe.srcdoc = code
     urlList.push(iframe.src)
     iframe.width = window.innerWidth.toString();
     //iframe.sandbox.add('allow-scripts','allow-same-origin' )
@@ -246,6 +248,7 @@ const showHtml =async ( path:string,code:string)=>{
     //iframe.addEventListener('load')
     iframe.style.border="0";
     fillMainArea(iframe)
+    /*
     iframe.onload = () => { 
         //URL.revokeObjectURL(iframe.src)
         obj.conn.dc.addEventListener('message',(ev)=>{ 
@@ -255,7 +258,7 @@ const showHtml =async ( path:string,code:string)=>{
             if (event.origin !== iframe.src) return;
             obj.conn.dc.send(JSON.stringify(event.data))
         }) 
-    }
+    }*/
 }
 const isStatusOnline = (updatetime:number)=>{
     const timeOut = Date.now() - updatetime 
