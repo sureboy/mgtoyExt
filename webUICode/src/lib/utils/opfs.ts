@@ -1,4 +1,12 @@
-//const root = await navigator.storage.getDirectory();
+export const OPFSRoot:FileSystemDirectoryHandle|null =await (async ()=> {
+  try{
+    return await navigator.storage.getDirectory();
+  }catch(e){
+    console.log(e);
+    return null;
+  }
+  
+})();
 
 // 创建/写入文件
 async function writeToOPFS(fileName, data, root: FileSystemDirectoryHandle) {
@@ -8,7 +16,43 @@ async function writeToOPFS(fileName, data, root: FileSystemDirectoryHandle) {
   await writable.close();
   console.log(`文件已保存到 OPFS: ${fileName}`);
 }
-
+async function ensureDirectory(  dir:string) {
+  // 先尝试获取为目录
+  try {
+    return await OPFSRoot.getDirectoryHandle(dir, { create: true });
+  } catch (e) {
+    await OPFSRoot.removeEntry(dir, { recursive: false }); // 删除文件
+    return await OPFSRoot.getDirectoryHandle(dir, { create: true });
+  }
+}
+export const startHandleFile =async (dir:string,name:string)=>{
+  if (!OPFSRoot){
+    const chunks:Blob[] = [];
+    //const fileHandle = await window.showSaveFilePicker({ suggestedName: fileName });
+    return {
+      //createWritable(options?: FileSystemCreateWritableOptions): Promise<FileSystemWritableFileStream>,
+ 
+      write:async(chunk:BufferSource)=>{
+        chunks.push(new Blob([chunk]));
+      },
+      close:async()=>{},
+      getFile:async()=>{
+        return new File( chunks,name);
+      }
+    };
+  }
+  const directory =await ensureDirectory(dir);
+  const filehandle = await directory.getFileHandle(name,{create:true});
+  const fileWritable = await filehandle.createWritable();
+  
+  //fileWritable.abort()
+  return {
+    write:(chunk:BufferSource)=> fileWritable.write(chunk),
+    close:()=>fileWritable.close(),
+    getFile:()=>filehandle.getFile(),
+  };
+  //directory.
+};
 // 读取回文件
 async function readFromOPFS(fileName, root: FileSystemDirectoryHandle) {
   const fileHandle = await root.getFileHandle(fileName);
@@ -23,7 +67,6 @@ export const handleFile =async  (f: File)=>{
   return  decoder.decode(v);
  
 };
-
 
 const  setCSPMetaInHtml = (html:string, contentValue:string) => {
   // 匹配 <meta http-equiv="Content-Security-Policy" ... content="...">
@@ -110,7 +153,6 @@ async function asyncReplaceAll(
   result += str.slice(lastIndex);
   return result;
 }
-
 // 主函数：异步版本
 export const replaceAssetPathsAdvanced = async (
   html: string,

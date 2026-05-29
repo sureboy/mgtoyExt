@@ -15,7 +15,7 @@ import {updateUIWhenConn,webrtcBtn} from "$lib/components/InfoPanel.svelte"
 import {createVidelElement} from '$lib/utils/getLocalStream' 
 import { onMount } from "svelte";
 import { createOffer} from '$lib/webrtc' 
-import {handleFile,replaceAssetPathsAdvanced} from '$lib/utils/opfs'
+import {handleFile,replaceAssetPathsAdvanced,startHandleFile} from '$lib/utils/opfs'
 let element: HTMLDivElement
 const urlList:string[] = []
 const {obj,fillMainArea}:{
@@ -157,13 +157,13 @@ const updateDetailsUI = (
             c.onclick=async ()=>{
                 console.log(conf.name)
                 try{ 
-                    const root = await navigator.storage.getDirectory();
-                    updateFileFromDataChannel(root,conf.name,
+                    //const root = await navigator.storage.getDirectory();
+                    updateFileFromDataChannel(conf.name,
                         obj.conn.pc.createDataChannel(conf.name,{ordered:true}), 
                         (code)=>{
                             switch (conf.name.split(".").pop()){
                                 case "html":
-                                    showHtml(root,conf.name,code);
+                                    showHtml(conf.name,code);
                                     break;
                             }
                         }
@@ -187,7 +187,7 @@ const updateDetailsUI = (
     }
     //return c
 }
-const showHtml =async (root:FileSystemDirectoryHandle,path:string,code:string)=>{
+const showHtml =async ( path:string,code:string)=>{
     while(true){
         const u = urlList.pop()
         if (!u){
@@ -202,7 +202,7 @@ const showHtml =async (root:FileSystemDirectoryHandle,path:string,code:string)=>
             let t = setTimeout(() => {
                 resolve(origin)
             }, 2000);
-            updateFileFromDataChannel(root,path,
+            updateFileFromDataChannel(path,
                 obj.conn.pc.createDataChannel(origin,{ordered:true}), 
                 (v)=>{
                     //console.log(v)
@@ -230,6 +230,8 @@ const showHtml =async (root:FileSystemDirectoryHandle,path:string,code:string)=>
         
         //return "origin"
     })
+    //const doc =  new DOMParser().parseFromString(code, 'text/html');
+    //fillMainArea(doc.firstElementChild)
     const iframe = document.createElement('iframe')
     iframe.src = URL.createObjectURL(
         new Blob(
@@ -284,32 +286,32 @@ async function ensureDirectory(root:FileSystemDirectoryHandle, name:string) {
  
   }
 }
-async function updateFileFromDataChannel(root:FileSystemDirectoryHandle,path:string,file:RTCDataChannel,fileStr:(v:string)=>void,runEvent?:(n:number)=>void) {
+async function updateFileFromDataChannel( path:string,file:RTCDataChannel,fileStr:(v:string)=>void,runEvent?:(n:number)=>void) {
     //const file = conn.pc.createDataChannel(name,{ordered:true})
     //URL.parse()
-    
-    const dir = await ensureDirectory(root ,encodeURIComponent(path) )
+    const handle =await startHandleFile(path,encodeURIComponent(file.label))
+    //const dir = await ensureDirectory(root ,encodeURIComponent(path) )
     //console.log(file.label)
     //root.getDirectoryHandle
     //console.log(encodeURIComponent(new URL(file.label,window.location.href).pathname))
-    const fileHandle = await dir.getFileHandle(
-        encodeURIComponent( file.label ) , { create: true });
+    //const fileHandle = await dir.getFileHandle(
+    //    encodeURIComponent( file.label ) , { create: true });
     //console.log(file.label,"handle")
-    const fileWritable = await fileHandle.createWritable(); 
+    //const fileWritable = await fileHandle.createWritable(); 
     
     file.onmessage =async ev=>{  
         //console.log(ev.data)
         if (typeof ev.data === "string"){
             file.close() 
             //console.log(file.label,"end")
-            const code = await handleFile(await fileHandle.getFile() ).finally(()=>{
-                fileWritable.close();
+            const code = await handleFile(await handle.getFile() ).finally(()=>{
+                handle.close();
             }) 
             fileStr(code)
             
             
         }else{
-            fileWritable.write(ev.data)
+            handle.write(ev.data)
             if (runEvent)
             runEvent((ev.data as ArrayBuffer).byteLength)
         }
