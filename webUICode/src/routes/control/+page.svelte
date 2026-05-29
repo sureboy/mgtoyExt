@@ -1,5 +1,5 @@
 <script lang="ts">  
-import BlinkEyes from '$lib/components/BlinkEyes.svelte';
+//import BlinkEyes from '$lib/components/BlinkEyes.svelte';
 import InfoPanel,{dialogConfig,meshList,localDevice} from "$lib/components/InfoPanel.svelte";
 import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
@@ -14,10 +14,9 @@ import {pool} from "$lib/utils/webRTCPool"
 //    import { clearInterval } from 'node:timers';
 //let canvas:HTMLCanvasElement
 let sender:(n:number)=>void = undefined
-const infoData:infoStruct= {cars:[]}
+//const infoData:infoStruct= {cars:[]}
 let mainArea:HTMLDivElement 
 let mgtoyTitle = $state("mgtoy")
- 
 const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
     //InfoPanelMenu.conn=false
     //dialogConfig.dialogEl?.close()

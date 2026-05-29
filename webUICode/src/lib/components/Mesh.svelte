@@ -236,7 +236,7 @@ const showHtml =async ( path:string,code:string)=>{
     iframe.src = URL.createObjectURL(
         new Blob(
             [code],
-            { type: contentType['.html'] || 'text/plain' }
+            //{ type: contentType['.html'] || 'text/plain' }
         )
     )
     urlList.push(iframe.src)
@@ -244,6 +244,7 @@ const showHtml =async ( path:string,code:string)=>{
     //iframe.sandbox.add('allow-scripts','allow-same-origin' )
     iframe.height = window.innerHeight.toString();
     //iframe.addEventListener('load')
+    iframe.style.border="0";
     fillMainArea(iframe)
     iframe.onload = () => { 
         //URL.revokeObjectURL(iframe.src)
