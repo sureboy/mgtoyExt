@@ -233,15 +233,15 @@ const showHtml =async ( path:string,code:string)=>{
     //const doc =  new DOMParser().parseFromString(code, 'text/html');
     //fillMainArea(doc.firstElementChild)
     const iframe = document.createElement('iframe')
-    
+    /*
     iframe.src = URL.createObjectURL(
         new Blob(
             [code],
-            //{ type: contentType['.html'] || 'text/plain' }
+            { type: contentType['.html'] || 'text/plain' }
         )
-    )
+    )*/
     iframe.srcdoc = code
-    urlList.push(iframe.src)
+    //urlList.push(iframe.src)
     iframe.width = window.innerWidth.toString();
     //iframe.sandbox.add('allow-scripts','allow-same-origin' )
     iframe.height = window.innerHeight.toString();
