@@ -10,13 +10,16 @@ export const initBar = (port:number,loadIP:string   )=>{
     //menu?.dispose();
     //}
     //const loadIP = getLocalIp();
+    const config = vscode.workspace.getConfiguration("mgtoy");
+    const host = config.get("host")||'mgtoy.cn';
     Bar.command="menu";
     const ipUrl = `http://${loadIP}:${port}`;
     Bar.text = ipUrl;
     Bar.tooltip="Generating QR code...";
     const loadUrl = `http://localhost:${port}`;
     const menuList = [ipUrl,loadUrl];
-    const textToEncode =`${ipUrl}/conn.html#https://mgtoy.cn/control`;
+    const textToEncode =`${ipUrl}/conn.html#https://${host}/control`;
+    const textToEncode1 =`${ipUrl}/conn.html#http://${loadIP}:5173/control`;
     QRCode.toDataURL(textToEncode, { margin: 1, width: 150 }, (err, url) => {
         if (err) {
             Bar.tooltip = `Failed: ${err.message}`;
@@ -24,7 +27,7 @@ export const initBar = (port:number,loadIP:string   )=>{
         }
         // 创建一个 MarkdownString，支持图片
         const markdown = new vscode.MarkdownString(
-            `![QR Code](${url})\n\n**${textToEncode}**`
+            `![QR Code](${url})\n\n**${textToEncode}**\n\n**${textToEncode1}**`
         );
         markdown.supportHtml = true;  // 可开启 HTML 支持（非必须）
         markdown.isTrusted = true;     // 信任内容，允许图片加载

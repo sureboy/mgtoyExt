@@ -34,6 +34,11 @@
           "type": "number",
           "default": 3000,
           "description": "tcp server Port"
+        },
+        "mgtoy.host":{
+          "type":"string",
+          "default":"mgtoy.cn",
+          "description": "Web server host"
         }
       }
     },
