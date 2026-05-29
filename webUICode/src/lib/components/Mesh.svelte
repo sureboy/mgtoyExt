@@ -4,22 +4,26 @@ export type meshInfoType = {
     conn:connType, 
     remoteStream?: MediaStream,
     video?:HTMLVideoElement,
-    
+    main?:string,
     setSender?:(obj:any)=>void, 
 } 
 </script>
 <script lang="ts">  
 import { setRemoteRTCMsg } from '$lib/utils/postAndSSEWebrtc';
 import {pool} from "$lib/utils/webRTCPool"
-import {updateUIWhenConn,webrtcBtn} from "$lib/components/InfoPanel.svelte"
+import {updateUIWhenConn,webrtcBtn,mgtoyTitle} from "$lib/components/InfoPanel.svelte"
 import {createVidelElement} from '$lib/utils/getLocalStream' 
 import { onMount } from "svelte";
 import { createOffer} from '$lib/webrtc' 
-import {handleFile,replaceAssetPathsAdvanced,startHandleFile} from '$lib/utils/opfs'
+import {
+    handleFile,
+    //insertScriptAtBodyStart,
+    replaceAssetPathsAdvanced,
+    startHandleFile} from '$lib/utils/opfs'
 let element: HTMLDivElement
 const urlList:string[] = []
-const {obj,fillMainArea}:{
-    obj:meshInfoType,
+const {mesh,fillMainArea}:{
+    mesh:meshInfoType,
     fillMainArea:(...nodes: (Node | string)[])=>void} = $props()
 const remoteTrack = (obj:meshInfoType,element: HTMLDivElement)=>{
     obj.conn.pc.ontrack = (ev)=>{
@@ -123,29 +127,40 @@ const createWebRTCDataChannel = (conn: connType)=>{
     }
 }
 const updateDetailsUI = (
-    conf:{name:string,type:string,update:number },
+    child:{name:string,type:string,update:number },
     element: HTMLDivElement,
     obj:meshInfoType
 )=>{
-    if (!conf.name)return
-    let c = document.getElementById(conf.name)  as HTMLButtonElement
+    if (!child.name)return
+    let c = document.getElementById(child.name)  as HTMLButtonElement
     if (!c){
         c =document.createElement('button') 
         element.append(c)
-        c.id = conf.name 
-        c.textContent = conf.name
-        switch (conf.type){
+        c.id = child.name 
+        c.textContent = child.name
+        switch (child.type){
         case "udp" :
+            if (child.update){
+                const n = isStatusOnline(child.update)
+                if (!n){
+                    c.disabled=true
+                }else{
+                    c.disabled=false
+                }
+                c.textContent = n+child.name
+            }
             c.onclick=()=>{
+                mgtoyTitle.id= obj.conn.id
+                mgtoyTitle.child = child.name
                 //mgtoyTitle=conf.name+"-"+conf.type
-                obj.setSender(conf)
+                //obj.setSender(child)
             }
             break;
         case "webrtc":
             c.onclick=()=>{
-                let conn = pool.getConnection(conf.name)
+                let conn = pool.getConnection(child.name)
                 if (!conn){
-                    conn = initWebRTC({id:conf.name,dc:obj.conn.dc})
+                    conn = initWebRTC({id:child.name,dc:obj.conn.dc})
                     createWebRTCDataChannel(conn)
                 }
                 
@@ -155,15 +170,15 @@ const updateDetailsUI = (
             break;
         case "file":
             c.onclick=async ()=>{
-                console.log(conf.name)
+                console.log(child.name)
                 try{ 
                     //const root = await navigator.storage.getDirectory();
-                    updateFileFromDataChannel(conf.name,
-                        obj.conn.pc.createDataChannel(conf.name,{ordered:true}), 
+                    updateFileFromDataChannel(child.name,
+                        obj.conn.pc.createDataChannel(child.name,{ordered:true}), 
                         (code)=>{
-                            switch (conf.name.split(".").pop()){
+                            switch (child.name.split(".").pop()){
                                 case "html":
-                                    showHtml(conf.name,code);
+                                    showHtml(child.name,code);
                                     break;
                             }
                         }
@@ -176,15 +191,7 @@ const updateDetailsUI = (
 
         }
     }
-    if (conf.update){
-        const n = isStatusOnline(conf.update)
-        if (!n){
-            c.disabled=true
-        }else{
-            c.disabled=false
-        }
-        c.textContent = n+conf.name
-    }
+
     //return c
 }
 const showHtml =async ( path:string,code:string)=>{
@@ -203,7 +210,7 @@ const showHtml =async ( path:string,code:string)=>{
                 resolve(origin)
             }, 2000);
             updateFileFromDataChannel(path,
-                obj.conn.pc.createDataChannel(origin,{ordered:true}), 
+                mesh.conn.pc.createDataChannel(origin,{ordered:true}), 
                 (v)=>{
                     //console.log(v)
                     const url = URL.createObjectURL(
@@ -230,6 +237,7 @@ const showHtml =async ( path:string,code:string)=>{
         
         //return "origin"
     })
+    //code = insertScriptAtBodyStart(code,`window.postMessage=(db)=>{}`)
     //const doc =  new DOMParser().parseFromString(code, 'text/html');
     //fillMainArea(doc.firstElementChild)
     const iframe = document.createElement('iframe')
@@ -248,17 +256,18 @@ const showHtml =async ( path:string,code:string)=>{
     //iframe.addEventListener('load')
     iframe.style.border="0";
     fillMainArea(iframe)
-    /*
+  
     iframe.onload = () => { 
         //URL.revokeObjectURL(iframe.src)
-        obj.conn.dc.addEventListener('message',(ev)=>{ 
-            iframe.contentWindow.postMessage(JSON.parse(ev.data))
-        })
+        //obj.conn.dc.addEventListener('message',(ev)=>{ 
+        //    iframe.contentWindow.postMessage(JSON.parse(ev.data))
+        //})
         window.addEventListener('message', (event) => {
-            if (event.origin !== iframe.src) return;
-            obj.conn.dc.send(JSON.stringify(event.data))
+            console.log("listener message",event)
+            //if (event.origin !== iframe.src) return;
+            mesh.conn.dc.send(JSON.stringify(Object.assign({name:mgtoyTitle.child},event.data)))
         }) 
-    }*/
+    } 
 }
 const isStatusOnline = (updatetime:number)=>{
     const timeOut = Date.now() - updatetime 
@@ -306,10 +315,11 @@ async function updateFileFromDataChannel( path:string,file:RTCDataChannel,fileSt
     file.onmessage =async ev=>{  
         //console.log(ev.data)
         if (typeof ev.data === "string"){
-            file.close() 
+            
             //console.log(file.label,"end")
             const code = await handleFile(await handle.getFile() ).finally(()=>{
                 handle.close();
+                file.close() 
             }) 
             fileStr(code)
             
@@ -324,23 +334,23 @@ async function updateFileFromDataChannel( path:string,file:RTCDataChannel,fileSt
 //let attachElement:( element: HTMLDivElement, obj:meshInfoType)=>void 
 onMount(()=>{
     console.log(element)
-    element.id = "div_"+obj.conn.id
-    remoteTrack(obj,element )
-    passthroughWebRTC(obj.conn)
-    obj.conn.dc.addEventListener("message",(e)=>{
+    element.id = "div_"+mesh.conn.id
+    remoteTrack(mesh,element )
+    passthroughWebRTC(mesh.conn)
+    mesh.conn.dc.addEventListener("message",(e)=>{
         const conf = JSON.parse(e.data) 
         //console.log(conf,obj)
-        updateDetailsUI(conf,element,obj) 
+        updateDetailsUI(conf,element,mesh) 
     }) 
 })
 </script>
 <details    >
     <summary   style="cursor: pointer; text-align: left;height:48px; line-height: 48px;"  >
-        {obj.conn.id}
+        {mesh.conn.id}
     </summary>
     <div   bind:this={element}  style="color:white;text-align: center;" >
         <button onclick={(e)=>{
-            obj.conn.dc.send(JSON.stringify({  
+            mesh.conn.dc.send(JSON.stringify({  
                 name:"local" ,
                 msg: 0,
                  

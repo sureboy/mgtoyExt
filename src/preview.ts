@@ -140,10 +140,10 @@ const setWebviewHtml = (uri: vscode.Uri,context: vscode.ExtensionContext,port =3
     vscode.workspace.fs.readFile(uri).then(content=>{
         let strHtml = new TextDecoder('utf-8').decode(content) ;
         strHtml = setCSPMetaInHtml(strHtml,csp );
-		strHtml = insertScriptAtBodyStart(strHtml,`window.vscode = acquireVsCodeApi();
+		strHtml = insertScriptAtBodyStart(strHtml,`window.parent = acquireVsCodeApi();
 function reportErrorToExtension(errorDetails) {
-  if (window.vscode) {
-    window.vscode.postMessage({
+  if (window.parent) {
+    window.parent.postMessage({
       type: 'webviewError',
       payload: errorDetails
     });
@@ -211,7 +211,7 @@ export function previewFile(uri: vscode.Uri,context: vscode.ExtensionContext) {
         //vscode.window.setStatusBarMessage()
         panel.webview.onDidReceiveMessage(
           message => {
-           // if (message.type === 'webviewError') {
+           if (message.type === 'webviewError') {
               //vscode.window.createOutputChannel()
               // 此时，错误信息会作为普通的扩展日志，输出在“调试控制台”(DEBUG CONSOLE)中
               //vscode.window.showErrorMessage('js Error',{modal:true,detail:JSON.stringify(message.payload,null,2)});
@@ -219,7 +219,10 @@ export function previewFile(uri: vscode.Uri,context: vscode.ExtensionContext) {
               outputChannel.appendLine('');
               console.error('[Webview Error]', message.payload);
               // 你甚至可以选择在这里用 vscode.window.showErrorMessage 向用户弹窗提醒
-           // }
+           }else{
+            console.log(message);
+           }
+           
           },
           undefined,
           context.subscriptions

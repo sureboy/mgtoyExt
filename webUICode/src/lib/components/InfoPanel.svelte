@@ -13,9 +13,10 @@ export const dialogConfig:dialogStruct = {
  
 //export const meshMap =new SvelteMap<string,any>()
 export const meshList:meshInfoType[] =$state([])
+export const mgtoyTitle = $state({id:"mgtoy",child:""}) 
 export const localDevice : {
     //pc?: RTCPeerConnection
-    localStream?: MediaStream,
+    localStream?: MediaStream, 
     //remoteStream?: MediaStream,
     videoFacing:"user"| { exact: "environment" },
     videoDom?:HTMLVideoElement,
@@ -105,7 +106,7 @@ import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 import Dialog  from '$lib/components/Dialog.svelte'
 import {jsonToForm,collectFormData} from '$lib/utils/jsonToForm'  
 const {fillMainArea}:{fillMainArea:(...nodes: (Node | string)[])=>void} = $props()
-let mgtoyTitle = $state("mgtoy") 
+
 const connUrl = "http://192.168.1.8:3000/conn.html" 
 const getConnHostJsonStr = ()=>{
     return  {
@@ -119,7 +120,7 @@ const getConnHostJsonStr = ()=>{
     }  
 } 
 </script>
-<svelte:head><title  >{mgtoyTitle}</title></svelte:head> 
+<svelte:head><title  >{`${mgtoyTitle.id}-${mgtoyTitle.child}`}</title></svelte:head> 
 <div class="info-panel" id="info_panel"   >
     <button  onclick={(e)=>{
         getLocalStream(localDevice.videoFacing).then((localStream)=>{ 
@@ -184,8 +185,8 @@ const getConnHostJsonStr = ()=>{
 
     </div>
 </details>
-{#each meshList as obj} 
-<Mesh  {obj} {fillMainArea}></Mesh> 
+{#each meshList as mesh} 
+<Mesh  {mesh} {fillMainArea}></Mesh> 
  
 {/each}
 

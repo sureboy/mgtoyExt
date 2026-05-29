@@ -58,7 +58,7 @@ class ConnectionPool {
 
             }
         };
-        pc.oniceconnectionstatechange = () => console.log(`❄️ ICE 状态: ${pc.iceConnectionState}`);
+        pc.oniceconnectionstatechange = (ev) => console.log(`❄️ ICE 状态: ${pc.iceConnectionState}`,ev);
 
         return conn;
     }

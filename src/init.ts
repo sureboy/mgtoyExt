@@ -126,13 +126,15 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
                         }  
                         pc.ondatachannel=(ev)=>{
                             console.log(ev.channel.label);
+                            ev.channel.onclose = ()=>{
+                                console.log("close",ev.channel.label);
+                            };
                             const fn = vscode.Uri.file(path.join(path.dirname(conf.rootPath ),ev.channel.label));
                             vscode.workspace.fs.stat(fn).then(file=>{ 
                                 sendFileWithStream(fn.fsPath,ev.channel).then(n=>{
                                     console.log(n,file.size);
-                                    ev.channel.send("end");
-                                    ev.channel.close();
-                                    
+                                    ev.channel.send("end"); 
+                                    //ev.channel.close(); 
                                 }); 
                             }); 
                         };

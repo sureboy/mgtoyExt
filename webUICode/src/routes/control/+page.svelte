@@ -1,19 +1,19 @@
 <script lang="ts">  
 //import BlinkEyes from '$lib/components/BlinkEyes.svelte';
 import InfoPanel,{dialogConfig,meshList,localDevice} from "$lib/components/InfoPanel.svelte";
-import Joystick from "$lib/components/Joystick.svelte";
+//import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
 import {handleOffer,createOffer} from '$lib/webrtc' 
 //import {connWebRTC ,createRtcTrack,createOffer} from '$lib/webrtc'
 //import ConnWebrtc,{ startWebRTC} from '$lib/ConnWebrtc.svelte'; 
-import type {infoStruct,signalingStruct} from "$lib/utils/mainDataStruct" 
-import {createCmdSender} from "$lib/utils/wheelCmdSender"
+import type {signalingStruct} from "$lib/utils/mainDataStruct" 
+//import {createCmdSender} from "$lib/utils/wheelCmdSender"
 import type {meshInfoType} from '$lib/components/Mesh.svelte'
 import {setRemoteRTCMsg} from "$lib/utils/postAndSSEWebrtc"
 import {pool} from "$lib/utils/webRTCPool"
 //    import { clearInterval } from 'node:timers';
 //let canvas:HTMLCanvasElement
-let sender:(n:number)=>void = undefined
+let sender:(msg:any)=>void = undefined
 //const infoData:infoStruct= {cars:[]}
 let mainArea:HTMLDivElement 
 let mgtoyTitle = $state("mgtoy")
@@ -31,7 +31,7 @@ const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
         dc}, 
         setSender:function(db:any){  
             sender = msg=>{ 
-                dc.send(JSON.stringify(Object.assign({msg},db)))
+                dc.send(JSON.stringify(Object.assign(msg,db)))
             }  
         }        
     }

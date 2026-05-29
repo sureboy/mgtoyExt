@@ -272,7 +272,7 @@ const replaceAssetPathsFromJS = (jsStr: string, replacer: (originalPath: string)
         (match, oldPath) => match.replace(oldPath, replacer(oldPath))
       );
 };
-const insertScriptAtBodyStart = (html: string, codeToInsert: string)=> {
+export const insertScriptAtBodyStart = (html: string, codeToInsert: string)=> {
   const bodyRegex = /<body\b[^>]*>/i;
   const bodyMatch = html.match(bodyRegex);
   if (!bodyMatch) {return html;}

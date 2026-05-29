@@ -2,7 +2,7 @@
  
 
 
-let clickEvent = console.log;
+let clickEvent =window.parent?window.parent.postMessage:console.log;
 const canvas  = document.getElementById("joystickCanvas");
 let stickOuterRadius = 110;      // 大圈半径 (底座)
 let stickInnerRadius = 34;       // 小手柄半径
@@ -44,7 +44,7 @@ function updateDirectionUI() {
         currentDirection = newDir;
         //directionSpan(currentDirection);
     }// else {
-        clickEvent(currentDirection);
+        clickEvent({msg:currentDirection});
     //}
 }
 // 重置摇杆至中心 (停止)
