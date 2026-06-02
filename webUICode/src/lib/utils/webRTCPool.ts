@@ -7,7 +7,7 @@ export const configuration = {
     //sdpSemantics: 'unified-plan'
 };
 type ConnectionId = string;
-export type connType = {pc:RTCPeerConnection,dc?:RTCDataChannel,id:string}
+export type connType = {pc:RTCPeerConnection,dc?:RTCDataChannel,id:string,onClose?:()=>void}
 
 class ConnectionPool {
     // 核心存储：用一个Map来管理所有连接
@@ -55,6 +55,8 @@ class ConnectionPool {
             console.log(pc.connectionState);
             if (pc.connectionState === 'closed' || pc.connectionState === 'failed') {
                 this.closeConnection(id);
+                conn.onClose?.();
+                //window.location.reload();
 
             }
         };

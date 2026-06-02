@@ -4,7 +4,7 @@ export type meshInfoType = {
     conn:connType, 
     remoteStream?: MediaStream,
     video?:HTMLVideoElement,
-    main?:string,
+    //main?:string,
     setSender?:(obj:any)=>void, 
 } 
 </script>
@@ -301,10 +301,8 @@ async function ensureDirectory(root:FileSystemDirectoryHandle, name:string) {
     return await root.getDirectoryHandle(name, { create: true });
   } catch (e) {
     console.error(e)
- 
     await root.removeEntry(name, { recursive: false }); // 删除文件
     return await root.getDirectoryHandle(name, { create: true });
- 
   }
 }
 async function updateFileFromDataChannel( path:string,file:RTCDataChannel,fileStr:(v:string)=>void,runEvent?:(n:number)=>void) {

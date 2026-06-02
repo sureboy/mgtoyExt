@@ -1,11 +1,20 @@
-import {createRtcTrack,createOffer} from '$lib/webrtc';
-export const createWebrtcConnFromCenterUrl = (obj={id:"",create:true,host:"http://127.0.0.1:8088/"})=>{
+import {
+    //createRtcTrack,
+    createOffer} from '$lib/webrtc';
+import {pool} from "$lib/utils/webRTCPool";
+import type {connType} from "$lib/utils/webRTCPool";
+export const createWebrtcConnFromCenterUrl = (
+    obj={
+        id:"",
+        create:true,
+        host:"http://127.0.0.1:8088/"
+    },getConn:(conn:connType)=>void)=>{
     postWebRTCMsg(obj ).then(r=>{
         if (r.ok){
             if (obj.create){ 
                 const conn = createRtcConn((msg)=>{
                     postWebRTCMsg(Object.assign({msg:btoa(msg)},obj) );
-                },obj) ;
+                },obj,getConn) ;
                 getWebRTCMsgFromSSE((MsgObj)=>{
                     setRemoteRTCMsg(MsgObj,conn) ;
                     if ("onmessage" in conn.dc){
@@ -16,12 +25,13 @@ export const createWebrtcConnFromCenterUrl = (obj={id:"",create:true,host:"http:
                 } ,obj );
             }else{ 
                 r.json().then(db=>{
-                    const conn = appendRtcConn((msg)=>{ 
+                    const conn = appendRtcConn(obj.id,(msg)=>{ 
                         postWebRTCMsg(Object.assign({msg:btoa(msg)},obj) );
-                    }); 
-                    (db as any[]).forEach(v=>{
+                    },getConn); 
+                    //console.log(db);
+                    (db as any[]).reverse().forEach((v,i)=>{
                         setRemoteRTCMsg(JSON.parse(atob(v)),conn);
-                        //console.log()
+                        console.log(i,atob(v));
                     });
                 });
             } 
@@ -56,11 +66,16 @@ const getWebRTCMsgFromSSE = (msg:(msg:any)=>void,inputConfig={id:"",host:"http:/
         source.close();
     };
 };
-export const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: string): void}},maxNum=10)=>{
+export const setRemoteRTCMsg = (
+    MsgObj:any,
+    conn:{
+        pc: RTCPeerConnection,
+        dc:{send(data: string): void}},
+    maxNum=10)=>{
     //console.log(MsgObj);
     if (MsgObj.candidate){ 
-        conn.pc.addIceCandidate(new RTCIceCandidate(MsgObj)).then(()=>{
-            //console.log( MsgObj );
+         conn.pc.addIceCandidate(new RTCIceCandidate(MsgObj)).then(()=>{
+            //console.log( "ok",MsgObj );
         }).catch(e=>{
             maxNum--;
             if (maxNum>0){
@@ -78,7 +93,7 @@ export const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(
             if (MsgObj.type==="offer"){
                 conn.pc.createAnswer().then(sdp=>{
                     conn.pc.setLocalDescription(sdp);
-                    conn.dc.send(JSON.stringify(sdp));                 
+                    conn.dc.send(JSON.stringify( sdp) );                 
                 });
             } 
         }).catch(e=>{
@@ -100,18 +115,29 @@ const postWebRTCMsg = (inputConfig={id:"",create:false,host:"http://127.0.0.1:80
         body: JSON.stringify(inputConfig) 
     });
 };
-const createRtcConn = (send:(iceOrSdp:string)=>void,inputConfig={id:"test",create:true})=>{
+const createRtcConn = (
+    send:(iceOrSdp:string)=>void,inputConfig={id:"test",create:true},
+    getConn:(_conn:connType)=>void
+)=>{
+    
+    const conn = pool.createConnection(inputConfig.id);
     const outOjb = {
-        pc:createRtcTrack((ice)=>{
-            outOjb.dc.send(JSON.stringify(ice));
-        }),
+        conn,
+        pc:conn.pc,
         dc:{send}
     };
- 
+    conn.pc.onicecandidate = (event)=>{
+         if (event.candidate) { 
+            outOjb.dc.send(JSON.stringify(event.candidate.toJSON()));
+        }
+    };
     const dc = outOjb.pc.createDataChannel(inputConfig.id,{ordered:false});
+    conn.dc = dc;
     dc.onopen=()=>{
         outOjb.dc = dc;
         console.log("dc open");
+        
+        getConn(conn);
 
     };
     dc.onmessage=(e)=>{
@@ -124,18 +150,29 @@ const createRtcConn = (send:(iceOrSdp:string)=>void,inputConfig={id:"test",creat
     };
     return outOjb;
 };
-const appendRtcConn = (send:(ice:string)=>void)=>{
- 
-    const obj:{pc:RTCPeerConnection,dc:{send(data:string):void}} = {
-        pc: createRtcTrack((ice)=>{
-        obj.dc.send(JSON.stringify(ice));
-    }),dc:{send}};
+const appendRtcConn = (
+    id:string,
+    send:(ice:string)=>void,
+    getConn:(_conn:connType)=>void
+)=>{
+    const conn = pool.createConnection(id);
+    const obj:{conn: connType,pc:RTCPeerConnection,dc:{send(data:string):void}} = {
+        conn,
+        pc: conn.pc,
+        dc:{send}};
+    conn.pc.onicecandidate = (event)=>{
+        if (event.candidate) { 
+            obj.dc.send(JSON.stringify({c:true,...event.candidate.toJSON()}));
+        }
+    };
     obj.pc.ondatachannel = (e)=>{
         obj.dc = e.channel;
         console.log("dc open");
         e.channel.onmessage=(e)=>{
             setRemoteRTCMsg(JSON.parse(e.data),obj);
         };
+        conn.dc = e.channel;
+        getConn(conn);
     };
     return obj;
 };

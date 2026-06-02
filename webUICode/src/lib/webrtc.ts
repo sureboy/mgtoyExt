@@ -1,4 +1,5 @@
 import type {signalingStruct} from '$lib/utils/util';
+import {pool} from "$lib/utils/webRTCPool"
 export const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -95,26 +96,21 @@ export const connWebRTC =()=>{
         }).catch(reject);
     }); 
 };
-
-export const createRtcTrack = (getRTCIce:(candidate: RTCIceCandidateInit)=>void,closeHand?:()=>void)=>{ 
-    const StreamConnection = new RTCPeerConnection(configuration);  
-    StreamConnection.onicecandidate = event => { 
+/*
+export const createRtcTrack = (
+    id:string,
+    getRTCIce:(candidate: RTCIceCandidateInit)=>void,
+     )=>{ 
+    const conn = pool.createConnection(id);
+    //const StreamConnection = new RTCPeerConnection(configuration);  
+    conn.pc.onicecandidate = event => { 
         if (event.candidate) { 
             getRTCIce(event.candidate.toJSON());
         }
     };  
-    StreamConnection.oniceconnectionstatechange=(e)=>{
-        if (StreamConnection.connectionState === 'closed' 
-          ||  StreamConnection.connectionState === 'failed' 
-        //  ||  StreamConnection.connectionState==="disconnected"
-        ) {
-            StreamConnection.close(); 
-            if (closeHand){closeHand();}
-        } 
-        console.log(StreamConnection.connectionState);
-    };
-    return StreamConnection;
-};
+ 
+    return conn;
+};*/
 export const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
     //const StreamConnection = createMyWebRtc(dataChannel,closeHand)
     /*

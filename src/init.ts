@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
-import {RunHttpServer,defaultSerConfig} from './http';
-import * as http from 'http'; 
+import {
+    RunHttpServer,
+    //defaultSerConfig
+} from './http';
+//import * as http from 'http'; 
+import {createWebRtcConnWithUDP} from './webRtcHost';
 import type { HttpConfigType, SerConfig } from './http';
 import {getLocalIp} from './util';
 //import {initWebSocket} from './webSocket';
@@ -9,9 +13,9 @@ import * as path from 'path';
 import  {
   RTCPeerConnection ,
   RTCDataChannel ,
-  RTCIceCandidate,
-  RTCSessionDescription,
-  signatures
+  //RTCIceCandidate,
+  //RTCSessionDescription,
+  //signatures
   } from 'werift';
 import {initBar} from './Bar'; 
 import type {Socket} from 'dgram';
@@ -25,9 +29,12 @@ import type {signalingStruct} from './webrtc';
 import {nameMap} from './cache';  
 import {sendFileWithStream} from './sendFileWithStream';
 export const workspaceConfig = vscode.workspace.getConfiguration("mgtoy"); 
+/*
 const serverList:{
     dispose(): any;
 }[] = [defaultSerConfig]; 
+*/
+/*
 export const stopServer = ()=>{
      
     //defaultSerConfig.dispose();  
@@ -35,7 +42,7 @@ export const stopServer = ()=>{
         v.dispose();
     });
 
-};
+};*/
 const initConfCallBack = (udpServer: Socket)=>{
     return (msgObj:{name:string,msg:string})=>{
         if (msgObj.name==="local"){
@@ -68,7 +75,7 @@ const initRun = (ser:SerConfig )=>{
         const localIP = getLocalIp(); 
         const {Bar,menu} = initBar(ser.httpPort,localIP );  
         console.log("init bar"); 
-        serverList.push(Bar,menu );
+        //serverList.push(Bar,menu );
     }catch(e){
         console.error(e);
     }
@@ -78,17 +85,18 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
     const config = vscode.workspace.getConfiguration("mgtoy");
     const udpServer = initUDPServer({port:config.get("udpPort") ||9002,newCar:(n)=>{
         pool.getAllConnectionIds().forEach(id=>{
-            pool.getConnection(id)?.dc.send(JSON.stringify({
+            pool.getConnection(id)?.dc?.send(JSON.stringify({
                 name:n.DB.Carname,
                 update:n.Update,
                 type:"udp"}));
         });
     }});
+    /*
     if (udpServer){
-        serverList.push({dispose:()=>{
-            udpServer.close();
-        }});
-    } 
+        //serverList.push({dispose:()=>{
+            udpServer.close(openDataChannelEvent);
+        //}});
+    } */
     const conf:HttpConfigType = {
         //udpPort:config.get("udpPort") ||9002,
         webUI:vscode.Uri.joinPath(context.extensionUri,config.get("webUI")||"webUI").fsPath,
@@ -96,6 +104,7 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
         rootPath:rootPath.fsPath,
         //callBack :udpServer?initConfCallBack(udpServer):console.log,
         handlePostReq:{
+            
             "/answer":(postDB:any,resdb:(db:any)=>void)=>{
                 resdb({}); 
                 addRemoteAnswer(postDB).then(val=>{
@@ -115,7 +124,20 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
             },
         },
         handleGetReq:{
-            "/offer":(resdb:(db:any)=>void)=>{
+            "/conn":(uri,resdb:(db:any)=>void)=>{
+                const url = uri.searchParams.get("url")||"https://mgtoy.cn/control";
+                const host = uri.searchParams.get("host")||"192.168.1.8:9003";
+                //const id = Date.now().toString(32).slice(4);
+                createWebRtcConnWithUDP((conn)=>{
+                    setTimeout(()=>{
+                        resdb({url:`${url}#${encodeURIComponent(JSON.stringify({connid:conn.id}))}`,code:302});
+                    },1000);
+                     
+                },true,host);
+ 
+               
+            },
+            "/offer":(uri,resdb:(db:any)=>void)=>{
                 handleWebRtcConn(resdb,({dc,pc})=>{
                     openDataChannelEvent(dc);
                     dc.addEventListener('open',()=>{ 
@@ -147,7 +169,7 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
                             const conn = pool.getConnection(obj.id);
                             if (conn){
                                 obj.id = dc.label;
-                                conn.dc.send(JSON.stringify(obj));
+                                conn.dc?.send(JSON.stringify(obj));
                             }
                         }
                         if (obj.name){

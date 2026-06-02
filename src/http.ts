@@ -6,7 +6,7 @@ export type HttpConfigType = {
     rootPath:string,
     webUI:string,
     //callBack:(obj:any)=>any ,
-    handleGetReq:{[key:string]:(db:any)=>void},
+    handleGetReq:{[key:string]:(uri:URL,db:(k:any)=>void)=>void},
     handlePostReq:{[key:string]:any}
 } 
 export type SerConfig = { 
@@ -129,9 +129,20 @@ function createHttpServer   (conf: HttpConfigType   ) {
         }else {
             //req
             //console.log(req );
+            
             if (req.method ==="GET"){
+
                 try{
-                    conf.handleGetReq[req.url]((db:any)=>{
+                    const uri = new URL(req.url, 'http://fake-base');
+                    
+                    conf.handleGetReq[uri.pathname](uri,(db:any)=>{
+                        if (db.code && db.url){
+                            res.writeHead(db.code, {
+                                Location: db.url
+                            });
+                            res.end();
+                            return;
+                        }
                         res.writeHead(200, { 'Content-Type': 'application/json' }); 
                         res.end(JSON.stringify(db)); 
                     });

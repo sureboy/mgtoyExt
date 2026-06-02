@@ -2,9 +2,10 @@ import { RTCPeerConnection, RTCIceServer,RTCDataChannel } from 'werift';
 //import { randomUUID } from 'crypto';
 
 type ConnectionId = string;
+export type connType = {pc:RTCPeerConnection,dc?:RTCDataChannel,id:string,onClose?:()=>void}
 
 
-type connType = {pc:RTCPeerConnection,dc:RTCDataChannel}
+//type connType = {pc:RTCPeerConnection,dc:RTCDataChannel}
 export class ConnectionPool {
     // 核心存储：用一个Map来管理所有连接
     private connections: Map<ConnectionId, connType> = new Map();
@@ -25,11 +26,7 @@ export class ConnectionPool {
     }
 
     // 1. 创建新连接，并分配一个唯一的ID
-    public createConnection(connectionId?: string): { 
-        id: ConnectionId, 
-        pc: RTCPeerConnection ,
-        dc:RTCDataChannel
-    } {
+    public createConnection(connectionId?: string): connType {
         // 如果未指定ID，则自动生成一个UUID
         const id = connectionId ?? Date.now().toString(32).slice(4);
         
@@ -43,9 +40,10 @@ export class ConnectionPool {
         const pc = new RTCPeerConnection({
             iceServers: this.iceServers,
         });
-        const dc = pc.createDataChannel(id,{ordered:false,protocol:"json"});
+        //const dc = pc.createDataChannel(id,{ordered:false,protocol:"json"});
         // 存储到Map中
-        this.connections.set(id, {pc,dc});
+        const conn:connType = {pc,id};
+        this.connections.set(id, conn);
         console.log(`连接 ${id} 已创建，当前活跃连接数: ${this.connections.size}`);
 
         // 可选：监听连接关闭事件，以便从池中自动移除
@@ -53,12 +51,12 @@ export class ConnectionPool {
             console.log(pc.connectionState);
             if (pc.connectionState === 'closed' || pc.connectionState === 'failed') {
                 this.closeConnection(id);
-
+                conn.onClose?.();
             }
         };
         pc.oniceconnectionstatechange = () => console.log(`❄️ ICE 状态: ${pc.iceConnectionState}`);
 
-        return { id, pc,dc };
+        return conn;
     }
 
     // 2. 通过ID获取一个RTCPeerConnection

@@ -18,7 +18,8 @@ export const initBar = (port:number,loadIP:string   )=>{
     Bar.tooltip="Generating QR code...";
     const loadUrl = `http://localhost:${port}`;
     const menuList = [ipUrl,loadUrl];
-    const textToEncode =`${ipUrl}/conn.html#https://${host}/control`;
+    const testUrl= `http://${loadIP}:5173/control`;
+    const textToEncode =`${ipUrl}/conn?url=${testUrl}`;
     const textToEncode1 =`${ipUrl}/conn.html#http://${loadIP}:5173/control`;
     QRCode.toDataURL(textToEncode, { margin: 1, width: 150 }, (err, url) => {
         if (err) {
@@ -45,7 +46,6 @@ export const initBar = (port:number,loadIP:string   )=>{
                 vscode.env.openExternal(vscode.Uri.parse(v));
                 return;
             }
-            
             vscode.commands.executeCommand("mgtoy."+v);                            
         });
     }); 

@@ -2,7 +2,8 @@ import  { RTCPeerConnection ,RTCDataChannel,
     RTCIceCandidate,RTCSessionDescription } from 'werift';
 import {pool} from './webrtc'; 
 import dgram from 'dgram';
-import { time } from 'console';
+import { connType } from './webRTCPool';
+//import { time } from 'console';
 //import { json } from 'stream/consumers';
 //const pool = new ConnectionPool();
 const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
@@ -14,7 +15,7 @@ const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
  
 }; 
 const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: string): void}})=>{
-    console.log(MsgObj);
+    //console.log(MsgObj);
     if (MsgObj.candidate){
         conn.pc.addIceCandidate(new RTCIceCandidate(MsgObj)).then(()=>{
             //console.log( MsgObj );
@@ -44,12 +45,16 @@ const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: s
         return;
     }
 };
-export const createWebRtcConn = (create=true,host:string="127.0.0.1:9003",maxSender=10 )=>{
-  const {id,pc} = pool.createConnection();
+export const createWebRtcConnWithUDP = (getConn:(c:connType)=>void,
+    create:boolean,host:string="127.0.0.1:9003",_id?:string,
+     )=>{
+  const conn = pool.createConnection(_id);
+  const {id,pc} = conn;
   const client = dgram.createSocket('udp4');
   const [SERVER_HOST,SERVER_PORT] = host.split(":"); 
  
   //let time:number;
+
   let timeoutMap:Map<number, NodeJS.Timeout>|undefined =new Map();
   const closeClient = (id?:string)=>{
     client.close();
@@ -62,11 +67,14 @@ export const createWebRtcConn = (create=true,host:string="127.0.0.1:9003",maxSen
         pool.closeConnection(id);
     }
   };
-  const outObj = {pc,
+  //conn.dc = 
+  const outObj = {id,pc,
     dc:{
         send(msg:string){
+            
             const time = Date.now(); 
-            let sender = maxSender;
+            console.log("udp send",create,time,msg);
+            let sender = 10;
             const s =()=>{ 
                 client.send(
                     JSON.stringify(
@@ -96,12 +104,15 @@ export const createWebRtcConn = (create=true,host:string="127.0.0.1:9003",maxSen
   client.on("message",(msg,rinfo)=>{ 
   
     const db = JSON.parse(msg.toString());
-    //console.log(db);
-    if (db.time){
+    
+    if (db.time && timeoutMap?.has(db.time)){
         clearTimeout(timeoutMap?.get(db.time));
         timeoutMap?.delete(db.time);
+        console.log("del",db);
+        return;
     }
     if (db.msg){
+        console.log("udp back",db,Buffer.from(db.msg, 'base64').toString('utf8'));
         setRemoteRTCMsg(JSON.parse(Buffer.from(db.msg, 'base64').toString('utf8')),outObj);
     } 
     //Buffer.from(msg.toString(), 'base64').toString('utf8');
@@ -114,16 +125,20 @@ export const createWebRtcConn = (create=true,host:string="127.0.0.1:9003",maxSen
   pc.onicecandidate = (e)=>{
     if (e.candidate) { 
         outObj.dc.send(JSON.stringify(e.candidate.toJSON()));
+    }else{
+        getConn(conn);
     }
   };
   pc.onnegotiationneeded=()=>{
     createOffer(pc).then(sdp=>{
+        console.log("offer",sdp);
       outObj.dc.send(JSON.stringify(sdp));
     });
   };
-  const dataChannel = pc.createDataChannel(id,{ordered:false,protocol:"json"});
-  dataChannel.onopen=()=>{
-    outObj.dc = dataChannel;
+  conn.dc = pc.createDataChannel(id,{ordered:false,protocol:"json"});
+  conn.dc.onopen=()=>{
+    outObj.dc = conn.dc!;
     closeClient();
   };
+  //return conn;
 };

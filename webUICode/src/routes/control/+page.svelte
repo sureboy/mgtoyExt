@@ -1,6 +1,6 @@
 <script lang="ts">  
 //import BlinkEyes from '$lib/components/BlinkEyes.svelte';
-import InfoPanel,{dialogConfig,meshList,localDevice} from "$lib/components/InfoPanel.svelte";
+import InfoPanel,{dialogConfig,addMesh,localDevice} from "$lib/components/InfoPanel.svelte";
 //import Joystick from "$lib/components/Joystick.svelte";
 import {onMount} from "svelte"
 import {handleOffer,createOffer} from '$lib/webrtc' 
@@ -9,56 +9,48 @@ import {handleOffer,createOffer} from '$lib/webrtc'
 import type {signalingStruct} from "$lib/utils/mainDataStruct" 
 //import {createCmdSender} from "$lib/utils/wheelCmdSender"
 import type {meshInfoType} from '$lib/components/Mesh.svelte'
-import {setRemoteRTCMsg} from "$lib/utils/postAndSSEWebrtc"
+import {setRemoteRTCMsg,createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 import {pool} from "$lib/utils/webRTCPool"
+import type {connType} from "$lib/utils/webRTCPool"
 //    import { clearInterval } from 'node:timers';
 //let canvas:HTMLCanvasElement
 let sender:(msg:any)=>void = undefined
 //const infoData:infoStruct= {cars:[]}
 let mainArea:HTMLDivElement 
 //let mgtoyTitle = $state("mgtoy")
-const init = (dc: RTCDataChannel,pc: RTCPeerConnection)=>{
+const init = (conn:connType)=>{
     //InfoPanelMenu.conn=false
     //dialogConfig.dialogEl?.close()
     //initDataChannelListener(dataChannel) 
     //initDataChannelSender(dataChannel) 
     const dcconfig:meshInfoType = {
-        conn:{id:dc.label,
-        //videoFacing:"user",
-        //localStream:new MediaStream(),
-        //children:[], 
-        pc,
-        dc}, 
+        conn , 
         setSender:function(db:any){  
             sender = msg=>{ 
-                dc.send(JSON.stringify(Object.assign(msg,db)))
+                conn.dc.send(JSON.stringify(Object.assign(msg,db)))
             }  
         }        
     }
     //mgtoyTitle = dcconfig.conn.id +"-mgtoy"
     
 
-    for (let i=0;i<meshList.length;i++){
-        const v = meshList[i]
-        if (v.conn.id ===dcconfig.conn.id){
-            meshList[i] = dcconfig
-            return
-        }
-    }
-    meshList.push(dcconfig)
+
+    //conn.onClose = ()=>{
+    //    console.log("----",dcconfig)
+    //}
+    addMesh(dcconfig)
  
     //console.log(InfoPanelMenu)
 
 }
-const startWebRTC = (sign:signalingStruct,conn:(
-    dc:RTCDataChannel,
-    pc: RTCPeerConnection)=>void)=>{
-    const conn_ =pool.createConnection(sign.id)// new RTCPeerConnection(configuration); 
-    const {pc} = conn_
+const startWebRTC = (sign:signalingStruct,HandleConn:(
+    conn_: connType)=>void)=>{
+    const conn = pool.createConnection(sign.id)// new RTCPeerConnection(configuration); 
+    const {pc} = conn
     const link = document.createElement("a")
     link.textContent='...'
     dialogConfig.dialogEl?.showModal()
-    dialogConfig.content.appendChild(link)
+    dialogConfig.content.append(link)
     handleOffer(sign,pc,(answer)=>{ 
         link.target="_blank"
         link.textContent = "确定"
@@ -72,7 +64,7 @@ const startWebRTC = (sign:signalingStruct,conn:(
         if (receiveChannel.label==="file"){
             return
         }
-        conn_.dc = receiveChannel
+        conn.dc = receiveChannel
         dialogConfig.content.innerHTML=""  
         dialogConfig.dialogEl?.close()
         pc.onnegotiationneeded = ()=>{
@@ -88,7 +80,7 @@ const startWebRTC = (sign:signalingStruct,conn:(
             }            
         })
         console.log(receiveChannel)
-        conn(receiveChannel,pc) 
+        HandleConn(conn) 
     })
 }
  
@@ -97,7 +89,17 @@ onMount(()=>{
         const hashdb = window.location.hash.slice(1)
         if (hashdb){
             try{
-                const sign = JSON.parse(decodeURIComponent(window.location.hash.slice(1))) as signalingStruct
+                const opt = JSON.parse(decodeURIComponent(window.location.hash.slice(1)))
+                if (opt.connid){
+                    createWebrtcConnFromCenterUrl({
+                        id:opt.connid,
+                        create:false,
+                        host:"http://192.168.1.8:8088"//"https://www.zaddone.com/rtc"
+                    },conn=>{
+                            addMesh({conn})})
+                    return
+                }
+                const sign =opt  as signalingStruct
                 location.hash = ''; 
                 startWebRTC(sign,init)
                 return

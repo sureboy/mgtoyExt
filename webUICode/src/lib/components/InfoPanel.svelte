@@ -12,7 +12,22 @@ export const dialogConfig:dialogStruct = {
 } ;
  
 //export const meshMap =new SvelteMap<string,any>()
-export const meshList:meshInfoType[] =$state([])
+const meshList:meshInfoType[] =$state([])
+export const addMesh = (m:meshInfoType)=>{ 
+    for (let i=0;i<meshList.length;i++){
+        const v = meshList[i]
+        if (v.conn.id ===m.conn.id){
+            meshList[i] = m
+            return
+        }
+    }
+    const len = meshList.length;
+    m.conn.onClose = ()=>{
+        meshList[len] = null
+        console.log("----",m)
+    }
+    meshList.push(m)
+}
 export const mgtoyTitle = $state({id:"mgtoy",child:""}) 
 export const localDevice : {
     //pc?: RTCPeerConnection
@@ -26,7 +41,10 @@ export const updateUIWhenConn = (conn: connType)=>{
     if (btn){
         btn.textContent = "@"+conn.id; 
     } 
-    meshList.push({conn})
+    const m = {conn}
+    addMesh(m)
+    //meshList.push(m)
+
 }
 const ShowSubmit = (db:any,hand:(db:any)=>void)=>{ 
     jsonToForm(db ,dialogConfig.content)  
@@ -99,8 +117,7 @@ export const webrtcBtn = (conn: connType )=>{
 </script>
 <script lang="ts"  >
 //import { onMount } from "svelte";
-import Mesh  from '$lib/components/Mesh.svelte'
-
+import Mesh  from '$lib/components/Mesh.svelte' 
 import {getLocalStream} from '$lib/utils/getLocalStream' 
 import {createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
 import Dialog  from '$lib/components/Dialog.svelte'
@@ -179,15 +196,20 @@ const getConnHostJsonStr = ()=>{
         dialogConfig.dialogEl.showModal() 
     }} >本地连接</button> 
     <button   onclick={(e)=>{
-        ShowSubmit(getConnHostJsonStr(),createWebrtcConnFromCenterUrl); 
+        ShowSubmit(getConnHostJsonStr(),(db)=>{
+            createWebrtcConnFromCenterUrl(db,(conn)=>{
+                addMesh({conn})
+            })
+        }); 
         dialogConfig.dialogEl.showModal() 
     }} >跨网连接</button>  
 
     </div>
 </details>
 {#each meshList as mesh} 
+{#if mesh}
 <Mesh  {mesh} {fillMainArea}></Mesh> 
- 
+ {/if}
 {/each}
 
 </div>

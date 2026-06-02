@@ -1,7 +1,4 @@
 
- 
-
-
 let clickEvent =window.parent?window.parent.postMessage:console.log;
 const canvas  = document.getElementById("joystickCanvas");
 let stickOuterRadius = 110;      // 大圈半径 (底座)

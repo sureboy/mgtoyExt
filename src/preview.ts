@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import {stopServer,startServer} from './init';
+import {
+  //stopServer,
+  startServer} from './init';
 import {defaultSerConfig} from './http';
 import { pool } from './webrtc';
 let panel:vscode.WebviewPanel|null  = null;
@@ -200,7 +202,7 @@ export function previewFile(uri: vscode.Uri,context: vscode.ExtensionContext) {
         panel.onDidDispose((e)=>{
             console.log("panel close");
             panel = null;
-            stopServer();
+            //stopServer();
             //vscode.commands.executeCommand("mgtoy.stop");
         });
         const outputChannel = vscode.window.createOutputChannel('mgToy');
@@ -239,7 +241,7 @@ export function previewFile(uri: vscode.Uri,context: vscode.ExtensionContext) {
             defaultSerConfig.ser.conf.rootPath = uri.fsPath; 
             //dc.send(JSON.stringify({ type:"file",name:path.basename(conf.rootPath)}));
             pool.getAllConnectionIds().forEach(id=>{
-              pool.getConnection(id)?.dc.send(JSON.stringify({type:"file",name }));
+              pool.getConnection(id)?.dc?.send(JSON.stringify({type:"file",name }));
             });
             setWebviewHtml(uri,context,defaultSerConfig.ser.httpPort);
         } 

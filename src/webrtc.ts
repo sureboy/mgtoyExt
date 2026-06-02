@@ -38,17 +38,16 @@ function setupDataChannel(dc:RTCDataChannel,id:string) {
 }
 
 export const initWebRtcClient =async (back:(msg:{dc: RTCDataChannel,signaling: signalingStruct,pc: RTCPeerConnection})=>void)=>{ 
-  const {id,pc,dc} = pool.createConnection();
-  //const dataChannel = pc.createDataChannel(id,{ordered:false,protocol:"json"});
-
+  const conn = pool.createConnection();
+  const {pc,id} = conn;
+  const dc = pc.createDataChannel(id,{ordered:false,protocol:"json"});
+  conn.dc = dc;
   const signaling:signalingStruct = {ICEList:[],id };
-  pc.onicecandidate = (e) => {
-    //console.log(e);
+  pc.onicecandidate = (e) => { 
     if (e.candidate) { 
       signaling.ICEList.push(e.candidate.toJSON()); 
     } else {
-      back({dc,signaling,pc});
-      //console.log(signaling.ICEList); 
+      back({dc,signaling,pc}); 
     }
   }; 
   setupDataChannel(dc,id);     
@@ -129,7 +128,7 @@ export const openDataChannelEvent = (dataChannel:RTCDataChannel)=>{
         return;
       }
       dataChannel.send(JSON.stringify({name:v,type:'webrtc'}));
-      pool.getConnection(v)?.dc.send(JSON.stringify({name:dataChannel.label,type:'webrtc'}));
+      pool.getConnection(v)?.dc?.send(JSON.stringify({name:dataChannel.label,type:'webrtc'}));
     });
   });
   
@@ -141,7 +140,7 @@ export const webRtcRouterHandle = (obj:any,dataChannel: RTCDataChannel) =>{
         const conn = pool.getConnection(obj.id);
         if (conn){
           obj.id = dataChannel.label;
-          conn.dc.send(JSON.stringify(obj));
+          conn.dc?.send(JSON.stringify(obj));
         }
         return;
 

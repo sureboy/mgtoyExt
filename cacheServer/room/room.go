@@ -56,6 +56,7 @@ func (db *PostDB) HandleMsg() *MsgHandle {
 		}
 	} else {
 		if c.Create != nil {
+			//fmt.Println("test send", db.Time, db.Create)
 			c.Create(db.Msg)
 		}
 	}

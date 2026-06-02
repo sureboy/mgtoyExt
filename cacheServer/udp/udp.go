@@ -69,6 +69,7 @@ func UDPServer(udpAddr string) error {
 
 		write := func(m string) {
 			sendMsg := createSendMsg(t)
+			//fmt.Println("send", t)
 			defer sendMsg.clean()
 			sendMsg.Msg = m
 			data, err := json.Marshal(sendMsg)
@@ -85,8 +86,9 @@ func UDPServer(udpAddr string) error {
 				//log.Println(m, err)
 			}
 		}
+		write("")
 		c := db.HandleMsg()
-		//fmt.Println("udp create", db.Id)
+		fmt.Println("udp create", db.Id, db.Create)
 		if c != nil {
 			if db.Create {
 				if c.Create == nil {
@@ -98,7 +100,6 @@ func UDPServer(udpAddr string) error {
 				}
 			}
 		}
-		write("")
 		//packet.Clean()
 		db.Clean()
 	}
