@@ -32,6 +32,7 @@ func (s *SendMsg) clean() {
 }
 func getPostDB(buf []byte) *room.PostDB {
 	db := room.NewPostDB()
+	//log.Println(string(buf))
 	json.Unmarshal(buf, db)
 	return db
 }
@@ -69,7 +70,7 @@ func UDPServer(udpAddr string) error {
 
 		write := func(m string) {
 			sendMsg := createSendMsg(t)
-			//fmt.Println("send", t)
+			//log.Println("send", m)
 			defer sendMsg.clean()
 			sendMsg.Msg = m
 			data, err := json.Marshal(sendMsg)
@@ -88,7 +89,7 @@ func UDPServer(udpAddr string) error {
 		}
 		write("")
 		c := db.HandleMsg()
-		fmt.Println("udp create", db.Id, db.Create)
+		//log.Println("udp create", db.Id, db.Create)
 		if c != nil {
 			if db.Create {
 				if c.Create == nil {

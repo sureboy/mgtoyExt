@@ -94,7 +94,8 @@ onMount(()=>{
                     createWebrtcConnFromCenterUrl({
                         id:opt.connid,
                         create:false,
-                        host:"http://192.168.1.8:8088"//"https://www.zaddone.com/rtc"
+                        //host:"http://192.168.1.8:8088"
+                        host:"https://www.zaddone.com/rtc"
                     },conn=>{
                             addMesh({conn})})
                     return

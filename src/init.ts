@@ -126,12 +126,12 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
         handleGetReq:{
             "/conn":(uri,resdb:(db:any)=>void)=>{
                 const url = uri.searchParams.get("url")||"https://mgtoy.cn/control";
-                const host = uri.searchParams.get("host")||"192.168.1.8:9003";
+                const host = uri.searchParams.get("host")||"zaddone.com:9003";//"192.168.1.8:9003";
                 //const id = Date.now().toString(32).slice(4);
                 createWebRtcConnWithUDP((conn)=>{
-                    setTimeout(()=>{
+                    //setTimeout(()=>{
                         resdb({url:`${url}#${encodeURIComponent(JSON.stringify({connid:conn.id}))}`,code:302});
-                    },1000);
+                    //},2000);
                      
                 },true,host);
  

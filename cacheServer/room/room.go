@@ -18,7 +18,11 @@ var (
 )
 
 func NewPostDB() *PostDB {
-	return buffer.Get().(*PostDB)
+	db := buffer.Get().(*PostDB)
+	db.Msg = ""
+	db.Create = false
+	db.Id = ""
+	return db
 }
 
 type PostDB struct {
@@ -31,6 +35,7 @@ type PostDB struct {
 }
 
 func (db *PostDB) Clean() {
+
 	buffer.Put(db)
 }
 func (db *PostDB) HandleMsg() *MsgHandle {
