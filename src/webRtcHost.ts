@@ -45,7 +45,9 @@ const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: s
         return;
     }
 };
-export const createWebRtcConnWithUDP = (getConn:(c:connType)=>void,
+export const createWebRtcConnWithUDP = (
+    getConn:(c:connType)=>void,
+    ok:(c:connType)=>void,
     create:boolean,host:string="127.0.0.1:9003",_id?:string,
      )=>{
   const conn = pool.createConnection(_id);
@@ -139,6 +141,7 @@ export const createWebRtcConnWithUDP = (getConn:(c:connType)=>void,
   conn.dc.onopen=()=>{
     outObj.dc = conn.dc!;
     closeClient();
+    ok(conn);
   };
   //return conn;
 };

@@ -95,9 +95,9 @@ onMount(()=>{
                         id:opt.connid,
                         create:false,
                         //host:"http://192.168.1.8:8088"
-                        host:"https://www.zaddone.com/rtc"
+                        host:opt.host||"https://www.zaddone.com/rtc"
                     },conn=>{
-                            addMesh({conn})})
+                        addMesh({conn})})
                     return
                 }
                 const sign =opt  as signalingStruct

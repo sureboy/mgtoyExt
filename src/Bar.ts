@@ -19,8 +19,10 @@ export const initBar = (port:number,loadIP:string   )=>{
     const loadUrl = `http://localhost:${port}`;
     const menuList = [ipUrl,loadUrl];
     const testUrl= `http://${loadIP}:5173/control`;
-    const textToEncode =`${ipUrl}/conn?url=${testUrl}`;
-    const textToEncode1 =`${ipUrl}/conn.html#http://${loadIP}:5173/control`;
+    const udpHost = `${loadIP}:9003`;
+    const webHost = `http://${loadIP}:8088`;
+    const textToEncode =`${ipUrl}/conn?url=${testUrl}&host=${udpHost}&web=${webHost}`;
+    const textToEncode1 =`${ipUrl}/conn.html#${testUrl}`;
     QRCode.toDataURL(textToEncode, { margin: 1, width: 150 }, (err, url) => {
         if (err) {
             Bar.tooltip = `Failed: ${err.message}`;

@@ -111,7 +111,6 @@ func RtcHttpHandle(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-
 	db := room.NewPostDB()
 	defer db.Clean()
 	if err := json.NewDecoder(r.Body).Decode(db); err != nil {
