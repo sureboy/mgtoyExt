@@ -6,21 +6,27 @@ import * as vscode from 'vscode';
 	//startServer
 //} from './init';
 //import {createWebRtcConn} from './webRtcHost';
-import {previewFile} from './preview';
+import {previewFile} from './preview';	
+import {startUDPServerFromConfig} from './udp';
+
 //import {SerialPortTest} from './serial';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 
 export function activate(context: vscode.ExtensionContext) { 
+	vscode.window.showInformationMessage("mgtoy: Begin");    
+	let udp:any;
+	startUDPServerFromConfig().then( udpServer=>{
+		udp = udpServer;
+	});
 	//console.log('Congratulations, your extension "mgtoy" is now active!'); 
 	/*
 	const conn = vscode.commands.registerCommand('mgtoy.conn', () => { 
 		vscode.window.showQuickPick(['create','append']).then(value=>{ 
 			createWebRtcConn(value==="create","zaddone.com:9003");
 		}); 
-	});  
-	
+	});   
 	const stop =  vscode.commands.registerCommand('mgtoy.stop', () => { 
 		stopServer();
 	}); 
@@ -30,7 +36,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage('Hello World from mgtoy!');
 	}); */ 
 	const preview = vscode.commands.registerCommand('mgtoy.previewInWebview',(uri: vscode.Uri)=>{
-		previewFile(uri,context);
+		previewFile(uri,context,udp);
 	});
 	context.subscriptions.push(
 		//start,
@@ -41,3 +47,5 @@ export function activate(context: vscode.ExtensionContext) {
 
 // This method is called when your extension is deactivated
 export function deactivate() {}
+
+

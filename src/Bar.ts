@@ -1,7 +1,7 @@
 //import {getLocalIp} from './util';
 import * as vscode from 'vscode';
 import * as QRCode from 'qrcode';
-//import {defaultSerConfig} from './http';
+import {defaultSerConfig} from './http';
 export const initBar = (port:number,loadIP:string   )=>{
     //if (menu){
         //return;
@@ -48,10 +48,11 @@ export const initBar = (port:number,loadIP:string   )=>{
                 vscode.env.openExternal(vscode.Uri.parse(v));
                 return;
             }
-            vscode.commands.executeCommand("mgtoy."+v);                            
+            defaultSerConfig.ser?.clientMap.get(v)?.();
+            //vscode.commands.executeCommand("mgtoy."+v);                            
         });
     }); 
     Bar.show();
-    return {Bar,menu};
+    return {Bar,menu,menuList};
     
 };

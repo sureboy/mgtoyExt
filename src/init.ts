@@ -3,6 +3,7 @@ import {
     RunHttpServer,
     //defaultSerConfig
 } from './http';
+import dgram from 'dgram';
 //import * as http from 'http'; 
 import {createWebRtcConnWithUDP} from './webRtcHost';
 import type { HttpConfigType, SerConfig } from './http';
@@ -71,11 +72,12 @@ const initConfCallBack = (udpServer: Socket)=>{
         return {name:db?.DB.Carname,update:db?.Update,type:"udp"};
     };    
 };
-const initRun = (ser:SerConfig )=>{ 
+const initRunBar = (ser:SerConfig )=>{ 
     try{
         const localIP = getLocalIp(); 
-        const {Bar,menu} = initBar(ser.httpPort,localIP );  
-        console.log("init bar"); 
+        return initBar(ser.httpPort,localIP );  
+        //console.log("init bar"); 
+
         //serverList.push(Bar,menu );
     }catch(e){
         console.error(e);
@@ -151,9 +153,10 @@ const WebrtcConnOpen = (
     });
 
 };
-export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Uri,back?:(ser:SerConfig)=>void)=>{
+export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Uri,udpServer? :dgram.Socket,back?:(ser:SerConfig)=>void)=>{
     //console.log(context);
     const config = vscode.workspace.getConfiguration("mgtoy");
+    /*
     const udpServer = initUDPServer({port:config.get("udpPort") ||9002,newCar:(n)=>{
         pool.getAllConnectionIds().forEach(id=>{
             pool.getConnection(id)?.dc?.send(JSON.stringify({
@@ -161,7 +164,7 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
                 update:n.Update,
                 type:"udp"}));
         });
-    }});
+    }});*/
     /*
     if (udpServer){
         //serverList.push({dispose:()=>{
@@ -251,7 +254,7 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
         }
     };  
     RunHttpServer( conf   ,(ser:SerConfig)=>{
-        initRun(ser);
+        ser.menu = initRunBar(ser);
         if (back){
             back(ser);
         }

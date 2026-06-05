@@ -1,11 +1,15 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import dgram from 'dgram';
 import {
   //stopServer,
   startServer} from './init';
 import {defaultSerConfig} from './http';
 import { pool } from './webrtc';
-let panel:vscode.WebviewPanel|null  = null;
+const panelObj:{
+  panel?:vscode.WebviewPanel,
+  outputChannel?: vscode.OutputChannel
+} = {};
 function getNonce() {
 	let text = '';
 	const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -127,8 +131,9 @@ const insertScriptAtBodyStart = (html: string, codeToInsert: string)=> {
   return modifiedHtml;
 };
 const setWebviewHtml = (uri: vscode.Uri,context: vscode.ExtensionContext,port =3000)=>{
-    const nonce = getNonce();
+  const nonce = getNonce();
     //const port =3000;
+  const {panel} = panelObj;
 	const csp = `default-src 'none';
     frame-src blob: data: 'nonce-${nonce}' ${panel?.webview.cspSource};
 	script-src 'self' 'nonce-${nonce}' ${panel?.webview.cspSource} http://localhost:${port||3000} 'unsafe-eval' 'wasm-eval' 'strict-dynamic';
@@ -191,60 +196,82 @@ window.addEventListener('unhandledrejection', (event) => {
         
     }); 
 };
-export function previewFile(uri: vscode.Uri,context: vscode.ExtensionContext) {
-    if (panel===null){
-        panel = vscode.window.createWebviewPanel(
+export function previewFile(uri: vscode.Uri,context: vscode.ExtensionContext,udpServer?: dgram.Socket) {
+    if (!panelObj.panel ){
+        panelObj.panel = vscode.window.createWebviewPanel(
             'mgToy Preview',
             `Preview: ${path.basename(uri.fsPath)}`,
             vscode.ViewColumn.Beside,
             { enableScripts: true }
         );
-        panel.onDidDispose((e)=>{
+        panelObj.panel.onDidDispose((e)=>{
             console.log("panel close");
-            panel = null;
+            panelObj.panel = undefined;
             //stopServer();
             //vscode.commands.executeCommand("mgtoy.stop");
         });
-        const outputChannel = vscode.window.createOutputChannel('mgToy');
-        context.subscriptions.push(outputChannel);
+        panelObj.outputChannel = vscode.window.createOutputChannel('mgToy');
+        context.subscriptions.push(panelObj.outputChannel);
         
-        outputChannel.clear();
-        outputChannel.show();
+        panelObj.outputChannel.clear();
+        panelObj.outputChannel.show();
         //vscode.window.setStatusBarMessage()
-        panel.webview.onDidReceiveMessage(
-          message => {
-           if (message.type === 'webviewError') {
-              //vscode.window.createOutputChannel()
-              // 此时，错误信息会作为普通的扩展日志，输出在“调试控制台”(DEBUG CONSOLE)中
-              //vscode.window.showErrorMessage('js Error',{modal:true,detail:JSON.stringify(message.payload,null,2)});
-              outputChannel.append(JSON.stringify(message,null,2));
-              outputChannel.appendLine('');
-              console.error('[Webview Error]', message.payload);
-              // 你甚至可以选择在这里用 vscode.window.showErrorMessage 向用户弹窗提醒
-           }else{
-            console.log(message);
-           }
-           
-          },
-          undefined,
-          context.subscriptions
-        );
+ 
         
         //vscode.commands.executeCommand("mgtoy.start");
-        startServer(context, uri,(ser)=>{
+        startServer(context, uri,udpServer,(ser)=>{
+          ser.menu?.menuList.push("test");
             setWebviewHtml(uri,context,ser.httpPort);
         }); 
-    }else{ 
-        if (defaultSerConfig.ser){
-            const name = path.basename(uri.fsPath);
-            panel.title = `Preview: ${name}`;
-            defaultSerConfig.ser.conf.rootPath = uri.fsPath; 
-            //dc.send(JSON.stringify({ type:"file",name:path.basename(conf.rootPath)}));
-            pool.getAllConnectionIds().forEach(id=>{
-              pool.getConnection(id)?.dc?.send(JSON.stringify({type:"file",name }));
-            });
-            setWebviewHtml(uri,context,defaultSerConfig.ser.httpPort);
-        } 
     } 
+    if (defaultSerConfig.ser){
+        const name = path.basename(uri.fsPath);
+        panelObj.panel.title = `Preview: ${name}`;
+        defaultSerConfig.ser.conf.rootPath = uri.fsPath; 
+        //dc.send(JSON.stringify({ type:"file",name:path.basename(conf.rootPath)}));
+        pool.getAllConnectionIds().forEach(id=>{
+          pool.getConnection(id)?.dc?.send(JSON.stringify({type:"file",name }));
+        });
+        setWebviewHtml(uri,context,defaultSerConfig.ser.httpPort);
+    } 
+    panelObj.panel.webview.onDidReceiveMessage(
+      message=>{
+        if (message.type === 'webviewError') { 
+          panelObj.outputChannel?.append(JSON.stringify(message,null,2));
+          panelObj.outputChannel?.appendLine('');
+          console.error('[Webview Error]', message.payload); 
+          return;
+        }
+        //console.log("get",message);
+        if (message.udp){
+          try{
+            udpServer?.send(message.msg,message.udp.port,message.udp.address);
+          }catch(e){
+            console.error(e,message);
+          }
+          return;
+        }
+        if(message.menu){
+          //defaultSerConfig.ser?.menu.menuList.append()
+          //defaultSerConfig.ser?
+          console.log(message.menu);
+          const k = `${message.menu.type}_${message.menu.name}`;
+          if (!defaultSerConfig.ser?.clientMap.has(k)){
+            defaultSerConfig.ser?.menu?.menuList.push(k);
+            defaultSerConfig.ser?.clientMap.set(k,()=>{
+              panelObj.panel?.webview.postMessage({client:message.menu});
+            });
+          }
+
+          console.log(message);
+        }
+      },
+      undefined,
+      context.subscriptions
+    );
+    udpServer?.on('message',(msg,rinfo)=>{
+      panelObj.panel?.webview.postMessage({msg:new Uint8Array(msg),udp:rinfo});
+    });
+
 }
  

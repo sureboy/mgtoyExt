@@ -13,6 +13,8 @@ export type SerConfig = {
     httpPort:number, 
     Server?: http.Server
     conf:HttpConfigType , 
+    menu?:any
+    clientMap:Map<string,any>,
 }
 export const defaultSerConfig:
 {ser?:SerConfig|undefined,
@@ -156,12 +158,12 @@ function createHttpServer   (conf: HttpConfigType   ) {
                         readBinaryFile(
                             path.join(path.dirname(conf.rootPath),u),
                             extVal,res,
-                        ()=>{
-                            readBinaryFile(path.join(conf.webUI,u),extVal,res,()=>{
-                                res.writeHead(404);
-                                res.end();
-                            });
-                        }
+                            ()=>{
+                                readBinaryFile(path.join(conf.webUI,u),extVal,res,()=>{
+                                    res.writeHead(404);
+                                    res.end();
+                                });
+                            }
                         );
                         
                         return ;
@@ -226,6 +228,7 @@ export const RunHttpServer = (
             Server:serv,httpPort:p,
             //PostMessageSet:new Set(), 
             conf,
+            clientMap:new Map()
             //HandleMsgMap:new Map(),
         };
         //defaultSerConfig.ser.HandleMsgMap.set(conf.pageTag,conf.getMessage);
