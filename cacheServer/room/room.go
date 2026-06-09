@@ -56,7 +56,7 @@ func (db *PostDB) HandleMsg() *MsgHandle {
 			c.Append(db.Msg)
 		} else {
 			c.msg = append(c.msg, db.Msg)
-			//fmt.Println("add", c)
+			//fmt.Println("add", len(c.msg))
 		}
 	} else {
 		if c.Create != nil {

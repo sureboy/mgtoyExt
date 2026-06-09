@@ -131,8 +131,11 @@ func RtcHttpHandle(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("[]"))
 		return
 	}
-	msglist, err := json.Marshal(c.Msg())
+	m := c.Msg()
+	//log.Println("get", len(m))
+	msglist, err := json.Marshal(m)
 	if err == nil && msglist != nil {
+
 		w.Write(msglist)
 	}
 

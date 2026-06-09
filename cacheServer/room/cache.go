@@ -31,7 +31,7 @@ func (db *MsgHandle) clean() {
 	}
 	db.endTimer.Stop()
 	db.endTimer = nil
-	db.msg = db.msg[:]
+	db.msg = db.msg[:0]
 	chanbuffer.Put(db)
 }
 func (db *MsgHandle) SetAppend(w func(string)) {
@@ -39,13 +39,13 @@ func (db *MsgHandle) SetAppend(w func(string)) {
 	for _, m := range db.msg {
 		db.Append(m)
 	}
-	db.msg = db.msg[:]
+	db.msg = db.msg[:0]
 }
 func (db *MsgHandle) Msg() []string {
 	m := db.msg
 
-	db.msg = db.msg[:]
-
+	db.msg = db.msg[:0]
+	//log.Println(len(db.msg), len(m))
 	return m
 }
 
