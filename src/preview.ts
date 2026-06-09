@@ -6,6 +6,7 @@ import {
   startServer} from './init';
 import {defaultSerConfig} from './http';
 import { pool } from './webrtc';
+import {initUDP} from './udp';
 const panelObj:{
   panel?:vscode.WebviewPanel,
   outputChannel?: vscode.OutputChannel
@@ -196,82 +197,154 @@ window.addEventListener('unhandledrejection', (event) => {
         
     }); 
 };
-export function previewFile(uri: vscode.Uri,context: vscode.ExtensionContext,udpServer?: dgram.Socket) {
-    if (!panelObj.panel ){
-        panelObj.panel = vscode.window.createWebviewPanel(
-            'mgToy Preview',
-            `Preview: ${path.basename(uri.fsPath)}`,
-            vscode.ViewColumn.Beside,
-            { enableScripts: true }
-        );
-        panelObj.panel.onDidDispose((e)=>{
-            console.log("panel close");
-            panelObj.panel = undefined;
-            //stopServer();
-            //vscode.commands.executeCommand("mgtoy.stop");
-        });
-        panelObj.outputChannel = vscode.window.createOutputChannel('mgToy');
-        context.subscriptions.push(panelObj.outputChannel);
-        
-        panelObj.outputChannel.clear();
-        panelObj.outputChannel.show();
-        //vscode.window.setStatusBarMessage()
- 
-        
-        //vscode.commands.executeCommand("mgtoy.start");
-        startServer(context, uri,udpServer,(ser)=>{
-          ser.menu?.menuList.push("test");
-            setWebviewHtml(uri,context,ser.httpPort);
-        }); 
-    } 
-    if (defaultSerConfig.ser){
-        const name = path.basename(uri.fsPath);
-        panelObj.panel.title = `Preview: ${name}`;
-        defaultSerConfig.ser.conf.rootPath = uri.fsPath; 
-        //dc.send(JSON.stringify({ type:"file",name:path.basename(conf.rootPath)}));
-        pool.getAllConnectionIds().forEach(id=>{
-          pool.getConnection(id)?.dc?.send(JSON.stringify({type:"file",name }));
-        });
-        setWebviewHtml(uri,context,defaultSerConfig.ser.httpPort);
-    } 
-    panelObj.panel.webview.onDidReceiveMessage(
-      message=>{
-        if (message.type === 'webviewError') { 
-          panelObj.outputChannel?.append(JSON.stringify(message,null,2));
-          panelObj.outputChannel?.appendLine('');
-          console.error('[Webview Error]', message.payload); 
-          return;
-        }
-        //console.log("get",message);
-        if (message.udp){
-          try{
-            udpServer?.send(message.msg,message.udp.port,message.udp.address);
-          }catch(e){
-            console.error(e,message);
-          }
-          return;
-        }
-        if(message.menu){
-          //defaultSerConfig.ser?.menu.menuList.append()
-          //defaultSerConfig.ser?
-          console.log(message.menu);
-          const k = `${message.menu.type}_${message.menu.name}`;
-          if (!defaultSerConfig.ser?.clientMap.has(k)){
-            defaultSerConfig.ser?.menu?.menuList.push(k);
-            defaultSerConfig.ser?.clientMap.set(k,()=>{
-              panelObj.panel?.webview.postMessage({client:message.menu});
-            });
-          }
-
-          console.log(message);
-        }
-      },
-      undefined,
-      context.subscriptions
+export function previewFile(
+  uri: vscode.Uri,
+  context: vscode.ExtensionContext,
+  //udpServer?: dgram.Socket
+) {
+  let udpServer: dgram.Socket|undefined=undefined;
+  if (!panelObj.panel ){
+    panelObj.panel = vscode.window.createWebviewPanel(
+      'mgToy Preview',
+      `Preview: ${path.basename(uri.fsPath)}`,
+      vscode.ViewColumn.Beside,
+      { enableScripts: true }
     );
-    udpServer?.on('message',(msg,rinfo)=>{
-      panelObj.panel?.webview.postMessage({msg:new Uint8Array(msg),udp:rinfo});
+    panelObj.panel.onDidDispose((e)=>{
+      console.log("panel close");
+      //panelObj.panel = undefined; 
+      //vscode.commands.executeCommand('Developer: Restart Extension Host');
+      vscode.commands.executeCommand('workbench.action.reloadWindow');
     });
+    panelObj.outputChannel = vscode.window.createOutputChannel('mgToy');
+    context.subscriptions.push(panelObj.outputChannel);
+    
+    panelObj.outputChannel.clear();
+    panelObj.outputChannel.show(); 
+    startServer(
+      context, 
+      uri,
+      (conn,db)=>{
+        //webrtc to udp data
+        console.log("webrtc to udp data",db);
+        //if (db.name){
+        //  defaultSerConfig.ser?.clientMap.get(db.name).rawData
+        //}
+        if (handleClientMsg(db,udpServer)){
+          return;
+        }
+        defaultSerConfig.ser?.clientMap.forEach((v,k)=>{
+          conn.dc?.send(JSON.stringify(v.rawData));
+        });
+        //panelObj.panel?.webview.postMessage(db);
+      },
+      (ser)=>{
+        ser.menu?.menuList.push("test");
+        setWebviewHtml(uri,context,ser.httpPort);
+      }
+    ); 
+  } 
+  if (defaultSerConfig.ser){
+      const name = path.basename(uri.fsPath);
+      panelObj.panel.title = `Preview: ${name}`;
+      defaultSerConfig.ser.conf.rootPath = uri.fsPath; 
+      //dc.send(JSON.stringify({ type:"file",name:path.basename(conf.rootPath)}));
+      pool.getAllConnectionIds().forEach(id=>{
+        pool.getConnection(id)?.dc?.send(JSON.stringify({type:"file",name }));
+      });
+      setWebviewHtml(uri,context,defaultSerConfig.ser.httpPort);
+  } 
+  panelObj.panel.webview.onDidReceiveMessage(
+    message=>{
+      if (message.type === 'webviewError') { 
+        panelObj.outputChannel?.append(JSON.stringify(message,null,2));
+        panelObj.outputChannel?.appendLine('');
+        console.error('[Webview Error]', message.payload); 
+        return;
+      }
+      if (message.start ){
+        if (message.start.udp){
+          udpServer=initUDP(message.start.udp.port);
+          udpServer?.on('message',(msg,rinfo)=>{
+            panelObj.panel?.webview.postMessage({
+              msg:new Uint8Array(msg),
+              udp:rinfo});
+          });
+        }
+      }
+      //console.log("get",message);
 
+      if(message.menu){
+        //defaultSerConfig.ser?.menu.menuList.append()
+        //defaultSerConfig.ser?
+        //console.log(message.menu);
+        const k = `${message.menu.type}_${message.menu.name}`;
+        if (!defaultSerConfig.ser?.clientMap.has(k)){
+          const fn = ()=>{
+            if (panelObj.panel){
+              panelObj.panel.webview.postMessage({client:message.menu});
+              panelObj.panel.title = k;
+            }
+            
+          };
+          defaultSerConfig.ser?.menu?.menuList.push(k);
+          defaultSerConfig.ser?.clientMap.set(k,{rawData:message.menu,fn }); 
+
+          vscode.window.showInformationMessage(k,"ok").then(v=>{
+            if (v==="ok"){
+              fn();
+              //panelObj.panel?.webview.postMessage({client:message.menu});
+            }
+          });
+        } 
+        pool.getAllConnectionIds().forEach(id=>{
+          console.log(id);
+          pool.getConnection(id)?.dc?.send(JSON.stringify(message.menu));
+        });
+      }
+      
+      if (handleClientMsg(
+        message,
+        udpServer
+        //(()=>{return udpServer;})()
+        )
+      ){
+        return;
+      };
+    },
+    undefined,
+    context.subscriptions
+  );
 }
+const handleClientMsg = (message:any, 
+  udpServer?: dgram.Socket)=>{
+  
+  if (message.udp){
+    //console.log(message,typeof message.msg,udpServer);
+    try{
+      if (
+        typeof message.msg === "object" && 
+        !(Array.isArray(message.msg)) &&
+        !(message.msg instanceof Uint8Array)
+      ){
+        const parsedObj = message.msg;           // {0: 253, 1: 240}
+      // 提取值并按索引排序得到数组
+      //const byteArray = Object.values(parsedObj);        // [253, 240] (若索引不连续需注意)
+      // 或者更安全：按数字键排序后取值
+        message.msg =Buffer.from( 
+        Object.keys(parsedObj)
+        .sort((a,b) => Number(a) - Number(b))
+        .map(key => parsedObj[key]));
+        //message.msg=sortedArray
+        //console.log(message.msg);
+      }
+
+      udpServer?.send( message.msg,message.udp.port,message.udp.address);
+    }catch(e){
+      console.error(e,message);
+    }
+    return true;
+  }
+  return false;
+};
  

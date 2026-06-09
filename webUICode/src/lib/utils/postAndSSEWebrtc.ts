@@ -107,6 +107,7 @@ export const setRemoteRTCMsg = (
     }
 };
 const postWebRTCMsg = (inputConfig={id:"",create:false,host:"http://127.0.0.1:8088/"})=>{
+    console.log(inputConfig);
     return fetch(inputConfig.host,{
         method:"POST",
         headers: {

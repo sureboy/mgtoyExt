@@ -91,6 +91,7 @@ onMount(()=>{
             try{
                 const opt = JSON.parse(decodeURIComponent(window.location.hash.slice(1)))
                 if (opt.connid){
+                    console.log(opt)
                     createWebrtcConnFromCenterUrl({
                         id:opt.connid,
                         create:false,
@@ -149,8 +150,5 @@ footer {
     height: 100%;
     object-fit: cover;   /* 覆盖全屏，保持比例裁剪 */
     z-index: 1;
-    
 }
-
- 
 </style>

@@ -39,7 +39,6 @@ func (db *PostDB) Clean() {
 	buffer.Put(db)
 }
 func (db *PostDB) HandleMsg() *MsgHandle {
-
 	c := ReadCache(db.Id)
 	//fmt.Println(c)
 	if c == nil {
@@ -66,7 +65,6 @@ func (db *PostDB) HandleMsg() *MsgHandle {
 		}
 	}
 	return c
-
 }
 
 func ReadCache(k string) *MsgHandle {

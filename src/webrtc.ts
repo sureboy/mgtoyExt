@@ -37,7 +37,8 @@ function setupDataChannel(dc:RTCDataChannel,id:string) {
   };
 }
 
-export const initWebRtcClient =async (back:(msg:{dc: RTCDataChannel,signaling: signalingStruct,pc: RTCPeerConnection})=>void)=>{ 
+export const initWebRtcClient =async (
+  back:(msg:{dc: RTCDataChannel,signaling: signalingStruct,pc: RTCPeerConnection})=>void)=>{ 
   const conn = pool.createConnection();
   const {pc,id} = conn;
   const dc = pc.createDataChannel(id,{ordered:false,protocol:"json"});
@@ -52,7 +53,7 @@ export const initWebRtcClient =async (back:(msg:{dc: RTCDataChannel,signaling: s
   }; 
   setupDataChannel(dc,id);     
   signaling.offer =(await pc.setLocalDescription(await pc.createOffer())).toSdp().sdp;
-  return {dc,signaling,pc};
+  return {conn,signaling};
 };
 export const addRemoteAnswer =async (signaling:signalingStruct  ) =>{ 
   const conn = pool.getConnection(signaling.id);

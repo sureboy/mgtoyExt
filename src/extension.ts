@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 //} from './init';
 //import {createWebRtcConn} from './webRtcHost';
 import {previewFile} from './preview';	
-import {startUDPServerFromConfig} from './udp';
+//import {startUDPServerFromConfig} from './udp';
 
 //import {SerialPortTest} from './serial';
 
@@ -16,10 +16,10 @@ import {startUDPServerFromConfig} from './udp';
 
 export function activate(context: vscode.ExtensionContext) { 
 	vscode.window.showInformationMessage("mgtoy: Begin");    
-	let udp:any;
-	startUDPServerFromConfig().then( udpServer=>{
-		udp = udpServer;
-	});
+	//let udp:any;
+	//startUDPServerFromConfig().then( udpServer=>{
+	//	udp = udpServer;
+	//});
 	//console.log('Congratulations, your extension "mgtoy" is now active!'); 
 	/*
 	const conn = vscode.commands.registerCommand('mgtoy.conn', () => { 
@@ -36,7 +36,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage('Hello World from mgtoy!');
 	}); */ 
 	const preview = vscode.commands.registerCommand('mgtoy.previewInWebview',(uri: vscode.Uri)=>{
-		previewFile(uri,context,udp);
+		previewFile(uri,context);
 	});
 	context.subscriptions.push(
 		//start,

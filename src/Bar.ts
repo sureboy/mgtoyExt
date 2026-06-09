@@ -48,7 +48,7 @@ export const initBar = (port:number,loadIP:string   )=>{
                 vscode.env.openExternal(vscode.Uri.parse(v));
                 return;
             }
-            defaultSerConfig.ser?.clientMap.get(v)?.();
+            defaultSerConfig.ser?.clientMap.get(v)?.fn();
             //vscode.commands.executeCommand("mgtoy."+v);                            
         });
     }); 

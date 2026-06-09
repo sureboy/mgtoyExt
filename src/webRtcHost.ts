@@ -46,17 +46,15 @@ const setRemoteRTCMsg = (MsgObj:any,conn:{pc: RTCPeerConnection,dc:{send(data: s
     }
 };
 export const createWebRtcConnWithUDP = (
-    getConn:(c:connType)=>void,
+    ready:(c:connType)=>void,
     ok:(c:connType)=>void,
     create:boolean,host:string="127.0.0.1:9003",_id?:string,
      )=>{
   const conn = pool.createConnection(_id);
   const {id,pc} = conn;
   const client = dgram.createSocket('udp4');
-  const [SERVER_HOST,SERVER_PORT] = host.split(":"); 
- 
-  //let time:number;
-
+  const [SERVER_HOST,SERVER_PORT] = host.split(":");  
+  
   let timeoutMap:Map<number, NodeJS.Timeout>|undefined =new Map();
   const closeClient = (id?:string)=>{
     client.close();
@@ -78,6 +76,7 @@ export const createWebRtcConnWithUDP = (
             console.log("udp send",create,time,msg);
             let sender = 10;
             const s =()=>{ 
+                //console.log(msg);
                 client.send(
                     JSON.stringify(
                     {id,create,msg:Buffer.from(msg).toString('base64'),time }
@@ -110,7 +109,7 @@ export const createWebRtcConnWithUDP = (
     if (db.time && timeoutMap?.has(db.time)){
         clearTimeout(timeoutMap?.get(db.time));
         timeoutMap?.delete(db.time);
-        console.log("del",db);
+        //console.log("del",db);
         return;
     }
     if (db.msg){
@@ -128,7 +127,7 @@ export const createWebRtcConnWithUDP = (
     if (e.candidate) { 
         outObj.dc.send(JSON.stringify(e.candidate.toJSON()));
     }else{
-        getConn(conn);
+        ready(conn);
     }
   };
   pc.onnegotiationneeded=()=>{

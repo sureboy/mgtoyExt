@@ -85,7 +85,12 @@ const initRunBar = (ser:SerConfig )=>{
 };
 const WebrtcConnOpen = (
     dc: RTCDataChannel,
-    pc: RTCPeerConnection,rootPath:string,udpServer?: Socket )=>{
+    pc: RTCPeerConnection,
+    rootPath:string,
+    handleMsg:(db:any)=>void,
+    //udpServer?: Socket 
+)=>{
+
     for (const v of nameMap.entries()){
         dc.send(JSON.stringify({
             name:v[1].DB.Carname,
@@ -116,6 +121,8 @@ const WebrtcConnOpen = (
                 conn.dc?.send(JSON.stringify(obj));
             }
         }
+        handleMsg(obj);
+        /*
         if (obj.name){
             const db = nameMap.get(obj.name);  
             if (db){ 
@@ -130,7 +137,7 @@ const WebrtcConnOpen = (
                 } 
                 dc.send(JSON.stringify({name:db?.DB.Carname,update:db?.Update,type:"udp"}));
             }
-        }
+        }*/
         /*
         //setRemoteRTCMsg(obj,{pc,dc:dataChannel});
         if (webRtcRouterHandle(obj,dc)){ 
@@ -153,7 +160,12 @@ const WebrtcConnOpen = (
     });
 
 };
-export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Uri,udpServer? :dgram.Socket,back?:(ser:SerConfig)=>void)=>{
+export const startServer = (
+    context: vscode.ExtensionContext,
+    rootPath: vscode.Uri,
+    //udpServer? :dgram.Socket,
+    handleRTCDC:(conn: connType,db:any)=>void,
+    back?:(ser:SerConfig)=>void)=>{
     //console.log(context);
     const config = vscode.workspace.getConfiguration("mgtoy");
     /*
@@ -185,6 +197,7 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
                     //resdb({msg:val}); 
                 });
             },
+            /*
             "/find":(postDB:any,resdb:(db:any)=>void)=>{
                 //res.end(JSON.stringify(Object.fromEntries(nameMap)));
                 resdb(Object.fromEntries(nameMap));
@@ -195,7 +208,7 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
                     return;
                 }
                 resdb(initConfCallBack(udpServer)(postDB));
-            },
+            },*/
         },
         handleGetReq:{
             "/conn":(uri,resdb:(db:any)=>void)=>{
@@ -212,14 +225,25 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
                                 conn.dc!,
                                 conn.pc,
                                 conf.rootPath,
-                                udpServer);
-                        } ,true,udpHost);
+                                (db)=>{
+                                    handleRTCDC(conn,db);
+                                }
+                            );
+                        },true,udpHost);
             },
             "/offer":(uri,resdb:(db:any)=>void)=>{
-                handleWebRtcConn(resdb,({dc,pc})=>{
-                    openDataChannelEvent(dc);
-                    dc.addEventListener('open',()=>{ 
-                        WebrtcConnOpen(dc,pc,conf.rootPath,udpServer);
+                handleWebRtcConn(resdb,(conn)=>{
+                    const {dc,pc} = conn;
+                    openDataChannelEvent(dc!);
+                    dc?.addEventListener('open',()=>{ 
+                        WebrtcConnOpen(
+                            dc,
+                            pc,
+                            conf.rootPath,
+                            (db)=>{
+                                handleRTCDC(conn,db);
+                            }
+                        );
                     });
                     /*
                     dc.addEventListener('message',
@@ -260,15 +284,15 @@ export const startServer = (context: vscode.ExtensionContext,rootPath: vscode.Ur
         }
     });
 };
-const handleWebRtcConn = (send:(signaling: signalingStruct)=>void,DataChannel:(obj:{dc:RTCDataChannel,pc: RTCPeerConnection})=>void)=>{
+const handleWebRtcConn = (send:(signaling: signalingStruct)=>void,DataChannel:(conn:connType)=>void)=>{
     let isSend = false;            
     initWebRtcClient(({signaling})=>{ 
         if (signaling.offer && !isSend){
             send(signaling); 
             isSend=true;
         }                        
-    }).then(({signaling,dc,pc})=>{
-        DataChannel({dc,pc});
+    }).then(({signaling,conn})=>{
+        DataChannel(conn);
  
         if (signaling.ICEList.length>0 && !isSend ){
             send(signaling); 

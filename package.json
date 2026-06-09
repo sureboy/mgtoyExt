@@ -10,7 +10,7 @@
     "Other"
   ],
   "activationEvents": [ 
-    "workspaceContains:mgtoy.json"
+    
   ],
   "main": "./dist/extension.js",
   "repository": "https://github.com/sureboy/mgtoyExt",

@@ -21,6 +21,7 @@ import {
     replaceAssetPathsAdvanced,
     startHandleFile} from '$lib/utils/opfs'
 let element: HTMLDivElement
+let Iframe:HTMLIFrameElement|undefined
 const urlList:string[] = []
 const {mesh,fillMainArea}:{
     mesh:meshInfoType,
@@ -142,16 +143,17 @@ const updateDetailsUI = (
         case "udp" :
             if (child.update){
                 const n = isStatusOnline(child.update)
-                if (!n){
-                    c.disabled=true
-                }else{
+                //if (!n){
+                    //c.disabled=true
+                //}else{
                     c.disabled=false
-                }
+                //}
                 c.textContent = n+child.name
             }
             c.onclick=()=>{
                 mgtoyTitle.id= obj.conn.id
                 mgtoyTitle.child = child.name
+                Iframe.contentWindow.postMessage({client:child})
                 //mgtoyTitle=conf.name+"-"+conf.type
                 //obj.setSender(child)
             }
@@ -178,7 +180,9 @@ const updateDetailsUI = (
                         (code)=>{
                             switch (child.name.split(".").pop()){
                                 case "html":
-                                    showHtml(child.name,code);
+                                    showHtml(child.name,code).then(f=>{
+                                        Iframe=f
+                                    });
                                     break;
                             }
                         }
@@ -188,7 +192,6 @@ const updateDetailsUI = (
                 }
             }
             break;
-
         }
     }
 
@@ -260,13 +263,13 @@ const showHtml =async ( path:string,code:string)=>{
     //window.addEventListener('resize',resizeIframe)
     iframe.style.border="0";
     fillMainArea(iframe)
-    window.addEventListener('resize',()=>resizeIframe())
+    window.onresize  =()=> resizeIframe()
     iframe.onload = () => { 
         //URL.revokeObjectURL(iframe.src)
         //obj.conn.dc.addEventListener('message',(ev)=>{ 
         //    iframe.contentWindow.postMessage(JSON.parse(ev.data))
         //})
-        window.addEventListener('message', (event) => {
+        window.onmessage = (event:any) => {
             console.log("listener message",event)
             const conn = pool.getConnection(mgtoyTitle.id) 
             if (conn){
@@ -274,8 +277,10 @@ const showHtml =async ( path:string,code:string)=>{
             }else{
                 mesh.conn.dc.send(JSON.stringify(Object.assign({name:mgtoyTitle.child},event.data)))
             } 
-        }) 
+        }
     } 
+    
+    return iframe
 }
 const isStatusOnline = (updatetime:number)=>{
     const timeOut = Date.now() - updatetime 
@@ -345,8 +350,9 @@ onMount(()=>{
     passthroughWebRTC(mesh.conn)
     mesh.conn.dc.addEventListener("message",(e)=>{
         const conf = JSON.parse(e.data) 
-        //console.log(conf,obj)
+        console.log("obj",conf)
         updateDetailsUI(conf,element,mesh) 
+        Iframe?.contentWindow.postMessage(conf)
     }) 
 })
 </script>
