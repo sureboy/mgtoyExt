@@ -242,7 +242,7 @@ export function previewFile(
         //panelObj.panel?.webview.postMessage(db);
       },
       (ser)=>{
-        ser.menu?.menuList.push("test");
+        //ser.menu?.menuList.push("test");
         setWebviewHtml(uri,context,ser.httpPort);
       }
     ); 

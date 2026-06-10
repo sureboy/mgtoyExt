@@ -15,6 +15,7 @@ import {previewFile} from './preview';
 // Your extension is activated the very first time the command is executed
 
 export function activate(context: vscode.ExtensionContext) {  
+	//vscode.window.showInformationMessage()
 	context.subscriptions.push( 
 		vscode.commands.registerCommand('mgtoy.previewInWebview',(uri: vscode.Uri)=>{
 			previewFile(uri,context);

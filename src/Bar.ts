@@ -2,6 +2,8 @@
 import * as vscode from 'vscode';
 import * as QRCode from 'qrcode';
 import {defaultSerConfig} from './http';
+import {createWebRtcConnWithUDP} from './webRtcHost';
+import { pool } from './webrtc';
 export const initBar = (port:number,loadIP:string   )=>{
     //if (menu){
         //return;
@@ -10,7 +12,7 @@ export const initBar = (port:number,loadIP:string   )=>{
     //menu?.dispose();
     //}
     //const loadIP = getLocalIp();
-    const config = vscode.workspace.getConfiguration("mgtoy");
+    //const config = vscode.workspace.getConfiguration("mgtoy");
     const host =  'https://mgtoy.cn/control';
     Bar.command="menu";
     const ipUrl = `http://${loadIP}:${port}`;
@@ -23,7 +25,7 @@ export const initBar = (port:number,loadIP:string   )=>{
     //const webHost = `http://${loadIP}:8088`;
     const textToEncode =`${ipUrl}/conn`;//?url=${testUrl}&host=${udpHost}&web=${webHost}`;
     const textToEncode1 =`${ipUrl}/conn.html#${host}`;
-    const menuList = [textToEncode,textToEncode1];
+    const menuList = ["QR Code",textToEncode,textToEncode1];
     QRCode.toDataURL(textToEncode, { margin: 1, width: 150 }, (err, url) => {
         if (err) {
             Bar.tooltip = `Failed: ${err.message}`;
@@ -43,6 +45,35 @@ export const initBar = (port:number,loadIP:string   )=>{
     menu = vscode.commands.registerCommand('menu', () => {
         vscode.window.showQuickPick(menuList).then(v=>{
             if (!v){
+                return;
+            }
+            if(v==="QR Code"){
+                const url =  "https://mgtoy.cn/control";
+                //const host = uri.searchParams.get("host")||"192.168.1.8:9003";
+                const udpHost =  "zaddone.com:9003";//"192.168.1.8:9003";
+                const webHost =  "https://www.zaddone.com/rtc";
+                //vscode.window.createTreeView("test",{})
+                const oldtip = Bar.tooltip;
+                
+                createWebRtcConnWithUDP((conn)=> {
+                    const urlstr = `${url}#${encodeURIComponent(JSON.stringify({connid:conn.id,host:webHost}))}`;
+                    QRCode.toDataURL(urlstr, { margin: 1, width: 150 }, (err, url) => {
+                        const markdown = new vscode.MarkdownString(
+                            `![QR Code](${url})\n\n**Within 2 minutes**`
+                        );
+                        markdown.supportHtml = true;  // 可开启 HTML 支持（非必须）
+                        markdown.isTrusted = true;     // 信任内容，允许图片加载
+                        Bar.tooltip = markdown;
+                        setTimeout(()=>{
+                            Bar.tooltip = oldtip;
+                            pool.closeConnection(conn.id);
+                        },60000*2);
+                    });
+
+                },(c)=>{
+                    Bar.tooltip = oldtip;
+                },true,udpHost);
+                //Bar.tooltip = 'Failed';
                 return;
             }
             if (v.startsWith("http://")){
