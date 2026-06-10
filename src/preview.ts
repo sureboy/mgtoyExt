@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import dgram from 'dgram';
-import {
-  //stopServer,
-  startServer} from './init';
+import { startServer} from './initServer';
 import {defaultSerConfig} from './http';
 import { pool } from './webrtc';
 import {initUDP} from './udp';
+import {mdnsServer} from './mdns';
+import {getLocalIp} from './util';
 const panelObj:{
   panel?:vscode.WebviewPanel,
   outputChannel?: vscode.OutputChannel
@@ -18,8 +18,7 @@ function getNonce() {
 		text += possible.charAt(Math.floor(Math.random() * possible.length));
 	}
 	return text;
-}
-
+};
 const  setCSPMetaInHtml = (html:string, contentValue:string) => {
   // 匹配 <meta http-equiv="Content-Security-Policy" ... content="...">
   // 支持属性值使用单引号或双引号，属性间可能有任意空白
@@ -202,8 +201,10 @@ export function previewFile(
   context: vscode.ExtensionContext,
   //udpServer?: dgram.Socket
 ) {
+  
   let udpServer: dgram.Socket|undefined=undefined;
   if (!panelObj.panel ){
+    mdnsServer(getLocalIp());
     panelObj.panel = vscode.window.createWebviewPanel(
       'mgToy Preview',
       `Preview: ${path.basename(uri.fsPath)}`,
@@ -224,18 +225,20 @@ export function previewFile(
     startServer(
       context, 
       uri,
-      (conn,db)=>{
+      (conn,message)=>{
         //webrtc to udp data
-        console.log("webrtc to udp data",db);
+        //console.log("webrtc to udp data",db);
         //if (db.name){
         //  defaultSerConfig.ser?.clientMap.get(db.name).rawData
         //}
-        if (handleClientMsg(db,udpServer)){
+        if (handleClientMsg(message,udpServer)){
           return;
         }
-        defaultSerConfig.ser?.clientMap.forEach((v,k)=>{
-          conn.dc?.send(JSON.stringify(v.rawData));
-        });
+        if (message.start ){
+          defaultSerConfig.ser?.clientMap.forEach((v,k)=>{
+            conn.dc?.send(JSON.stringify(v.rawData));
+          });
+        }
         //panelObj.panel?.webview.postMessage(db);
       },
       (ser)=>{
@@ -303,12 +306,7 @@ export function previewFile(
         });
       }
       
-      if (handleClientMsg(
-        message,
-        udpServer
-        //(()=>{return udpServer;})()
-        )
-      ){
+      if (handleClientMsg( message, udpServer ) ){
         return;
       };
     },
@@ -316,9 +314,9 @@ export function previewFile(
     context.subscriptions
   );
 }
-const handleClientMsg = (message:any, 
+const handleClientMsg = (
+  message:any, 
   udpServer?: dgram.Socket)=>{
-  
   if (message.udp){
     //console.log(message,typeof message.msg,udpServer);
     try{

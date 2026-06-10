@@ -26,7 +26,8 @@ const messageEvent = (server: dgram.Socket,newCar?:(n:any)=>void)=>{
                         Carname:msg.subarray(2,8).toString(),
                         RemotePort:rinfo.port,
                         Control: msg[1],
-                    }};
+                    }
+                };
                 //console.log(_db);
                 if (db){
                     Object.assign(db,_db);
@@ -40,11 +41,15 @@ const messageEvent = (server: dgram.Socket,newCar?:(n:any)=>void)=>{
             default:
                 console.log(msg.length,msg.toString());
         }
-        server.send(new Uint8Array(sendMsg),rinfo.port, rinfo.address,err=>{
-            if (err){
-                console.error(err);
-            }
-        });
+        server.send(
+            new Uint8Array(sendMsg),
+            rinfo.port, 
+            rinfo.address,
+            err=>{
+                if (err){
+                    console.error(err);
+                }
+            });
     });
 };
 export const initUDP = (port:number)=>{

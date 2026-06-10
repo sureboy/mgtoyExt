@@ -82,7 +82,7 @@ const getTrackShowVideo = ( StreamConnection:RTCPeerConnection)=>{
 const createMyWebRtc = (conf:myWebRtcConf,closeHand?:()=>void)=>{
     conf.StreamConnection = createRtcTrack((candidate: RTCIceCandidateInit)=>{
         conf.dataChannel.send(JSON.stringify({id:conf.dataChannel.label,msg:{candidate}}))
-    },closeHand)
+    })
     dialogConfig.closeHandle = ()=>{
         conf.StreamConnection.close()
         closeHand()

@@ -11,18 +11,19 @@ export const initBar = (port:number,loadIP:string   )=>{
     //}
     //const loadIP = getLocalIp();
     const config = vscode.workspace.getConfiguration("mgtoy");
-    const host = config.get("host")||'mgtoy.cn';
+    const host =  'https://mgtoy.cn/control';
     Bar.command="menu";
     const ipUrl = `http://${loadIP}:${port}`;
     Bar.text = ipUrl;
     Bar.tooltip="Generating QR code...";
-    const loadUrl = `http://localhost:${port}`;
-    const menuList = [ipUrl,loadUrl];
-    const testUrl= `http://${loadIP}:5173/control`;
-    const udpHost = `${loadIP}:9003`;
-    const webHost = `http://${loadIP}:8088`;
-    const textToEncode =`${ipUrl}/conn?url=${testUrl}&host=${udpHost}&web=${webHost}`;
-    const textToEncode1 =`${ipUrl}/conn.html#${testUrl}`;
+    //const loadUrl = `http://localhost:${port}`;
+    
+    //const testUrl= `http://${loadIP}:5173/control`;
+    //const udpHost = `${loadIP}:9003`;
+    //const webHost = `http://${loadIP}:8088`;
+    const textToEncode =`${ipUrl}/conn`;//?url=${testUrl}&host=${udpHost}&web=${webHost}`;
+    const textToEncode1 =`${ipUrl}/conn.html#${host}`;
+    const menuList = [textToEncode,textToEncode1];
     QRCode.toDataURL(textToEncode, { margin: 1, width: 150 }, (err, url) => {
         if (err) {
             Bar.tooltip = `Failed: ${err.message}`;

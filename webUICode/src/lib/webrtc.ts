@@ -96,12 +96,12 @@ export const connWebRTC =()=>{
         }).catch(reject);
     }); 
 };
-/*
+ 
 export const createRtcTrack = (
-    id:string,
+    //id:string,
     getRTCIce:(candidate: RTCIceCandidateInit)=>void,
      )=>{ 
-    const conn = pool.createConnection(id);
+    const conn = pool.createConnection();
     //const StreamConnection = new RTCPeerConnection(configuration);  
     conn.pc.onicecandidate = event => { 
         if (event.candidate) { 
@@ -109,8 +109,8 @@ export const createRtcTrack = (
         }
     };  
  
-    return conn;
-};*/
+    return conn.pc;
+}; 
 export const createOffer =async ( StreamConnection: RTCPeerConnection)  =>{
     //const StreamConnection = createMyWebRtc(dataChannel,closeHand)
     /*

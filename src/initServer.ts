@@ -3,13 +3,13 @@ import {
     RunHttpServer,
     //defaultSerConfig
 } from './http';
-import dgram from 'dgram';
+//import dgram from 'dgram';
 //import * as http from 'http'; 
 import {createWebRtcConnWithUDP} from './webRtcHost';
 import type { HttpConfigType, SerConfig } from './http';
 import {getLocalIp} from './util';
 //import {initWebSocket} from './webSocket';
-import {initUDPServer} from './udp'; 
+//import {initUDPServer} from './udp'; 
 import * as path from 'path';
 import  {
   RTCPeerConnection ,
@@ -18,8 +18,7 @@ import  {
   //RTCSessionDescription,
   //signatures
   } from 'werift';
-import {initBar} from './Bar'; 
-import type {Socket} from 'dgram';
+import {initBar} from './Bar';  
 import {pool,
     initWebRtcClient,
     addRemoteAnswer,
@@ -44,7 +43,7 @@ export const stopServer = ()=>{
         v.dispose();
     });
 
-};*/
+};
 const initConfCallBack = (udpServer: Socket)=>{
     return (msgObj:{name:string,msg:string})=>{
         if (msgObj.name==="local"){
@@ -71,7 +70,7 @@ const initConfCallBack = (udpServer: Socket)=>{
         }
         return {name:db?.DB.Carname,update:db?.Update,type:"udp"};
     };    
-};
+};*/
 const initRunBar = (ser:SerConfig )=>{ 
     try{
         const localIP = getLocalIp(); 
