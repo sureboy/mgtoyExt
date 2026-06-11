@@ -204,10 +204,10 @@ const showHtml =async ( path:string,code:string)=>{
             break
         }
         URL.revokeObjectURL(u)
-
     }
     
     code =await replaceAssetPathsAdvanced(code,(origin)=>{
+        console.log("get",origin)
         return new Promise<string>((resolve,reject)=>{
             let t = setTimeout(() => {
                 resolve(origin)
@@ -232,13 +232,10 @@ const showHtml =async ( path:string,code:string)=>{
                         }
                     }catch(e){
                         console.log(e)
-                    }
-                    
+                    }                    
                 }
             )
-        }) 
-        
-        //return "origin"
+        })  
     })
     //code = insertScriptAtBodyStart(code,`window.postMessage=(db)=>{}`)
     //const doc =  new DOMParser().parseFromString(code, 'text/html');
@@ -251,7 +248,7 @@ const showHtml =async ( path:string,code:string)=>{
             { type: contentType['.html'] || 'text/plain' }
         )
     )*/
-    iframe.srcdoc = code
+    
     //urlList.push(iframe.src)
     const resizeIframe = ()=>{
         iframe.width = window.innerWidth.toString(); 
@@ -279,6 +276,7 @@ const showHtml =async ( path:string,code:string)=>{
             } 
         }
     } 
+    iframe.srcdoc = code
     
     return iframe
 }

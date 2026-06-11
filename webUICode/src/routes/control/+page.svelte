@@ -1,154 +1,105 @@
-<script lang="ts">  
-//import BlinkEyes from '$lib/components/BlinkEyes.svelte';
-import InfoPanel,{dialogConfig,addMesh,localDevice} from "$lib/components/InfoPanel.svelte";
-//import Joystick from "$lib/components/Joystick.svelte";
-import {onMount} from "svelte"
-import {handleOffer,createOffer} from '$lib/webrtc' 
-//import {connWebRTC ,createRtcTrack,createOffer} from '$lib/webrtc'
-//import ConnWebrtc,{ startWebRTC} from '$lib/ConnWebrtc.svelte'; 
-import type {signalingStruct} from "$lib/utils/mainDataStruct" 
-//import {createCmdSender} from "$lib/utils/wheelCmdSender"
-import type {meshInfoType} from '$lib/components/Mesh.svelte'
-import {setRemoteRTCMsg,createWebrtcConnFromCenterUrl} from "$lib/utils/postAndSSEWebrtc"
-import {pool} from "$lib/utils/webRTCPool"
-import type {connType} from "$lib/utils/webRTCPool"
-//    import { clearInterval } from 'node:timers';
-//let canvas:HTMLCanvasElement
-let sender:(msg:any)=>void = undefined
-//const infoData:infoStruct= {cars:[]}
-let mainArea:HTMLDivElement 
-//let mgtoyTitle = $state("mgtoy")
-const init = (conn:connType)=>{
-    //InfoPanelMenu.conn=false
-    //dialogConfig.dialogEl?.close()
-    //initDataChannelListener(dataChannel) 
-    //initDataChannelSender(dataChannel) 
-    const dcconfig:meshInfoType = {
-        conn , 
-        setSender:function(db:any){  
-            sender = msg=>{ 
-                conn.dc.send(JSON.stringify(Object.assign(msg,db)))
-            }  
-        }        
-    }
-    //mgtoyTitle = dcconfig.conn.id +"-mgtoy"
-    
+<script lang="ts">   
+import Joystick from "$lib/components/Joystick.svelte";
+import {onMount} from "svelte" 
+const nameMap = new Map();
+const addrMap = new Map();
+const currentClient:{rawDate?:any,[key:string]:any} = {}
+onMount(()=>{  
+    let postMessage =window.parent?window.parent.postMessage:console.log;
+    postMessage({ 
+        start:{
+            udp:{
+                port:9002
+            }            
+        }    
+    })
 
 
-    //conn.onClose = ()=>{
-    //    console.log("----",dcconfig)
-    //}
-    addMesh(dcconfig)
- 
-    //console.log(InfoPanelMenu)
-
-}
-const startWebRTC = (sign:signalingStruct,HandleConn:(
-    conn_: connType)=>void)=>{
-    const conn = pool.createConnection(sign.id)// new RTCPeerConnection(configuration); 
-    const {pc} = conn
-    const link = document.createElement("a")
-    link.textContent='...'
-    dialogConfig.dialogEl?.showModal()
-    dialogConfig.content.append(link)
-    handleOffer(sign,pc,(answer)=>{ 
-        link.target="_blank"
-        link.textContent = "确定"
-        link.rel = "opener"
-        link.onclick=()=>{link.textContent="..."}
-        link.href=sign.backUrl+"#"+encodeURIComponent(JSON.stringify(answer))
+    window.addEventListener('message',(ev)=>{
+        const {client} = ev.data
+        if (!client){
+            return;
+        }
         
-        
-        //link.click()
-    },(receiveChannel)=>{ 
-        if (receiveChannel.label==="file"){
+        Object.assign(currentClient,client)
+        console.log("client",currentClient)
+    })
+    window.addEventListener('message',(ev)=>{
+        const {msg,udp} = ev.data
+        if (!msg || !udp){
             return
         }
-        conn.dc = receiveChannel
-        dialogConfig.content.innerHTML=""  
-        dialogConfig.dialogEl?.close()
-        pc.onnegotiationneeded = ()=>{
-            createOffer(pc).then(sdp=>{
-                receiveChannel.send(JSON.stringify(sdp));
-            });
-        }
-        receiveChannel.addEventListener('message',(ev)=>{
-            try{
-                setRemoteRTCMsg(JSON.parse(ev.data),{pc,dc:receiveChannel})
-            }catch(e){
-                console.error(e)
-            }            
-        })
-        console.log(receiveChannel)
-        HandleConn(conn) 
-    })
-}
- 
-onMount(()=>{  
-    if (window.location.hash){
-        const hashdb = window.location.hash.slice(1)
-        if (hashdb){
-            try{
-                const opt = JSON.parse(decodeURIComponent(window.location.hash.slice(1)))
-                if (opt.connid){
-                    console.log(opt)
-                    createWebrtcConnFromCenterUrl({
-                        id:opt.connid,
-                        create:false,
-                        //host:"http://192.168.1.8:8088"
-                        host:opt.host||"https://www.zaddone.com/rtc"
-                    },conn=>{
-                        addMesh({conn})})
-                    return
+        const k = `${udp.address}:${udp.port}`;
+        const db = addrMap.get(k);
+        const sendMsg =  [msg[0]];
+        switch (msg.length) {
+            case 1:
+                if (db){
+                    db.Update = Date.now();
+                    db.Num = msg[0];
+                }else{    
+                    sendMsg.push(255); 
+                }               
+                break;
+            case 12: 
+                const _db ={
+                    Update:Date.now(),
+                    Num:msg[0],
+                    DB:{
+                        LocalIP:new Uint8Array(msg.subarray(8).map(v=>v^255)),
+                        RemoteIP:udp.address,//new Uint8Array(rinfo.address.split(".").map(v=>Number(v))),
+                        Carname:new TextDecoder().decode(msg.subarray(2,8) ) ,
+                        RemotePort:udp.port,
+                        Control: msg[1],
+                    }};
+                //console.log(_db);
+                if (db){
+                    Object.assign(db,_db);
+                }else{
+                    addrMap.set(k,_db) ;
+                    nameMap.set(_db.DB.Carname,_db);
+                    //if (conf.newCar){
+                    //newCar?.(_db);
+                    postMessage({
+                        menu:{
+                            name:_db.DB.Carname,
+                            update:_db.Update,
+                            type:"udp",
+                            rawDate:_db
+                        }
+                    })
+
+                    
                 }
-                const sign =opt  as signalingStruct
-                location.hash = ''; 
-                startWebRTC(sign,init)
-                return
-            }catch(e){
-                console.log(e) 
-            } 
+                break; 
+            default:
+                console.log(msg.length,msg.toString());
         }
-    }
-    mainArea.append
+        postMessage({msg:new Uint8Array(sendMsg),udp})
+        /*
+        server.send(new Uint8Array(sendMsg),rinfo.port, rinfo.address,err=>{
+            if (err){
+                console.error(err);
+            }
+        });*/
+    })
 })
 </script>
+<Joystick clickEvent={(n)=>{
+    //console.log(n)
+
+    const db =currentClient.rawDate 
+    //const db = nameMap.get(currentClient.name)||currentClient.rawDate
+    if (db){
+        const senddb = {
+            msg:new Uint8Array([db.Num,Number(n||0)|0xF0 ]),
+            udp:{
+                port:db.DB.RemotePort,
+                address:db.DB.RemoteIP,
+            }
+        }
+        console.log("send",senddb)
+        postMessage(senddb);
+    }
+}}></Joystick>
  
-<div class="bg" bind:this={mainArea} >
-    
-    
-</div>
-  
-<InfoPanel fillMainArea={(...nodes: (Node | string)[])=>{
-    mainArea.innerHTML=""
-    mainArea.append(...nodes)
-    }} ></InfoPanel>
-<footer>🎥 摄像头视频背景 | 半透明摇杆 | 拖拽右下角 → 8方向 + 中心停止</footer> 
-<style>
-footer {
-    position: fixed;
-    bottom: 12px;
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-size: 11px;
-    color: #ccc;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    padding: 6px;
-    z-index: 99;
-    pointer-events: none;
-    font-weight: 400;
-}
- 
-/* 视频全屏背景层 */
-.bg {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;   /* 覆盖全屏，保持比例裁剪 */
-    z-index: 1;
-}
-</style>

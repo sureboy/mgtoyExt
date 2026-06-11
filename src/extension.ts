@@ -17,6 +17,13 @@ import {previewFile} from './preview';
 export function activate(context: vscode.ExtensionContext) {  
 	//vscode.window.showInformationMessage()
 	context.subscriptions.push( 
+		vscode.commands.registerCommand('mgtoy.start', () => {  
+			previewFile(
+				vscode.Uri.joinPath(
+					context.extensionUri,"webUI", "test.mgtoy.html"),
+					context
+				);
+        }),  
 		vscode.commands.registerCommand('mgtoy.previewInWebview',(uri: vscode.Uri)=>{
 			previewFile(uri,context);
 		})

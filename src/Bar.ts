@@ -13,14 +13,14 @@ export const initBar = (port:number,loadIP:string   )=>{
     //}
     //const loadIP = getLocalIp();
     //const config = vscode.workspace.getConfiguration("mgtoy");
-    const host =  'https://mgtoy.cn/control';
+    const host =  'https://mgtoy.cn';
     Bar.command="menu";
     const ipUrl = `http://${loadIP}:${port}`;
     Bar.text = ipUrl;
     Bar.tooltip="Generating QR code...";
     //const loadUrl = `http://localhost:${port}`;
     
-    //const testUrl= `http://${loadIP}:5173/control`;
+    //const testUrl= `http://${loadIP}:5173`;
     //const udpHost = `${loadIP}:9003`;
     //const webHost = `http://${loadIP}:8088`;
     const textToEncode =`${ipUrl}/conn`;//?url=${testUrl}&host=${udpHost}&web=${webHost}`;
@@ -48,7 +48,7 @@ export const initBar = (port:number,loadIP:string   )=>{
                 return;
             }
             if(v==="QR Code"){
-                const url =  "https://mgtoy.cn/control";
+                //const url =  "https://mgtoy.cn";
                 //const host = uri.searchParams.get("host")||"192.168.1.8:9003";
                 const udpHost =  "zaddone.com:9003";//"192.168.1.8:9003";
                 const webHost =  "https://www.zaddone.com/rtc";
@@ -56,7 +56,7 @@ export const initBar = (port:number,loadIP:string   )=>{
                 const oldtip = Bar.tooltip;
                 
                 createWebRtcConnWithUDP((conn)=> {
-                    const urlstr = `${url}#${encodeURIComponent(JSON.stringify({connid:conn.id,host:webHost}))}`;
+                    const urlstr = `${host}#${encodeURIComponent(JSON.stringify({connid:conn.id,host:webHost}))}`;
                     QRCode.toDataURL(urlstr, { margin: 1, width: 150 }, (err, url) => {
                         const markdown = new vscode.MarkdownString(
                             `![QR Code](${url})\n\n**Within 2 minutes**`
