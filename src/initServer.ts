@@ -211,7 +211,7 @@ export const startServer = (
         },
         handleGetReq:{
             "/conn":(uri,resdb:(db:any)=>void)=>{
-                const url = uri.searchParams.get("url")||"https://mgtoy.cn/control";
+                const url = uri.searchParams.get("url")||"https://mgtoy.cn";///control";
                 //const host = uri.searchParams.get("host")||"192.168.1.8:9003";
                 const udpHost = uri.searchParams.get("host")||"zaddone.com:9003";//"192.168.1.8:9003";
                 const webHost =uri.searchParams.get("web")|| "https://www.zaddone.com/rtc";
