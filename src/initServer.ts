@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as QRCode from 'qrcode';
 import {
     RunHttpServer,
     //defaultSerConfig
@@ -82,7 +83,7 @@ const initRunBar = (ser:SerConfig )=>{
         console.error(e);
     }
 };
-const WebrtcConnOpen = (
+export const WebrtcConnOpen = (
     dc: RTCDataChannel,
     pc: RTCPeerConnection,
     rootPath:string,
@@ -121,41 +122,7 @@ const WebrtcConnOpen = (
             }
         }
         handleMsg(obj);
-        /*
-        if (obj.name){
-            const db = nameMap.get(obj.name);  
-            if (db){ 
-                try{
-                    udpServer?.send(new Uint8Array([db.Num,Number(obj.msg||0)|0xF0 ]),db.DB.RemotePort,db.DB.RemoteIP,err=>{
-                        if (err){
-                            console.error(err);
-                        }
-                    }); 
-                }catch(e){
-                    console.error(e);
-                } 
-                dc.send(JSON.stringify({name:db?.DB.Carname,update:db?.Update,type:"udp"}));
-            }
-        }*/
-        /*
-        //setRemoteRTCMsg(obj,{pc,dc:dataChannel});
-        if (webRtcRouterHandle(obj,dc)){ 
-            return;
-        } 
-        if (!udpServer){
-            return;
-        }
-        const db = initConfCallBack(udpServer)(obj);
-        if (db){
-            if ( Array.isArray(db)){
-                db.forEach(v=>{
-                    dc.send(JSON.stringify(v));
-                });
-                
-            }else{
-                dc.send(JSON.stringify(db));
-            }                                
-        }*/
+        
     });
 
 };
@@ -277,11 +244,64 @@ export const startServer = (
         }
     };  
     RunHttpServer( conf   ,(ser:SerConfig)=>{
-        ser.menu = initRunBar(ser);
+        const menu = initRunBar(ser);
+        ser.menu = menu;
+        if (menu){
+            menu.menuListMap['QR Code']=()=>{
+                waitWebRtcConn({
+                    Bar:ser.menu.Bar,
+                    rootPath:rootPath.fsPath,
+                    handleRTCDC
+                });
+            };
+        }
+        
+        
         if (back){
             back(ser);
         }
     });
+};
+
+const waitWebRtcConn= (opt:{
+    //host:string,
+    //webHost:string,
+    //udpHost:string,
+    handleRTCDC:(conn: connType,db:any)=>void,
+    rootPath:string,
+    Bar:vscode.StatusBarItem})=>{
+    const host =  'https://mgtoy.cn';
+    const oldtip = opt.Bar.tooltip;
+    const udpHost =  "zaddone.com:9003";//"192.168.1.8:9003";
+    const webHost =  "https://www.zaddone.com/rtc";
+    createWebRtcConnWithUDP((conn)=> {
+        const urlstr = `${host}#${
+            encodeURIComponent(
+                JSON.stringify({
+                    connid:conn.id,
+                    host:webHost}))}`;
+        QRCode.toDataURL(urlstr, { margin: 1, width: 150 }, (err, url) => {
+            const markdown = new vscode.MarkdownString(
+                `![QR Code](${url})\n\n**Within 2 minutes**`
+            );
+            markdown.supportHtml = true;  // 可开启 HTML 支持（非必须）
+            markdown.isTrusted = true;     // 信任内容，允许图片加载
+            opt.Bar.tooltip = markdown;
+            setTimeout(()=>{
+                opt.Bar.tooltip = oldtip;
+                pool.closeConnection(conn.id);
+            },60000*2);
+        });
+
+    },(conn)=>{
+        opt.Bar.tooltip = oldtip;
+        WebrtcConnOpen(conn.dc!,
+                conn.pc,
+                opt.rootPath,
+                (db)=>{
+                    opt.handleRTCDC(conn,db);
+                });
+    },true,udpHost);
 };
 const handleWebRtcConn = (send:(signaling: signalingStruct)=>void,DataChannel:(conn:connType)=>void)=>{
     let isSend = false;            
