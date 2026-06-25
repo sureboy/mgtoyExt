@@ -269,9 +269,11 @@ export function previewFile(
         if (message.start.udp){
           udpServer=initUDP(message.start.udp.port);
           udpServer?.on('message',(msg,rinfo)=>{
+            //console.log(msg);
             panelObj.panel?.webview.postMessage({
               msg:new Uint8Array(msg),
-              udp:rinfo});
+              udp:rinfo
+            });
           });
         }
       }
@@ -290,7 +292,9 @@ export function previewFile(
             }
             
           };
-          defaultSerConfig.ser?.menu?.menuList.push(k);
+          (defaultSerConfig.ser?.menu?.menuListMap as {[key:string]:()=>void})[k]=()=>{
+            fn();
+          };
           defaultSerConfig.ser?.clientMap.set(k,{rawData:message.menu,fn }); 
 
           vscode.window.showInformationMessage(k,"ok").then(v=>{

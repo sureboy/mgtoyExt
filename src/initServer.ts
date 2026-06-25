@@ -255,8 +255,6 @@ export const startServer = (
                 });
             };
         }
-        
-        
         if (back){
             back(ser);
         }
