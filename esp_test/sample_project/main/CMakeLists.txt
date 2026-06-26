@@ -1,4 +1,5 @@
 idf_component_register(SRCS 
+    "pwm.c"
     "led.c"
     "wifi.c"
     "wifiScan.c"

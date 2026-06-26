@@ -5,6 +5,7 @@
 esp_timer_handle_t led_timer=NULL;
 gpio_num_t BLINK_GPIO;
 uint8_t s_led_state = 1; 
+uint64_t timeout_us = 10*1000;
 void timer_callback(void *arg)
 {
     // 100ms时间到，关闭LED
@@ -12,9 +13,10 @@ void timer_callback(void *arg)
     gpio_set_level(BLINK_GPIO, s_led_state);
     //ESP_LOGI("LED","close %d",BLINK_GPIO);
 }
-void init_led (int led_pin){
+void init_led (int led_pin,uint64_t timeout){
     BLINK_GPIO =(gpio_num_t) led_pin;
     gpio_reset_pin(BLINK_GPIO);
+    timeout_us=timeout;
     /* Set the GPIO as a push/pull output */
     gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
     esp_timer_create_args_t timer_args = {
@@ -28,13 +30,14 @@ void init_led (int led_pin){
 }
 void led_blink(){
     //ESP_LOGI("LED","open %d",BLINK_GPIO);
+ 
     if (s_led_state==0){
         gpio_set_level(BLINK_GPIO, s_led_state);  
-        esp_timer_restart(led_timer, 10 * 1000); 
+        esp_timer_restart(led_timer, timeout_us); 
         return;
     }
     s_led_state = 0;
     gpio_set_level(BLINK_GPIO, s_led_state);          // LED亮
-    esp_timer_start_once(led_timer, 10 * 1000); 
+    esp_timer_start_once(led_timer, timeout_us); 
     
 }

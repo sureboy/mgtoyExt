@@ -10,6 +10,7 @@
 #include "wifiScan.h"  
 #include "wifi.h"
 #include "led.h"
+#include "pwm.h"
 static EventGroupHandle_t s_wifi_event_group;
 
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
@@ -23,11 +24,12 @@ static const char *TAG = "mgtoy";
 static int s_retry_num = 0; 
 //static TaskHandle_t led_task_handle = NULL;
 static TaskHandle_t udp_task_handle = NULL;
-
+static gpio_num_t PWMS[] = {GPIO_NUM_0, GPIO_NUM_1, GPIO_NUM_3, GPIO_NUM_10};
 
 void my_udp_callback(char data) {
     led_blink();
     ESP_LOGI(TAG, "UDP callback: 0x%02X", (unsigned char)data);
+    pwm_worker(data);
 }
  
 void task_udp(void *pvParameters){
@@ -65,8 +67,8 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         udp_server_init_msg(1, "testmg",ip );
 
         // 6. 注册回调（可选）
+        pwm_group_init(PWMS);
         udp_server_set_callback(my_udp_callback);
-         
         if (udp_task_handle==NULL){
             xTaskCreatePinnedToCore(
             task_udp, "udp_task", 2048*2, 
@@ -105,7 +107,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
 void wifi_init_sta(void)
 {
-    init_led(BLINK_GPIO);
+    init_led(BLINK_GPIO,10*1000);
     led_blink();
     s_wifi_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_netif_init());
