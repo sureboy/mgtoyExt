@@ -11,9 +11,7 @@
 //#include "nvs_flash.h"
 //#include "esp_mac.h"
 
-#define MAX_AP_NUM 20               // 最大跟踪的AP数量
 #define WINDOW_SIZE 3              // 滑动窗口大小（采样次数）
-#define RSSI_VARIANCE_THRESHOLD 5  // 方差阈值，需根据实际环境调试
 
 // 用于存储一个AP的扫描历史
 typedef struct {

@@ -5,15 +5,17 @@
 #include <string.h>
 #include <stdio.h>
  
+#define MAX_AP_NUM 20               // 最大跟踪的AP数量
 
+#define RSSI_VARIANCE_THRESHOLD 5  // 方差阈值，需根据实际环境调试
 
  // 更新或添加AP到跟踪列表
 static ap_history_t ap_list[MAX_AP_NUM];
 static int ap_count = 0;
 static const char *TAG = "RSSI_MOTION";
 // 计算一组RSSI值的方差
-
-uint32_t isqrt_u32(uint32_t n) {
+/*
+static uint32_t isqrt_u32(uint32_t n) {
     uint32_t root = 0;
     uint32_t bit = 1 << 30; // 从最高位开始试探（2^30）
 
@@ -30,8 +32,8 @@ uint32_t isqrt_u32(uint32_t n) {
         bit >>= 2;
     }
     return root;
-}
-float calculate_variance(int *data, int count) {
+}*/
+static float calculate_variance(int *data, int count) {
     if (count < 2) return 0;
     float sum = 0, mean = 0;
     for (int i = 0; i < count; i++) {
@@ -44,7 +46,7 @@ float calculate_variance(int *data, int count) {
     }
     return variance / count;
 }
-void update_ap_history(wifi_ap_record_t *ap) {
+static void update_ap_history(wifi_ap_record_t *ap) {
     int idx = -1;
     // 查找是否已存在该AP（通过BSSID匹配）
     for (int i = 0; i < ap_count; i++) {
@@ -78,7 +80,7 @@ void update_ap_history(wifi_ap_record_t *ap) {
                                                     ap_list[idx].history_count);
     }
 }
-uint8_t detect_motion(void) {
+static uint8_t detect_motion(void) {
     int active_ap_count = 0;
     float total_variance = 0;
     
@@ -109,7 +111,7 @@ uint8_t detect_motion(void) {
 }
 
 // 处理扫描结果
-void process_scan_results(wifi_ap_record_t *ap_info, uint16_t ap_num) {
+static void process_scan_results(wifi_ap_record_t *ap_info, uint16_t ap_num) {
     // 先将所有AP标记为非活跃
     for (int i = 0; i < ap_count; i++) {
         ap_list[i].active = false;
@@ -129,7 +131,6 @@ uint8_t handleWifiScanEvent(){
     esp_wifi_scan_get_ap_num(&ap_num);
     //ESP_LOGI(TAG, "ap_num %d",ap_num);
     if (ap_num > 0) {
-        
         wifi_ap_record_t *ap_info = malloc(ap_num * sizeof(wifi_ap_record_t));
         esp_wifi_scan_get_ap_records(&ap_num, ap_info);
         process_scan_results(ap_info, ap_num);
