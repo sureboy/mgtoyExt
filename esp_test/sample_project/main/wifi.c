@@ -11,6 +11,8 @@
 #include "wifi.h"
 #include "led.h"
 #include "gpio_group.h"
+#include "nvs.h"
+#include <stdio.h>
 static EventGroupHandle_t s_wifi_event_group;
 
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
@@ -40,6 +42,11 @@ static void task_udp(void *pvParameters){
     }
     vTaskDelete(NULL);
 } 
+static int parse_ip_port(const char *str, int *ip1, int *ip2, int *ip3, int *ip4, int *port) {
+    // 格式：%d.%d.%d.%d:%d
+    int ret = sscanf(str, "%d.%d.%d.%d:%d", ip1, ip2, ip3, ip4, port);
+    return (ret == 5) ? 0 : -1;  // 返回0成功，-1失败
+}
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
@@ -54,7 +61,28 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         udp_server_init();
 
         // 4. 设置服务器地址（例如 192.168.1.8:9002）和控制字节
-        udp_server_set_addr(192, 168, 1, 8, 9002, 0x55);
+        char udpdb[32];
+        size_t len = sizeof(udpdb);
+        //err = read_nvs_str("storage", "ssid", ssid, &len);
+        esp_err_t err = read_nvs_str(
+            NVS_NAMESPACE, 
+            NVS_KEY, 
+            udpdb, 
+            &len
+        );
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "udpdb = %s", udpdb);
+            int a, b, c, d, port;
+            if (parse_ip_port(udpdb, &a, &b, &c, &d, &port) == 0) {
+                printf("IP: %d.%d.%d.%d, Port: %d\n", a, b, c, d, port);
+                udp_server_set_addr(a, b, c, d, port, 0x55);
+            } else {
+                printf("解析失败\n");
+            }
+            
+          } else if (err == ESP_ERR_NVS_NOT_FOUND) {
+            ESP_LOGW(TAG, "udpdb not set yet");
+        }
 
         // 5. 初始化发送报文（序列号 0，无名称和本地 IP）
         //IP2STR(&event->ip_info.ip);

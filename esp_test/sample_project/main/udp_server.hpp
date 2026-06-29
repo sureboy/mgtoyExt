@@ -142,6 +142,7 @@ public:
             //    size += len;
             //}
         }
+        sendMsg[12]=0;
     }
     void Send(uint8_t k){
         udpSend(k);
@@ -157,7 +158,7 @@ private:
     unsigned long startTime;
     //IPAddress serverIP;          // 成员变量
     //unsigned int serverPort;
-    char sendMsg[12];
+    char sendMsg[13];
     char packetBuffer[2];
     struct sockaddr_in destAddr;
 
@@ -173,7 +174,7 @@ private:
             sendMsg[0] = k;
         }
         
-        ssize_t sent = sendto(_sock, sendMsg, sizeof(sendMsg[0])*strlen(sendMsg), 0,
+        ssize_t sent = sendto(_sock, sendMsg, sizeof(char)*strlen(sendMsg), 0,
                               (struct sockaddr*)&destAddr, sizeof(destAddr));
         if (sent < 0) {
             ESP_LOGE(UDP_LOG_TAG, "sendto failed: errno %d", errno);
@@ -186,8 +187,8 @@ private:
         //serverIP.getBytes(bytes);
         //ESP_LOGI("TAG", "IP: %d.%d.%d.%d", bytes[0], bytes[1], bytes[2], bytes[3]);
         ESP_LOGI(UDP_LOG_TAG,
-            "udpSend %d-%d %d ",
-            sent,sendMsg[0],sendMsg[1] 
+            "udpSend %d-%d %d %d",
+            sent,sendMsg[0],sendMsg[1] ,sizeof(sendMsg[0])*strlen(sendMsg)
         );
     }
 
@@ -206,7 +207,7 @@ private:
         if (len == 0) return;
         if (len == 2 ){
             replyMessage(packetBuffer[1]);
-        }else
+        }
         if (packetBuffer[0] != sendMsg[0]) {
             
             //ESP_LOGI(UDP_LOG_TAG, "Received reply order 0x%02X", (uint8_t)packetBuffer[1]);

@@ -7,6 +7,7 @@ import { pool } from './webrtc';
 import {initUDP} from './udp';
 import {mdnsServer} from './mdns';
 import {getLocalIp} from './util';
+//import {listSerialPorts} from './SerialPort';
 const panelObj:{
   panel?:vscode.WebviewPanel,
   outputChannel?: vscode.OutputChannel
@@ -275,6 +276,12 @@ export function previewFile(
               udp:rinfo
             });
           });
+        }
+        if (message.start.serial){
+          console.log(message);
+          //listSerialPorts().then(v=>{
+          //  console.log(v);
+          //});
         }
       }
       //console.log("get",message);

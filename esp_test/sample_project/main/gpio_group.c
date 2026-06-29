@@ -13,7 +13,7 @@ static void gpio_timer_callback(void *arg)
     //set_pwm_duty( 0,params->channel);
     gpio_num_t led_pin = (gpio_num_t)arg;  
     gpio_set_level(led_pin, 0);
-    ESP_LOGI("TAG", "Channel: %d ", led_pin);
+    //ESP_LOGI("TAG", "Channel: %d ", led_pin);
 }
 
 void init_gpio (gpio_num_t led_pin,int index){
@@ -55,14 +55,14 @@ void gpio_group_init(gpio_num_t *gpios,uint64_t timeout  ){
     }
 }
 void gpio_worker(uint8_t codeMsg){
-    ESP_LOGI("PWM","Work %d",codeMsg);
+    //ESP_LOGI("PWM","Work %d",codeMsg);
     for (int i = 0; i < 4; i++) {
         bool level = (codeMsg >> i) & 1;
         if (level){
             gpio_blink( i);
             ESP_ERROR_CHECK(esp_timer_is_active(timer[i])?esp_timer_restart(timer[i], gpio_timeout_us):esp_timer_start_once(timer[i], gpio_timeout_us)); 
             //ledc_stop(LEDC_LOW_SPEED_MODE,i);
-            ESP_LOGI("PWM", "Channel: %d ", i );
+            //ESP_LOGI("PWM", "Channel: %d ", i );
         }else{
             gpio_set_level(GPIOS[i], 0);  
             //gpio_blink( i);

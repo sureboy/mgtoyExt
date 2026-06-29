@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "nvs.h"
 #define BUF_SIZE 2048
 
 
@@ -41,19 +42,34 @@ void update_WIFISet(cJSON *root){
         esp_wifi_start();
     }
 }
-void parse_serial_config(const char *json_string) {
+void update_UDPServer(cJSON *root){
+    cJSON *udp_data = cJSON_GetObjectItem(root, NVS_KEY);
+    if ( !cJSON_IsString(udp_data) ){
+        return;
+    }  
+    if ( udp_data->valuestring != NULL ) {
+        ESP_ERROR_CHECK(
+            write_nvs_str(
+                NVS_NAMESPACE, NVS_KEY,udp_data->valuestring
+            )
+        );
+    }
+    
+}
+bool parse_serial_config(const char *json_string) {
     // 1. 解析JSON字符串，返回根节点指针
     cJSON *root = cJSON_Parse(json_string);
     if (root == NULL) {
         const char *error_ptr = cJSON_GetErrorPtr();
         if (error_ptr != NULL) {
-            printf("JSON解析错误，位置: %s\n", error_ptr);
+            printf("JSON解析错误,位置: %s\n", error_ptr);
         }
-        return;
+        return false;
     }
     update_WIFISet(root);
-
+    update_UDPServer(root);
     cJSON_Delete(root);
+    return true;
 }
 void task_InitializeParameters(void *pvParameters) {
     char input_buf[BUF_SIZE];
@@ -62,10 +78,9 @@ void task_InitializeParameters(void *pvParameters) {
         if (fgets(input_buf, BUF_SIZE, stdin) != NULL) {
             //input_buf[strcspn(input_buf, "\n")] = 0; 
             printf("你输入了: %s\n", input_buf);
-            parse_serial_config(input_buf);
-             
-        //}else{
-            break;
+            if (parse_serial_config(input_buf)) {
+                break;
+            }            
         }
         vTaskDelay(pdMS_TO_TICKS(100));
     }
