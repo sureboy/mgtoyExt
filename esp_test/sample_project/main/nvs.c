@@ -31,7 +31,28 @@ esp_err_t write_nvs_str(const char *namespace, const char *key, const char *valu
     nvs_close(handle);
     return err;
 }
+esp_err_t write_nvs_u32(const char *namespace, const char *key, uint32_t value)
+{
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(namespace, NVS_READWRITE, &handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "nvs_open failed: %s", esp_err_to_name(err));
+        return err;
+    }
 
+    err = nvs_set_u32(handle, key, value);
+    if (err == ESP_OK) {
+        err = nvs_commit(handle);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "nvs_commit failed: %s", esp_err_to_name(err));
+        }
+    } else {
+        ESP_LOGE(TAG, "nvs_set_u32 failed: %s", esp_err_to_name(err));
+    }
+
+    nvs_close(handle);
+    return err;
+}
 /**
  * @brief 从 NVS 读取字符串
  * @param namespace 命名空间
@@ -52,6 +73,23 @@ esp_err_t read_nvs_str(const char *namespace, const char *key, char *out_buf, si
     err = nvs_get_str(handle, key, out_buf, out_len);
     if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
         ESP_LOGE(TAG, "nvs_get_str failed: %s", esp_err_to_name(err));
+    }
+    nvs_close(handle);
+    return err;
+}
+
+esp_err_t read_nvs_u32(const char *namespace, const char *key, uint32_t *out_value)
+{
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(namespace, NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "nvs_open failed: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    err = nvs_get_u32(handle, key, out_value);
+    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGE(TAG, "nvs_get_u32 failed: %s", esp_err_to_name(err));
     }
     nvs_close(handle);
     return err;

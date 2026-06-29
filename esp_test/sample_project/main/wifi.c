@@ -74,7 +74,10 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             ESP_LOGI(TAG, "udpdb = %s", udpdb);
             int a, b, c, d, port;
             if (parse_ip_port(udpdb, &a, &b, &c, &d, &port) == 0) {
-                printf("IP: %d.%d.%d.%d, Port: %d\n", a, b, c, d, port);
+                
+                uint32_t control = 0x55;
+                read_nvs_u32(NVS_NAMESPACE, "control", &control);
+                printf("IP: %d.%d.%d.%d, Port: %d control:%d \n ", a, b, c, d, port,(int)control);
                 udp_server_set_addr(a, b, c, d, port, 0x55);
             } else {
                 printf("解析失败\n");
@@ -158,10 +161,10 @@ void wifi_init_sta(void)
                                                         NULL,
                                                         &instance_got_ip));
 
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) ); 
     //ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );
-    //esp_wifi_set_ps(WIFI_PS_NONE); 
+    esp_wifi_set_ps(WIFI_PS_NONE); 
     esp_wifi_set_max_tx_power(34); 
     //ESP_LOGI(TAG, "wifi_init_sta finished.");
     /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum

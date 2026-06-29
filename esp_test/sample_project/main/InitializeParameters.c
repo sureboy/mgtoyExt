@@ -42,6 +42,7 @@ void update_WIFISet(cJSON *root){
         esp_wifi_start();
     }
 }
+/*
 void update_UDPServer(cJSON *root){
     cJSON *udp_data = cJSON_GetObjectItem(root, NVS_KEY);
     if ( !cJSON_IsString(udp_data) ){
@@ -56,6 +57,24 @@ void update_UDPServer(cJSON *root){
     }
     
 }
+    */
+void update_NVS(cJSON *root,const char * key){
+    cJSON *k = cJSON_GetObjectItem(root, key);
+    if ( cJSON_IsString(k) ){
+        if ( k->valuestring != NULL ) {
+            ESP_ERROR_CHECK(
+                write_nvs_str(
+                    NVS_NAMESPACE, key,k->valuestring
+                )
+            );
+        }
+    }else if (cJSON_IsNumber(k)){
+         
+        ESP_ERROR_CHECK(write_nvs_u32(NVS_NAMESPACE, key, (int32_t)k->valuedouble));
+    }
+    
+}
+ 
 bool parse_serial_config(const char *json_string) {
     // 1. 解析JSON字符串，返回根节点指针
     cJSON *root = cJSON_Parse(json_string);
@@ -67,7 +86,9 @@ bool parse_serial_config(const char *json_string) {
         return false;
     }
     update_WIFISet(root);
-    update_UDPServer(root);
+    update_NVS(root,NVS_KEY);
+    update_NVS(root,"control");
+    //update_UDPServer(root);
     cJSON_Delete(root);
     return true;
 }
