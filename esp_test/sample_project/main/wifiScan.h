@@ -1,4 +1,5 @@
-
+#ifndef WIFISCAN_H
+#define WIFISCAN_H
 #include <stdlib.h>
 
 //#include "freertos/FreeRTOS.h"
@@ -28,3 +29,4 @@ typedef struct {
 
 void scan_task(void *pvParameters) ;
 uint8_t handleWifiScanEvent();
+#endif

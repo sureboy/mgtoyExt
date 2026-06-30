@@ -1,4 +1,5 @@
 idf_component_register(SRCS 
+    "control.c"
     "nvs.c"
     "gpio_group.c"
     "led.c"

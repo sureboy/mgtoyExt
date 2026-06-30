@@ -32,19 +32,13 @@ void init_gpio (gpio_num_t led_pin,int index){
     }; 
     esp_timer_create(&timer_args, &(timer[index]));
 }
-void gpio_blink(int i){
-    //ESP_LOGI("LED","open %d",BLINK_GPIO);
-    
+void gpio_blink(int i){ 
     gpio_set_level(GPIOS[i], 1);  
-    if (esp_timer_is_active(timer[i])){
-        
-        esp_timer_restart(timer[i], gpio_timeout_us); 
-        return;
+    if (esp_timer_is_active(timer[i])){ 
+        esp_timer_restart(timer[i], gpio_timeout_us);  
+    }else {
+        esp_timer_start_once(timer[i], gpio_timeout_us); 
     }
-    //s_led_state = !s_led_state;
-    //gpio_set_level(BLINK_GPIO, s_led_state);          // LED亮
-    esp_timer_start_once(timer[i], gpio_timeout_us); 
-    
 }
 void gpio_group_init(gpio_num_t *gpios,uint64_t timeout  ){
     gpio_timeout_us=timeout;
@@ -54,17 +48,19 @@ void gpio_group_init(gpio_num_t *gpios,uint64_t timeout  ){
         init_gpio(gpios[i],i);
     }
 }
-void gpio_worker(uint8_t codeMsg){
+void gpio_worker(uint8_t codeMsg,bool control){
     //ESP_LOGI("PWM","Work %d",codeMsg);
     for (int i = 0; i < 4; i++) {
         bool level = (codeMsg >> i) & 1;
         if (level){
-            gpio_blink( i);
-            ESP_ERROR_CHECK(esp_timer_is_active(timer[i])?esp_timer_restart(timer[i], gpio_timeout_us):esp_timer_start_once(timer[i], gpio_timeout_us)); 
-            //ledc_stop(LEDC_LOW_SPEED_MODE,i);
-            //ESP_LOGI("PWM", "Channel: %d ", i );
+            if (control){
+                gpio_blink( i);
+                ESP_ERROR_CHECK(esp_timer_is_active(timer[i])?esp_timer_restart(timer[i], gpio_timeout_us):esp_timer_start_once(timer[i], gpio_timeout_us)); 
+            } else{
+                gpio_set_level(GPIOS[i], 1); 
+            } 
         }else{
-            gpio_set_level(GPIOS[i], 0);  
+             gpio_set_level(GPIOS[i], 0); 
             //gpio_blink( i);
         } 
 

@@ -40,5 +40,5 @@ void udp_server_loop() {
 }
 
 void udp_server_send(uint8_t k) {
-     if (g_udp) g_udp->Send(k);
+    if (g_udp) g_udp->Send(k);
 }

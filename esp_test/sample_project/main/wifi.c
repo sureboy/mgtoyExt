@@ -13,6 +13,7 @@
 #include "gpio_group.h"
 #include "nvs.h"
 #include <stdio.h>
+#include "control.h"
 static EventGroupHandle_t s_wifi_event_group;
 
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
@@ -27,11 +28,15 @@ static int s_retry_num = 0;
 static TaskHandle_t scan_task_handle = NULL;
 static TaskHandle_t udp_task_handle = NULL;
 static gpio_num_t PWMS[] = {GPIO_NUM_0, GPIO_NUM_1, GPIO_NUM_3, GPIO_NUM_10};
-
+//static void 
 static void my_udp_callback(char data) {
     led_blink();
     ESP_LOGI(TAG, "UDP callback: 0x%02X", (unsigned char)data);
-    gpio_worker(data);
+    if ( !checkControl((int)(data & 0x0F)) ){
+        //ControlStart();
+    }else{
+        gpio_worker(data,true);
+    }
 }
  
 static void task_udp(void *pvParameters){
@@ -57,7 +62,6 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-         
         udp_server_init();
 
         // 4. 设置服务器地址（例如 192.168.1.8:9002）和控制字节
@@ -78,7 +82,8 @@ static void event_handler(void* arg, esp_event_base_t event_base,
                 uint32_t control = 0x55;
                 read_nvs_u32(NVS_NAMESPACE, "control", &control);
                 printf("IP: %d.%d.%d.%d, Port: %d control:%d \n ", a, b, c, d, port,(int)control);
-                udp_server_set_addr(a, b, c, d, port, 0x55);
+                udp_server_set_addr(a, b, c, d, port,control);
+                initControl((char)control);
             } else {
                 printf("解析失败\n");
             }
@@ -107,7 +112,9 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         } 
         xTaskCreate(scan_task, "scan_task", 2048, NULL, 1, &scan_task_handle);
     }else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE){
-        udp_server_send(handleWifiScanEvent());
+        uint8_t u = handleWifiScanEvent();
+        udp_server_send(u);
+
     } else {
         if (udp_task_handle!=NULL 
             && (event_base == WIFI_EVENT 
