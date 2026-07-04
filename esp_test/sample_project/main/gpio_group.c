@@ -5,7 +5,7 @@
 //#include "led.h"
 static gpio_num_t GPIOS[] = {GPIO_NUM_0, GPIO_NUM_1, GPIO_NUM_3, GPIO_NUM_10};
 static esp_timer_handle_t timer[4];
-static uint64_t gpio_timeout_us = 3*1000*1000;
+//static uint64_t gpio_timeout_us = 3*1000*1000;
 
 static void gpio_timer_callback(void *arg)
 {
@@ -32,7 +32,7 @@ void init_gpio (gpio_num_t led_pin,int index){
     }; 
     esp_timer_create(&timer_args, &(timer[index]));
 }
-void gpio_blink(int i){ 
+void gpio_blink(int i,uint64_t gpio_timeout_us){ 
     gpio_set_level(GPIOS[i], 1);  
     if (esp_timer_is_active(timer[i])){ 
         esp_timer_restart(timer[i], gpio_timeout_us);  
@@ -40,27 +40,27 @@ void gpio_blink(int i){
         esp_timer_start_once(timer[i], gpio_timeout_us); 
     }
 }
-void gpio_group_init(gpio_num_t *gpios,uint64_t timeout  ){
-    gpio_timeout_us=timeout;
+void gpio_group_init(gpio_num_t *gpios){
+    //gpio_timeout_us=timeout;
     //s_led_state= led_state;
     for (int i=0;i<4;i++){
         GPIOS[i] = gpios[i];
         init_gpio(gpios[i],i);
     }
 }
-void gpio_worker(uint8_t codeMsg,bool control){
+void gpio_worker(uint8_t codeMsg,uint64_t gpio_timeout_us){
     //ESP_LOGI("PWM","Work %d",codeMsg);
     for (int i = 0; i < 4; i++) {
         bool level = (codeMsg >> i) & 1;
         if (level){
-            if (control){
-                gpio_blink( i);
+            if (gpio_timeout_us>(1000*1000)){
+                gpio_blink( i,gpio_timeout_us);
                 ESP_ERROR_CHECK(esp_timer_is_active(timer[i])?esp_timer_restart(timer[i], gpio_timeout_us):esp_timer_start_once(timer[i], gpio_timeout_us)); 
-            } else{
+            } else {
                 gpio_set_level(GPIOS[i], 1); 
             } 
         }else{
-             gpio_set_level(GPIOS[i], 0); 
+            gpio_set_level(GPIOS[i], 0); 
             //gpio_blink( i);
         } 
 

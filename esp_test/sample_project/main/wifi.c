@@ -28,15 +28,19 @@ static int s_retry_num = 0;
 static TaskHandle_t scan_task_handle = NULL;
 static TaskHandle_t udp_task_handle = NULL;
 static gpio_num_t PWMS[] = {GPIO_NUM_0, GPIO_NUM_1, GPIO_NUM_3, GPIO_NUM_10};
-//static void 
+static void contrlWorker(char data,int timeOut){
+    led_blink(100);
+    gpio_worker(data&0x0F,(uint64_t)timeOut);
+}
+
 static void my_udp_callback(char data) {
-    led_blink();
+    led_blink(10);
     ESP_LOGI(TAG, "UDP callback: 0x%02X", (unsigned char)data);
-    if ( !checkControl((int)(data & 0x0F)) ){
-        //ControlStart();
-    }else{
-        gpio_worker(data,true);
+    if (CheckControl((int)data,contrlWorker)){
+        gpio_worker(data&0x0F,3*1000*1000); 
     }
+        //ControlStart();
+    
 }
  
 static void task_udp(void *pvParameters){
@@ -83,7 +87,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
                 read_nvs_u32(NVS_NAMESPACE, "control", &control);
                 printf("IP: %d.%d.%d.%d, Port: %d control:%d \n ", a, b, c, d, port,(int)control);
                 udp_server_set_addr(a, b, c, d, port,control);
-                initControl((char)control);
+                InitControl((char)control);
             } else {
                 printf("解析失败\n");
             }
@@ -103,7 +107,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         udp_server_init_msg(1, "testmg",ip );
 
         // 6. 注册回调（可选）
-        gpio_group_init(PWMS, 3*1000*1000);
+        gpio_group_init(PWMS );
         udp_server_set_callback(my_udp_callback);
         if (udp_task_handle==NULL){
             xTaskCreatePinnedToCore(
@@ -112,8 +116,13 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         } 
         xTaskCreate(scan_task, "scan_task", 2048, NULL, 1, &scan_task_handle);
     }else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE){
-        uint8_t u = handleWifiScanEvent();
-        udp_server_send(u);
+        bool u = handleWifiScanEvent();
+        if (!u){
+            AutoAvoid();
+        }
+        udp_server_send(0);
+        ESP_LOGI(TAG,"%d",u);
+        //if ()
 
     } else {
         if (udp_task_handle!=NULL 
@@ -133,7 +142,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             ESP_LOGI(TAG, "  RSSI: %d", disconnected->rssi);
             if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY) {
                 esp_wifi_connect();
-                led_blink();
+                led_blink(100);
                 s_retry_num++;
                 ESP_LOGI(TAG, "retry to connect to the AP");
             } else {
@@ -146,7 +155,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 void wifi_init_sta(void)
 {
     init_led(BLINK_GPIO,10*1000,1);
-    led_blink();
+    led_blink(100);
     s_wifi_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());

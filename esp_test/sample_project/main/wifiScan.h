@@ -28,5 +28,5 @@ typedef struct {
 
 
 void scan_task(void *pvParameters) ;
-uint8_t handleWifiScanEvent();
+bool handleWifiScanEvent();
 #endif
