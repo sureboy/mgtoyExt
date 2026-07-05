@@ -12,7 +12,7 @@
 //#include "nvs_flash.h"
 //#include "esp_mac.h"
 
-#define WINDOW_SIZE 3              // 滑动窗口大小（采样次数）
+#define WINDOW_SIZE 5              // 滑动窗口大小（采样次数）
 
 // 用于存储一个AP的扫描历史
 typedef struct {
@@ -28,5 +28,5 @@ typedef struct {
 
 
 void scan_task(void *pvParameters) ;
-bool handleWifiScanEvent();
+uint32_t handleWifiScanEvent();
 #endif

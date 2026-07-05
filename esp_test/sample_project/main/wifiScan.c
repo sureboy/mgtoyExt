@@ -80,7 +80,7 @@ static void update_ap_history(wifi_ap_record_t *ap) {
                                                     ap_list[idx].history_count);
     }
 }
-static bool detect_motion(void) {
+static uint32_t detect_motion(void) {
     int active_ap_count = 0;
     float total_variance = 0;
     
@@ -98,6 +98,7 @@ static bool detect_motion(void) {
     }
     
     float avg_variance = total_variance / active_ap_count;
+    return (uint32_t)avg_variance;
     //uint8_t std_int = (uint8_t)isqrt_u32((uint32_t)avg_variance); 
     
     //return std_int;
@@ -107,7 +108,7 @@ static bool detect_motion(void) {
     ESP_LOGI(TAG, "Active APs: %d, Avg Variance: %.2f, Status: %s",
              active_ap_count, avg_variance, is_moving ? "MOVING" : "STATIONARY");
 
-    return is_moving;
+    return !is_moving;
 }
 
 // 处理扫描结果
@@ -126,7 +127,7 @@ static void process_scan_results(wifi_ap_record_t *ap_info, uint16_t ap_num) {
     //detect_motion();
 }
 
-bool handleWifiScanEvent(){
+uint32_t handleWifiScanEvent(){
     uint16_t ap_num;
     esp_wifi_scan_get_ap_num(&ap_num);
     //ESP_LOGI(TAG, "ap_num %d",ap_num);

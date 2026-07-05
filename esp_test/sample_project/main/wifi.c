@@ -35,9 +35,11 @@ static void contrlWorker(char data,int timeOut){
 
 static void my_udp_callback(char data) {
     led_blink(10);
-    ESP_LOGI(TAG, "UDP callback: 0x%02X", (unsigned char)data);
-    if (CheckControl((int)data,contrlWorker)){
-        gpio_worker(data&0x0F,3*1000*1000); 
+    
+    char dataMsg = CheckControl((int)data&0x0F,contrlWorker);
+    ESP_LOGI(TAG, "UDP callback: 0x%02X 0x%02X", (unsigned char)data,dataMsg);
+    if (dataMsg){
+        gpio_worker(dataMsg ,2*1000*1000); 
     }
         //ControlStart();
     
@@ -114,10 +116,12 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             task_udp, "udp_task", 2048*2, 
             NULL, 2,&udp_task_handle, tskNO_AFFINITY);
         } 
-        xTaskCreate(scan_task, "scan_task", 2048, NULL, 1, &scan_task_handle);
+        if (scan_task_handle==NULL){
+            xTaskCreate(scan_task, "scan_task", 2048, NULL, 1, &scan_task_handle);
+        }
     }else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE){
-        bool u = handleWifiScanEvent();
-        if (!u){
+        uint32_t u = handleWifiScanEvent();
+        if (u<5){
             AutoAvoid();
         }
         udp_server_send(0);

@@ -41,8 +41,8 @@ void InitControl(char control){
     
     controlGroup[8] = control & MASK;
     controlGroup[4] = (control>>4) & MASK;
-    controlGroup[2] = (controlGroup[8] ^ 0)& MASK;
-    controlGroup[6] = (controlGroup[4] ^ 0)& MASK;
+    controlGroup[2] = (controlGroup[8] ^ MASK)& MASK;
+    controlGroup[6] = (controlGroup[4] ^ MASK)& MASK;
     controlGroup[7] = controlGroup[4] & controlGroup[8];
     controlGroup[9] = controlGroup[6] & controlGroup[8];
     controlGroup[3] = controlGroup[4] & controlGroup[2];
@@ -55,19 +55,7 @@ void InitControl(char control){
         controlBool[(int)(controlGroup[i])] = (char)i;
     }
 }
-
-
-void autoStop(){
-    //autoStart(0);
-    //autoWorker(controlGroup[0],0);
-    if (autoWorker){
-        
-        autoWorker(0,0);
-        autoWorker=nullptr;
-    }
-}
-//timeout_us 1/second
-
+ 
 void AutoAvoid(){
     if (!autoWorker){
         return;
@@ -76,15 +64,16 @@ void AutoAvoid(){
     esp_timer_start_once(Avoidtimer, Avoid_timeout_us); 
     char k = AvoidValue >>4;
     if (k==0){
-        AvoidValue = (AvoidValue^0x0F )| (1<<4);
+        AvoidValue = (AvoidValue^controlGroup[2] )| (1<<4);
     }else{
-        AvoidValue = ((k+1) <<4) | (AvoidValue&0x0F);
+        AvoidValue = ((k<<1) <<4) | (AvoidValue&0x0F);
     }
     
 }
 char CheckControl(int i,_Handle worker  ){
     //i &=0x0F;
     //if ((i & 0x0F)>0)
+    //return controlGroup[i];
     if (i==8){
         if (!autoWorker){
             autoWorker = worker;
@@ -94,29 +83,13 @@ char CheckControl(int i,_Handle worker  ){
 
     } else{
         if (autoWorker){
-            autoWorker=nullptr;
+            autoWorker=NULL;
         }
     }
     
     return controlGroup[i];
     
-    char k = controlBool[i&0x0F];
-    if (k != controlStartKey[controlStartKeyIndex]){
-        if (controlStartKeyIndex==3){
-            
-        }
-        controlStartKeyIndex = 0;
-        
-    }else if (controlStartKeyIndex==3){
-        controlStartKeyIndex=0;
-
-        return true;
-        //AvoidValue = AvoidValue^0x0F;
-    }else{
-        controlStartKeyIndex++;
-         
-    }
-    return false;
+    
 }
  
 
