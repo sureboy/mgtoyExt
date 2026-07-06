@@ -25,7 +25,7 @@ static const char *TAG = "mgtoy";
 //static cJSON *root;
 
 static int s_retry_num = 0; 
-static TaskHandle_t scan_task_handle = NULL;
+//static TaskHandle_t scan_task_handle = NULL;
 static TaskHandle_t udp_task_handle = NULL;
 static gpio_num_t PWMS[] = {GPIO_NUM_0, GPIO_NUM_1, GPIO_NUM_3, GPIO_NUM_10};
 static void contrlWorker(char data,int timeOut){
@@ -116,17 +116,22 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             task_udp, "udp_task", 2048*2, 
             NULL, 2,&udp_task_handle, tskNO_AFFINITY);
         } 
+        scan_start_task();
+        /*
         if (scan_task_handle==NULL){
             xTaskCreate(scan_task, "scan_task", 2048, NULL, 1, &scan_task_handle);
-        }
+        }*/
     }else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE){
         uint32_t u = handleWifiScanEvent();
-        if (u<5){
+        if (u<2){
             AutoAvoid();
+        //}else{
+        //    InitAvoid();
         }
         udp_server_send(0);
-        ESP_LOGI(TAG,"%d",u);
+        ESP_LOGI(TAG,"scan %d",u);
         //if ()
+        scan_start_task();
 
     } else {
         if (udp_task_handle!=NULL 

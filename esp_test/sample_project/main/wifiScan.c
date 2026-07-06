@@ -7,7 +7,7 @@
  
 #define MAX_AP_NUM 20               // 最大跟踪的AP数量
 
-#define RSSI_VARIANCE_THRESHOLD 5  // 方差阈值，需根据实际环境调试
+#define RSSI_VARIANCE_THRESHOLD 2  // 方差阈值，需根据实际环境调试
 
  // 更新或添加AP到跟踪列表
 static ap_history_t ap_list[MAX_AP_NUM];
@@ -36,13 +36,18 @@ static uint32_t isqrt_u32(uint32_t n) {
 static float calculate_variance(int *data, int count) {
     if (count < 2) return 0;
     float sum = 0, mean = 0;
+    int dif = 0;
     for (int i = 0; i < count; i++) {
         sum += data[i];
     }
     mean = sum / count;
     float variance = 0;
     for (int i = 0; i < count; i++) {
-        variance += (data[i] - mean) * (data[i] - mean);
+        dif = (data[i] - mean);
+        if (dif<0){
+            dif = -dif;
+        }
+        variance += dif;
     }
     return variance / count;
 }
@@ -61,23 +66,28 @@ static void update_ap_history(wifi_ap_record_t *ap) {
         idx = ap_count;
         memcpy(ap_list[idx].bssid, ap->bssid, 6);
         strcpy(ap_list[idx].ssid, (char*)ap->ssid);
-        ap_list[idx].history_count = 0;
-        ap_list[idx].history_index = 0;
-        ap_list[idx].active = true;
+        //ap_list[idx].history_count = 0;
+        //ap_list[idx].history_index = 0;
+        //ap_list[idx].active = true;
+        ap_list[idx].rssi = ap->rssi;
         ap_count++;
-    }
-    
-    if (idx != -1) {
+    }else if (idx != -1) {
+        
         // 将新的RSSI值写入环形缓冲区
-        ap_list[idx].rssi_history[ap_list[idx].history_index] = ap->rssi;
-        ap_list[idx].history_index = (ap_list[idx].history_index + 1) % WINDOW_SIZE;
-        if (ap_list[idx].history_count < WINDOW_SIZE) {
-            ap_list[idx].history_count++;
+        //ap_list[idx].rssi_history[ap_list[idx].history_index] = ap->rssi;
+        //ap_list[idx].history_index = (ap_list[idx].history_index + 1) % WINDOW_SIZE;
+        //if (ap_list[idx].history_count < WINDOW_SIZE) {
+        //    ap_list[idx].history_count++;
+        //}
+        ap_list[idx].active |= 1;
+        if ((ap_list[idx].active &3 )!=3 ){
+            ap_list[idx].rssi = ap->rssi;
+            return;
         }
-        ap_list[idx].active = true;
         // 计算该AP的方差
-        ap_list[idx].variance = calculate_variance(ap_list[idx].rssi_history,
-                                                    ap_list[idx].history_count);
+        int data[2]={ap_list[idx].rssi,ap->rssi};
+        ap_list[idx].variance = calculate_variance( data, 2);
+        ap_list[idx].rssi = ap->rssi;
     }
 }
 static uint32_t detect_motion(void) {
@@ -86,9 +96,9 @@ static uint32_t detect_motion(void) {
     
     // 统计所有活跃AP的方差
     for (int i = 0; i < ap_count; i++) {
-        if (ap_list[i].active && ap_list[i].history_count >= WINDOW_SIZE / 2) {
+        if ((ap_list[i].active &3) ==3 ) {
             total_variance += ap_list[i].variance;
-            active_ap_count++;
+            active_ap_count++; 
         }
     }
     
@@ -98,7 +108,7 @@ static uint32_t detect_motion(void) {
     }
     
     float avg_variance = total_variance / active_ap_count;
-    return (uint32_t)avg_variance;
+    
     //uint8_t std_int = (uint8_t)isqrt_u32((uint32_t)avg_variance); 
     
     //return std_int;
@@ -107,15 +117,15 @@ static uint32_t detect_motion(void) {
     // 打印调试信息
     ESP_LOGI(TAG, "Active APs: %d, Avg Variance: %.2f, Status: %s",
              active_ap_count, avg_variance, is_moving ? "MOVING" : "STATIONARY");
-
-    return !is_moving;
+    return (uint32_t)avg_variance;
+    //return !is_moving;
 }
 
 // 处理扫描结果
 static void process_scan_results(wifi_ap_record_t *ap_info, uint16_t ap_num) {
     // 先将所有AP标记为非活跃
     for (int i = 0; i < ap_count; i++) {
-        ap_list[i].active = false;
+        ap_list[i].active <<=  1;
     }
     
     // 更新每个扫描到的AP
@@ -140,12 +150,17 @@ uint32_t handleWifiScanEvent(){
     }
     return 0;
 }
+void scan_start_task(){
+    esp_wifi_scan_start(NULL, false); 
+}
+/*
 void scan_task(void *pvParameters) {
  
     while (1) {
         // 启动扫描
         esp_wifi_scan_start(NULL, true);  // false = 非阻塞
         // 等待扫描完成（事件驱动，或简单延时）
-        vTaskDelay(pdMS_TO_TICKS(1000));   // 扫描间隔1秒
+        vTaskDelay(pdMS_TO_TICKS(500));   // 扫描间隔1秒
     }
 }
+    */
