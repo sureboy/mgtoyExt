@@ -1,7 +1,7 @@
 #ifndef WIFISCAN_H
 #define WIFISCAN_H
 #include <stdlib.h>
-
+#include "esp_wifi.h"
 //#include "freertos/FreeRTOS.h"
 //#include "freertos/task.h"
 //#include "freertos/event_groups.h"
@@ -17,7 +17,7 @@
 // 用于存储一个AP的扫描历史
 typedef struct {
     uint8_t bssid[6];               // AP的MAC地址
-    char ssid[32];  
+    //char ssid[32];  
     int rssi;                // AP名称（可选）
     //int rssi_history[WINDOW_SIZE];  // 历史RSSI值环形缓冲区
     //int history_count;              // 当前已存的历史数量
@@ -28,7 +28,8 @@ typedef struct {
 
 
 
+typedef void (*_Handle_wifi_ap)(wifi_ap_record_t *ap_info,uint16_t ap_num);  
 //void scan_task(void *pvParameters) ;
-uint32_t handleWifiScanEvent();
+float handleWifiScanEvent(_Handle_wifi_ap handle);
 void scan_start_task();
 #endif

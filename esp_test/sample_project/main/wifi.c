@@ -21,6 +21,12 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 #define BLINK_GPIO CONFIG_BLINK_GPIO
+
+typedef struct __attribute__((packed)) {
+    uint8_t bssid[6];   // MAC地址
+    int8_t  rssi;       // 信号强度（dBm），用有符号8位足够
+} ap_info_t;
+
 static const char *TAG = "mgtoy";
 //static cJSON *root;
 
@@ -32,7 +38,7 @@ static void contrlWorker(char data,int timeOut){
     led_blink(100);
     gpio_worker(data&0x0F,(uint64_t)timeOut);
 }
-
+static char wifi_ap_list[210];
 static void my_udp_callback(char data) {
     led_blink(10);
     
@@ -44,7 +50,22 @@ static void my_udp_callback(char data) {
         //ControlStart();
     
 }
- 
+static void sendWifiScanListData(wifi_ap_record_t *ap_info,uint16_t ap_num){
+    //led_blink(100);
+    ///gpio_worker(data&0x0F,(uint64_t)timeOut);
+    int len = ap_num*7;
+    //uint8_t wifi_ap_list[len] ;
+    char *ptr = wifi_ap_list; 
+    for (int i = 0; i < ap_num && i < 30; i++) {
+        //i*7
+        memcpy(ptr, ap_info[i].bssid, 6); // 拷贝6字节MAC
+        ptr += 6;                 // 指针后移6字节
+        *ptr = ap_info[i].rssi;  
+        ptr++;
+        //update_ap_history(&ap_info[i]);
+    }
+    udp_server_sendData(wifi_ap_list,len);
+}
 static void task_udp(void *pvParameters){
     ESP_LOGI(TAG, "UDP loop");
     while (1) {
@@ -122,14 +143,14 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             xTaskCreate(scan_task, "scan_task", 2048, NULL, 1, &scan_task_handle);
         }*/
     }else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE){
-        uint32_t u = handleWifiScanEvent();
+        float u = handleWifiScanEvent(sendWifiScanListData);
         if (u<2){
             AutoAvoid();
         //}else{
         //    InitAvoid();
         }
-        udp_server_send(0);
-        ESP_LOGI(TAG,"scan %d",u);
+        //udp_server_send(0);
+        ESP_LOGI(TAG,"scan %.2f",u);
         //if ()
         scan_start_task();
 

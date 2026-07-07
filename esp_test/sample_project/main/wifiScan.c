@@ -1,11 +1,11 @@
 #include "wifiScan.h" 
-#include "esp_wifi.h"
+
 //#include "esp_event.h"
 #include "esp_log.h"
 #include <string.h>
 #include <stdio.h>
- 
-#define MAX_AP_NUM 20               // 最大跟踪的AP数量
+
+#define MAX_AP_NUM 30               // 最大跟踪的AP数量
 
 #define RSSI_VARIANCE_THRESHOLD 2  // 方差阈值，需根据实际环境调试
 
@@ -65,7 +65,7 @@ static void update_ap_history(wifi_ap_record_t *ap) {
     if (idx == -1 && ap_count < MAX_AP_NUM) {
         idx = ap_count;
         memcpy(ap_list[idx].bssid, ap->bssid, 6);
-        strcpy(ap_list[idx].ssid, (char*)ap->ssid);
+        //strcpy(ap_list[idx].ssid, (char*)ap->ssid);
         //ap_list[idx].history_count = 0;
         //ap_list[idx].history_index = 0;
         //ap_list[idx].active = true;
@@ -90,15 +90,23 @@ static void update_ap_history(wifi_ap_record_t *ap) {
         ap_list[idx].rssi = ap->rssi;
     }
 }
-static uint32_t detect_motion(void) {
+static float detect_motion(void) {
     int active_ap_count = 0;
     float total_variance = 0;
-    
+    int stop=0,moving = 0;
     // 统计所有活跃AP的方差
     for (int i = 0; i < ap_count; i++) {
-        if ((ap_list[i].active &3) ==3 ) {
-            total_variance += ap_list[i].variance;
+        if ((ap_list[i].active &3) ==3 ) { 
+            if (ap_list[i].variance<RSSI_VARIANCE_THRESHOLD){
+                stop++;
+            }else{
+                moving++;
+            }
+            total_variance += ap_list[i].variance; 
             active_ap_count++; 
+            ESP_LOGI(TAG, "variance %.2f %d",ap_list[i].variance,i);
+        //}else{
+            //ESP_LOGI(TAG, "n   %d", i);
         }
     }
     
@@ -108,16 +116,25 @@ static uint32_t detect_motion(void) {
     }
     
     float avg_variance = total_variance / active_ap_count;
-    
+    //float total_var = 0,var = 0;
+    //for (int i = 0; i < ap_count; i++) {
+    //    if ((ap_list[i].active &3) ==3 ) { 
+            //total_variance
+    //        var = avg_variance - ap_list[i].variance;
+    //        if (var<0)var = -var;
+    //        total_var += var;
+    //    }
+    //}
+    //avg_variance = total_var/active_ap_count;
     //uint8_t std_int = (uint8_t)isqrt_u32((uint32_t)avg_variance); 
     
     //return std_int;
     bool is_moving = (avg_variance > RSSI_VARIANCE_THRESHOLD);
     
     // 打印调试信息
-    ESP_LOGI(TAG, "Active APs: %d, Avg Variance: %.2f, Status: %s",
-             active_ap_count, avg_variance, is_moving ? "MOVING" : "STATIONARY");
-    return (uint32_t)avg_variance;
+    ESP_LOGI(TAG, "Active APs: %d, Avg Variance: %.2f, Status: %s %d %d",
+             active_ap_count, avg_variance, is_moving ? "MOVING" : "STATIONARY",stop,moving);
+    return  avg_variance;
     //return !is_moving;
 }
 
@@ -137,7 +154,7 @@ static void process_scan_results(wifi_ap_record_t *ap_info, uint16_t ap_num) {
     //detect_motion();
 }
 
-uint32_t handleWifiScanEvent(){
+float handleWifiScanEvent(_Handle_wifi_ap handle){
     uint16_t ap_num;
     esp_wifi_scan_get_ap_num(&ap_num);
     //ESP_LOGI(TAG, "ap_num %d",ap_num);
@@ -145,6 +162,7 @@ uint32_t handleWifiScanEvent(){
         wifi_ap_record_t *ap_info = malloc(ap_num * sizeof(wifi_ap_record_t));
         esp_wifi_scan_get_ap_records(&ap_num, ap_info);
         process_scan_results(ap_info, ap_num);
+        handle(ap_info,ap_num);
         free(ap_info);
         return detect_motion();
     }

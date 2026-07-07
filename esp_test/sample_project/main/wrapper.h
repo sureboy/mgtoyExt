@@ -13,6 +13,7 @@ void udp_server_init_msg(char keepalive, const char* name, const char* local_ip)
 void udp_server_set_callback(void (*callback)(char data));
 void udp_server_loop();
 void udp_server_send(uint8_t k) ;
+void udp_server_sendData(const char * data,const int len) ;
 #ifdef __cplusplus
 }
 #endif
