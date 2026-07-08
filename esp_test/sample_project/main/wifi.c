@@ -38,24 +38,32 @@ static void contrlWorker(char data,int timeOut){
     led_blink(100);
     gpio_worker(data&0x0F,(uint64_t)timeOut);
 }
-static char wifi_ap_list[210];
+static char wifi_ap_list[212];
 static void my_udp_callback(char data) {
     led_blink(10);
     
     char dataMsg = CheckControl((int)data&0x0F,contrlWorker);
     ESP_LOGI(TAG, "UDP callback: 0x%02X 0x%02X", (unsigned char)data,dataMsg);
+    gpio_worker(dataMsg ,0); 
+    wifi_ap_list[1]=dataMsg;
+    /*
     if (dataMsg){
-        gpio_worker(dataMsg ,2*1000*1000); 
+        wifi_ap_list[1]=0;
+        gpio_worker(0 ,0); 
+    }else{
+        
     }
+*/
         //ControlStart();
     
 }
 static void sendWifiScanListData(wifi_ap_record_t *ap_info,uint16_t ap_num){
     //led_blink(100);
     ///gpio_worker(data&0x0F,(uint64_t)timeOut);
-    int len = ap_num*7;
+    int len = ap_num*7+2;
     //uint8_t wifi_ap_list[len] ;
     char *ptr = wifi_ap_list; 
+    ptr+=2;
     for (int i = 0; i < ap_num && i < 30; i++) {
         //i*7
         memcpy(ptr, ap_info[i].bssid, 6); // 拷贝6字节MAC
@@ -145,7 +153,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     }else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE){
         float u = handleWifiScanEvent(sendWifiScanListData);
         if (u<2){
-            AutoAvoid();
+            //AutoAvoid();
         //}else{
         //    InitAvoid();
         }

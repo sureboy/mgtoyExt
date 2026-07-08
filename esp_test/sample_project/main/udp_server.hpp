@@ -147,11 +147,11 @@ public:
     void Send(uint8_t k){
         udpSend(k);
     }
-    void SendData(const char * data,const int len){
+    void SendData(char * data,const int len){
         updateNum();
-        sendBigMsg[0]=sendMsg[0];
-        memcpy(&(sendBigMsg[1]),data,len);
-        ssize_t sent = sendto(_sock, sendBigMsg, len+1, 0,
+        data[0]=sendMsg[0];
+        //memcpy(&(sendBigMsg[1]),data,len);
+        ssize_t sent = sendto(_sock, data, len, 0,
                         (struct sockaddr*)&destAddr, sizeof(destAddr));
         if (sent < 0) {
             ESP_LOGE(UDP_LOG_TAG, "sendto failed: errno %d", errno);
@@ -171,7 +171,7 @@ private:
     //IPAddress serverIP;          // 成员变量
     //unsigned int serverPort;
     char sendMsg[13];
-    char sendBigMsg[1400];
+    //char sendBigMsg[1400];
     char packetBuffer[2];
     struct sockaddr_in destAddr;
 

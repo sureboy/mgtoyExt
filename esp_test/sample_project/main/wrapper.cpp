@@ -43,6 +43,6 @@ void udp_server_send(uint8_t k) {
     if (g_udp) g_udp->Send(k);
 }
 
-void udp_server_sendData(const char * data,const int len) {
+void udp_server_sendData(char * data,const int len) {
     if (g_udp) g_udp->SendData(  data,  len);
 }

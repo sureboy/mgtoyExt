@@ -112,6 +112,7 @@ char CheckControl(int i,_Handle worker  ){
     //i &=0x0F;
     //if ((i & 0x0F)>0)
     //return controlGroup[i];
+    /*
     if (i==8){
         if (!autoWorker){
             autoWorker = worker;
@@ -124,7 +125,7 @@ char CheckControl(int i,_Handle worker  ){
             autoWorker=NULL;
         }
     }
-    
+    */
     return controlGroup[i];
     
     
