@@ -64,26 +64,71 @@ window.addEventListener('message',(ev)=>{
             break; 
         default:
             //const li = [];
-            apMap.forEach(v=>{
-                v.action <<=1;
-                v.type  = (v.type<<1) | msg[1];
-            });
-            for (let i=2;i<msg.length;i+=7){
-                //li.push(msg.subarray(i,i+7));
-                const k = msg.subarray(i,i+6).toString();
-                if (apMap.has(k)){
-                    const val = apMap.get(k);
-                    if (val.rssi.length>=32){
-                        val.rssi.shift();
+            if ((msg.length >=9) && ((msg.length-2) %7 ===0)){ 
+                apMap.forEach(v=>{
+                    v.action <<=1;
+                    //v.type  = (v.type<<1) | msg[1];
+                });
+                const status = [0,0];
+                for (let i=2;i<msg.length;i+=7){
+                    //li.push(msg.subarray(i,i+7));
+                    const k = msg.subarray(i,i+6).toString();
+                    
+                    if (apMap.has(k)){
+                        const val = apMap.get(k);
+                        if (val.rssi.length>=32){
+                            val.rssi.shift();
+                            const _v = val.variations.shift();
+                            if (_v.wave){
+                                val.varSum -=_v.wave;
+                            }
+                        }
+                        val.rssi.push(msg[i+6]);
+                        //val.type.push(msg[1]);
+                        val.action |= 1;
+                        if ((val.action & 3) ===3){
+                            
+                            const [rssi1,rssi2] = val.rssi.slice(-2);  
+                            if (!rssi1 || !rssi2){
+                                console.log(val);
+                            }
+                            const variation = {wave:rssi1-rssi2  ,run:msg[1]};
+                            if (val.waveAvg){
+                                let wv = val.avg - variation.wave;
+                                wv = (wv<0)?-wv:wv;
+                                if (wv >val.waveAvg){ 
+                                    status[0]++;
+                                    console.log(val.waveAvg,wv);
+                                }else{
+                                    status[1]++;
+                                }
+                            }
+                            //avg = Math.sqrt(avg);
+                            val.variations.push(variation);
+
+                            val.waveSum += variation.wave;
+
+                            val.avg = val.waveSum / val.variations.length;
+                            let avgsum = 0;
+                            val.variations.forEach((v,i_)=>{
+                                let _v = val.avg - v.wave;
+                                avgsum += (_v<0)?-_v:_v;
+                            });
+                            val.waveAvg = avgsum / val.variations.length; 
+                        }else{
+                            //console.log(k);
+                            val.variations.push({});
+                        }
+                        //console.log(val);
+                    }else{
+                        apMap.set(k,{rssi:[msg[i+6]],action:1,variations:[],waveSum:0,waveAvg:0,avg:0 });
                     }
-                    val.rssi.push(msg[i+7]);
-                    val.action |= 1;
-                    console.log(val);
-                }else{
-                    apMap.set(k,{rssi:[msg[i+7]],action:1,type:msg[1] });
+
+                    
+                    
+                    
                 }
-                
-                
+                console.log(status);
             }
             //console.log(li);
             //msg.subarray(1,msg.length)
