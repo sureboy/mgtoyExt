@@ -160,6 +160,7 @@ function reportErrorToExtension(errorDetails) {
     console.error('[Fallback] Webview Error:', errorDetails);
   }
 }
+
 window.addEventListener('error', (event) => { 
   const errorInfo = {
     message: event.message,
@@ -180,6 +181,19 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('【未处理的 Promise 拒绝】:', errorInfo);
   reportErrorToExtension(errorInfo);
 }); 
+const oldLog = console.log
+function reportLogToExtension(msg,...optionalParams) {
+  if (window.parent) {
+    window.parent.postMessage({
+      type: 'webviewLog',
+      payload: [msg,...optionalParams]
+    });
+  }  
+ 
+  oldLog(msg,optionalParams);
+  
+}
+console.log = reportLogToExtension
       `);
 		strHtml = replaceAssetPathsAdvanced(strHtml,(p)=>{
 			if (port){
@@ -261,9 +275,16 @@ export function previewFile(
   panelObj.panel.webview.onDidReceiveMessage(
     message=>{
       if (message.type === 'webviewError') { 
-        panelObj.outputChannel?.append(JSON.stringify(message,null,2));
+        panelObj.outputChannel?.append("Err:");
+        panelObj.outputChannel?.append(JSON.stringify(message.payload,null,2));
         panelObj.outputChannel?.appendLine('');
         console.error('[Webview Error]', message.payload); 
+        return;
+      }
+      if (message.type === 'webviewLog') { 
+        panelObj.outputChannel?.append(JSON.stringify(message.payload));
+        panelObj.outputChannel?.appendLine('');
+        console.log('[Webview log]', message.payload); 
         return;
       }
       if (message.start ){

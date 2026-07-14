@@ -1,6 +1,7 @@
 import {getDBFromAddr,setClientDB,postMessage} from './cache.js';
 const apMap = new Map();
 let isRun = false;
+let move = [4,2,1,3];
 window.addEventListener('message',(ev)=>{
     //console.log(ev.data);
     const {msg,udp} = ev.data;
@@ -52,7 +53,12 @@ window.addEventListener('message',(ev)=>{
                     return;
                 }
                 isRun=true;
-                sendMsg.push(4);
+                sendMsg.push(move);
+                if (move===4){
+                    move = 6;
+                }else{
+                    move = 4;
+                }
                 setTimeout(()=>{
                     postMessage({msg:new Uint8Array([sendMsg[0],8]),udp});
                     isRun = false;
@@ -70,7 +76,7 @@ window.addEventListener('message',(ev)=>{
     });*/
 });
 const HISTORY_LEN = 3;
-const waveHistory = [];
+let waveHistory = [];
 let waveHistorySum = 0; 
 let waveAction = 1;
 const handleApList = (msg,isStop)=>{
@@ -146,23 +152,42 @@ const handleApList = (msg,isStop)=>{
     }
     waveAction <<=1;
     const waveAvg = waveHistorySum/waveHistory.length; 
+    if (waveAvg>rssiWave){
+        const diff = waveHistory.reduce((t,v,i)=>{ 
+            const _v = waveAvg - v; 
+            return t + ((_v<0)?-_v:_v);
+        })/waveHistory.length;
+        //console.log(diff);
+        if ((waveAvg - rssiWave)>diff){
+            
+            
+            console.log("stop",waveAction,waveAction&2);
+            if ((waveAction&2) === 0 ){
+                console.log("run stop");
+                waveAction|=1;
+                if (msg[1]!==0){
+                    isStop(); 
+                } 
+            }
+        }
+    }else if ((waveAction&3)===0){
+        console.log("run stop 7");
+        waveAction|=1;
+        if (msg[1]!==0){
+            isStop(); 
+        } 
+    }
+    
+
+
     waveHistory.push(rssiWave);
     waveHistorySum += rssiWave;
-    const _waveAvg = waveHistorySum/waveHistory.length;
-    if ((_waveAvg > waveAvg) && (( waveAction & 2)!==2 )){
-        waveAction |=1; 
-    } 
     if (waveHistory.length>HISTORY_LEN){
         waveHistorySum -= waveHistory.shift(); 
     }
-    const Stop =(( waveAction & 3) ===0);
-
-    console.log(num,msg[1],Stop,  rssiWave, waveAvg );
-    if (Stop && msg[1]!==0){
-        waveAction=1;
-        isStop();
-    }
-    //WaveLast = waveNow;
+    console.log(num,msg[1], waveAvg,  rssiWave );
+    return;
+   
 };
 function toInt8(byte) {
   // 假设 byte 范围是 0-255
